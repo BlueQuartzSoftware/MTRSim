@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "mtrsim",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "eigen3"
+    },
+    {
+      "name": "boost-math"
+    },
+    {
+      "name": "hdf5",
+      "features": [
+        "cpp",
+        "zlib"
+      ]
+    },
+    {
+      "name": "stb"
+    },
+    {
+      "name": "cli11"
+    },
+    {
+      "name": "nlohmann-json"
+    },
+    {
+      "name": "spdlog"
+    }
+  ],
+  "features": {
+    "tests": {
+      "description": "Unit tests via Catch2",
+      "dependencies": [
+        {
+          "name": "catch2"
+        }
+      ]
+    },
+    "parallel": {
+      "description": "Parallel support with TBB",
+      "dependencies": [
+        {
+          "name": "tbb"
+        }
+      ]
+    }
+  }
+}

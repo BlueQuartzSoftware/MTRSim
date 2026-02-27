@@ -1,0 +1,75 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ci",
+      "displayName": "CI build",
+      "description": "Base build configuration for CI",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        },
+        "MTRSIM_BUILD_TESTS": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "VCPKG_MANIFEST_FEATURES": {
+          "type": "STRING",
+          "value": "tests"
+        }
+      }
+    },
+    {
+      "name": "ci-macos-arm64",
+      "displayName": "CI macOS arm64",
+      "description": "CI build configuration for macOS Apple Silicon",
+      "inherits": "ci",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": {
+          "type": "STRING",
+          "value": "arm64-osx-v11"
+        },
+        "VCPKG_HOST_TRIPLET": {
+          "type": "STRING",
+          "value": "arm64-osx-v11"
+        },
+        "VCPKG_OVERLAY_TRIPLETS": {
+          "type": "PATH",
+          "value": "${sourceDir}/cmake/triplets"
+        }
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-macos-arm64",
+      "displayName": "CI macOS arm64 build",
+      "configurePreset": "ci-macos-arm64",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ci-macos-arm64",
+      "displayName": "CI macOS arm64 test",
+      "configurePreset": "ci-macos-arm64",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

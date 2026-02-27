@@ -1,0 +1,112 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default-all",
+      "displayName": "default-all",
+      "description": "Base configuration for local macOS arm64 developer builds",
+      "generator": "Ninja",
+      "hidden": true,
+      "cacheVariables": {
+       "VCPKG_MANIFEST_DIR": {
+          "type": "STRING",
+          "value": "${sourceDir}"
+        },
+        "VCPKG_INSTALLED_DIR": {
+          "type": "STRING",
+          "value": "${sourceDir}/../vcpkg-installed"
+        },
+        "VCPKG_MANIFEST_INSTALL": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "VCPKG_OVERLAY_TRIPLETS": {
+          "type": "PATH",
+          "value": "${sourceDir}/cmake/triplets"
+        },
+        "VCPKG_APPLOCAL_DEPS": {
+          "type": "BOOL",
+          "value": "OFF"
+        },
+        "VCPKG_MANIFEST_FEATURES": {
+          "type": "STRING",
+          "value": "tests;parallel"
+        },
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_INSTALLATION_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        "CMAKE_MAKE_PROGRAM": {
+          "type": "FILEPATH",
+          "value": "/opt/local/bin/ninja"
+        },
+        "CMAKE_OSX_DEPLOYMENT_TARGET": {
+          "type": "STRING",
+          "value": "11.0"
+        },
+        "MTRSIM_BUILD_TESTS": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "MTRSIM_ENABLE_MULTICORE": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "EbsdLib_BUILD_TESTS": {
+          "type": "BOOL",
+          "value": "OFF"
+        }
+      },
+      "environment": {
+        "VCPKG_INSTALLATION_ROOT": "/opt/local/vcpkg"
+      }
+    },
+    {
+      "name": "mtrsim-Rel",
+      "inherits": "default-all",
+      "displayName": "mtrsim-Rel",
+      "description": "Release build for local macOS arm64",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../Build/mtrsim-Rel",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Release"
+        }
+      }
+    },
+    {
+      "name": "mtrsim-Dbg",
+      "inherits": "mtrsim-Rel",
+      "displayName": "mtrsim-Dbg",
+      "description": "Debug build for local macOS arm64",
+      "binaryDir": "${sourceDir}/../Build/mtrsim-Dbg",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Debug"
+        }
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "mtrsim-Rel [BUILD]",
+      "displayName": "mtrsim-Rel",
+      "configurePreset": "mtrsim-Rel",
+      "configuration": "Release"
+    },
+    {
+      "name": "mtrsim-Dbg [BUILD]",
+      "displayName": "mtrsim-Dbg",
+      "configurePreset": "mtrsim-Dbg",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": []
+}
