@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SimulationParams.hpp"
+#include "mtrsim_export.h"
 #include <Eigen/Dense>
 #include <random>
 
@@ -10,7 +11,7 @@ namespace mtrsim
 /**
  * @brief Result of the plurigaussian random field simulation.
  */
-struct PGRFResult
+struct MTRSIM_EXPORT PGRFResult
 {
   // Component assignment for each voxel (1-based index), length N
   Eigen::VectorXi mtrIndex;
@@ -27,7 +28,7 @@ struct PGRFResult
  * AssignmentRule to produce a categorical assignment over the simulation
  * volume.
  */
-class PGRFSimulation
+class MTRSIM_EXPORT PGRFSimulation
 {
 public:
   explicit PGRFSimulation(std::mt19937_64& rng);

@@ -1,0 +1,19 @@
+{
+  "_comment": "3D thin slab — non-zero zLen produces a volume with 5 z-layers.",
+  "_image_size": "100 x 50 x 5 voxels  (2.0 mm x 1.0 mm x 0.10 mm)",
+  "_purpose": "Tests 3D grid generation, z-direction Cholesky, and z-major voxel ordering. Most other configs are 2D (zLen=0).",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.10,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

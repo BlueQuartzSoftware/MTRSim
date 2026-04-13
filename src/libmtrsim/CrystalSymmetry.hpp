@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mtrsim_export.h"
 #include <Eigen/Dense>
 
 namespace mtrsim
@@ -23,7 +24,7 @@ enum class CrystalSystem
  * tables, using HexagonalOps::getMatSymOpD(i) and
  * OrientationTransformation::eu2om / om2eu for the rotation math.
  */
-class CrystalSymmetry
+class MTRSIM_EXPORT CrystalSymmetry
 {
 public:
   explicit CrystalSymmetry(CrystalSystem system = CrystalSystem::HCP);
@@ -36,9 +37,7 @@ public:
    * @param phi2  Input phi2 angles [rad], length N
    * @return      Matrix of shape [N*numOps x 3] with columns [phi1, PHI, phi2]
    */
-  Eigen::MatrixXd expand(const Eigen::VectorXd& phi1,
-                          const Eigen::VectorXd& phi,
-                          const Eigen::VectorXd& phi2) const;
+  Eigen::MatrixXd expand(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2) const;
 
   /// Returns the number of symmetry operators for the configured crystal system.
   int numOperators() const;

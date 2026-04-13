@@ -1,0 +1,19 @@
+{
+  "_comment": "Very elongated MTRs: large theta_y, small theta_x. Produces long, thin, strongly directional MTR streaks — exaggerated version of the default needle-like morphology.",
+  "_image_size": "1905 x 635 px  (same as default)",
+  "_mtr_size": "theta_x~0.05mm (narrow), theta_y~1.50mm (very long) — aspect ratio ~30:1",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.05, 1.50, 0.05],
+    [0.04, 1.20, 0.04]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

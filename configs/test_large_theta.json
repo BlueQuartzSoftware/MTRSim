@@ -1,0 +1,19 @@
+{
+  "_comment": "Large theta relative to domain — correlation length exceeds domain size in y. Tests behavior when MTRs span the entire field.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests extreme case where theta_y > yLen. The Gaussian field should be nearly constant in y, producing stripe-like bands.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 5.00, 0.10],
+    [0.08, 4.00, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

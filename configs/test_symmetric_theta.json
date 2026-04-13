@@ -1,0 +1,19 @@
+{
+  "_comment": "Symmetric theta — both Gaussians use identical correlation lengths. Removes inter-Gaussian morphological variation.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests that the assignment rule and PGRF produce correct results when both latent fields have the same spatial correlation structure.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.10, 0.45, 0.10]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

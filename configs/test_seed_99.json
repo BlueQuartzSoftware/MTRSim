@@ -1,0 +1,19 @@
+{
+  "_comment": "Different seed — same parameters as test_tiny_default but seed=99 instead of 42.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests that different seeds produce different realizations. Results should differ from test_tiny_default but have the same statistical properties.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 99
+}

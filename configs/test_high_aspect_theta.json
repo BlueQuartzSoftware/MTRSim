@@ -1,0 +1,19 @@
+{
+  "_comment": "High aspect ratio theta — Gaussian 1 is strongly elongated in y, Gaussian 2 is strongly elongated in x. Creates complex, cross-hatched morphology.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests behavior when the two latent Gaussian fields have orthogonal preferred directions. Should produce distinctly different morphology from default.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.05, 0.80, 0.05],
+    [0.80, 0.05, 0.05]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

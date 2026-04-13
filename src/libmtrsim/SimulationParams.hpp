@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mtrsim_export.h"
 #include <array>
 #include <cstdint>
 #include <string>
@@ -13,7 +14,7 @@ namespace mtrsim
  *
  * These map directly to the top-level parameter block in simulate_MTRs.m.
  */
-struct SimulationParams
+struct MTRSIM_EXPORT SimulationParams
 {
   // Volume dimensions [mm]
   double xLen = 1.5 * 25.4;

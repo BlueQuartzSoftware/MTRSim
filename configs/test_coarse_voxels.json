@@ -1,0 +1,19 @@
+{
+  "_comment": "Coarse voxels — larger voxel spacing relative to theta. Tests under-resolved regime where voxels are comparable in size to correlation length.",
+  "_image_size": "20 x 10 px  (2.0 mm / 0.10 mm  x  1.0 mm / 0.10 mm)",
+  "_purpose": "Tests behavior when voxel size approaches correlation length. PGRF field should appear less smooth. Only 200 voxels — extremely fast.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.10,
+  "dy": 0.10,
+  "dz": 0.10,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

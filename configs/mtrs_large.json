@@ -1,0 +1,19 @@
+{
+  "_comment": "Large MTRs: theta values doubled in all directions. MTR regions are physically ~2x bigger.",
+  "_image_size": "1905 x 635 px  (same as default)",
+  "_mtr_size": "theta_x~0.20mm, theta_y~0.90mm — correlation drops to 37% at these physical distances",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.20, 0.90, 0.20],
+    [0.16, 0.74, 0.16]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

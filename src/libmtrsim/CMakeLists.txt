@@ -29,16 +29,21 @@ add_library(mtrsim SHARED ${MTRSIM_HEADERS} ${MTRSIM_SOURCES})
 
 add_library(mtrsim::mtrsim ALIAS mtrsim)
 
+include(GenerateExportHeader)
+generate_export_header(mtrsim)
+
 target_include_directories(mtrsim
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include/mtrsim>
+  PRIVATE
+    ${Stb_INCLUDE_DIR}
 )
 
 target_link_libraries(mtrsim
   PUBLIC
     Eigen3::Eigen
-    Boost::boost
     HDF5::HDF5
     EbsdLib::EbsdLib
     spdlog::spdlog
@@ -47,3 +52,8 @@ target_link_libraries(mtrsim
 )
 
 target_compile_features(mtrsim PUBLIC cxx_std_20)
+
+if(MTRSIM_ENABLE_MULTICORE)
+  target_link_libraries(mtrsim PUBLIC TBB::tbb)
+  target_compile_definitions(mtrsim PUBLIC MTRSIM_HAS_TBB=1)
+endif()

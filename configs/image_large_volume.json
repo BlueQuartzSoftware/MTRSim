@@ -1,0 +1,19 @@
+{
+  "_comment": "Large volume: double the physical size in x and y at default resolution. Shows more MTR regions across the scan.",
+  "_image_size": "3810 x 1270 px  (76.2 mm / 0.02 mm  x  25.4 mm / 0.02 mm)",
+  "_vs_default": "4x the pixels; same voxel spacing so MTR physical sizes are unchanged",
+  "xLen": 76.2,
+  "yLen": 25.4,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

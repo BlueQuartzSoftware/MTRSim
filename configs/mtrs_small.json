@@ -1,0 +1,19 @@
+{
+  "_comment": "Small MTRs: theta values reduced to ~40% of default. MTR regions are physically smaller and more numerous.",
+  "_image_size": "1905 x 635 px  (same as default)",
+  "_mtr_size": "theta_x~0.04mm, theta_y~0.18mm — fine-grained texture regions",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.04, 0.18, 0.04],
+    [0.03, 0.15, 0.03]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

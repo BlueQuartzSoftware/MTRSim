@@ -7,9 +7,6 @@
       "name": "eigen3"
     },
     {
-      "name": "boost-math"
-    },
-    {
       "name": "hdf5",
       "features": [
         "cpp",
@@ -27,7 +24,15 @@
     },
     {
       "name": "spdlog"
+    },
+    {
+      "name": "ebsdlib",
+      "version>=": "2.3.0"
+    },
+    {
+      "name": "h5support"
     }
+
   ],
   "features": {
     "tests": {
@@ -43,6 +48,15 @@
       "dependencies": [
         {
           "name": "tbb"
+        }
+      ]
+    },
+    "python": {
+      "description": "Python bindings via pybind11",
+      "dependencies": [
+        {
+          "name": "pybind11",
+          "version>=": "2.10.0"
         }
       ]
     }

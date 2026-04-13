@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ODFSampler.hpp"
+#include "mtrsim_export.h"
 #include <Eigen/Dense>
 
 namespace mtrsim
@@ -9,7 +10,7 @@ namespace mtrsim
 /**
  * @brief Pole figure data: projected (X, Y) coordinates and intensity values.
  */
-struct PoleFigureData
+struct MTRSIM_EXPORT PoleFigureData
 {
   Eigen::VectorXd x;         ///< Stereographic X coordinates
   Eigen::VectorXd y;         ///< Stereographic Y coordinates
@@ -24,7 +25,7 @@ struct PoleFigureData
  * to HexagonalOps::generatePoleFigure() for the stereographic
  * projection and intensity accumulation.
  */
-class PoleFigure
+class MTRSIM_EXPORT PoleFigure
 {
 public:
   PoleFigure() = default;

@@ -1,0 +1,19 @@
+{
+  "_comment": "Very small theta — correlation length much smaller than voxel spacing. Approaches white noise (uncorrelated field).",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests near-independence limit. When theta << dx, the covariance matrix approaches identity and the PGRF degenerates to i.i.d. draws. Volume fractions should still be correct but no spatial structure.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.001, 0.001, 0.001],
+    [0.001, 0.001, 0.001]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

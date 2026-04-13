@@ -1,0 +1,19 @@
+{
+  "_comment": "Isotropic MTRs: equal theta in x and y. Produces blocky, roughly equiaxed MTR regions instead of the default elongated needle-like morphology.",
+  "_image_size": "1905 x 635 px  (same as default)",
+  "_mtr_size": "theta=0.30mm in all directions — no preferred elongation axis",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.30, 0.30, 0.30],
+    [0.25, 0.25, 0.25]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

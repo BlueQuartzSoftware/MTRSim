@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mtrsim_export.h"
 #include <Eigen/Dense>
 #include <random>
 #include <utility>
@@ -20,7 +21,7 @@ namespace mtrsim
  * License note: the underlying algorithm is due to Alan Genz (BSD-style).
  * Full attribution is preserved in matlab/qsimvn.m.
  */
-class QSimVN
+class MTRSIM_EXPORT QSimVN
 {
 public:
   /**
@@ -37,10 +38,7 @@ public:
    * @param b   Upper integration limits (length n, may be +inf)
    * @return    {probability estimate, error estimate}
    */
-  std::pair<double, double> compute(int m,
-                                    const Eigen::MatrixXd& r,
-                                    const Eigen::VectorXd& a,
-                                    const Eigen::VectorXd& b);
+  std::pair<double, double> compute(int m, const Eigen::MatrixXd& r, const Eigen::VectorXd& a, const Eigen::VectorXd& b);
 
 private:
   // Cholesky decomposition with reordering (chlrdr in original)
@@ -51,15 +49,9 @@ private:
     Eigen::VectorXd bp;
   };
 
-  ChlrdrResult chlrdr(const Eigen::MatrixXd& r,
-                      const Eigen::VectorXd& a,
-                      const Eigen::VectorXd& b) const;
+  ChlrdrResult chlrdr(const Eigen::MatrixXd& r, const Eigen::VectorXd& a, const Eigen::VectorXd& b) const;
 
-  double mvndns(int n, const Eigen::MatrixXd& ch,
-                double ci, double dci,
-                const Eigen::VectorXd& x,
-                const Eigen::VectorXd& a,
-                const Eigen::VectorXd& b) const;
+  double mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, const Eigen::VectorXd& x, const Eigen::VectorXd& a, const Eigen::VectorXd& b) const;
 
   static double phi(double z);
   static double phiInv(double p);

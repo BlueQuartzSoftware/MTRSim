@@ -1,0 +1,19 @@
+{
+  "_comment": "Extreme dominance — 90% component 1. Stress-tests the assignment rule with near-degenerate volume fractions.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests edge case where one component overwhelmingly dominates. Assignment rule thresholds are pushed to extremes.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.90, 0.05, 0.05],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

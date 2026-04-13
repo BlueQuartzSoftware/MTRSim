@@ -1,0 +1,19 @@
+{
+  "_comment": "One dominant component — 70% of volume is component 1, 15% each for components 2 and 3.",
+  "_image_size": "100 x 50 px",
+  "_purpose": "Tests highly asymmetric volume fractions. Component 1 should form large, connected regions while components 2 and 3 appear as small islands.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.70, 0.15, 0.15],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

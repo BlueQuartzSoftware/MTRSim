@@ -1,0 +1,19 @@
+{
+  "_comment": "High resolution: same physical volume, 2x finer voxels. Slower — Cholesky matrices are 2x larger in each dimension.",
+  "_image_size": "3810 x 1270 px  (38.1 mm / 0.01 mm  x  12.7 mm / 0.01 mm)",
+  "_vs_default": "4x the pixels; Cholesky cost scales as O(nx^2) and O(ny^2) so expect ~4-8x longer runtime",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.01,
+  "dy": 0.01,
+  "dz": 0.01,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

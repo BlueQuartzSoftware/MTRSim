@@ -9,7 +9,7 @@
     {
       "name": "default-all",
       "displayName": "default-all",
-      "description": "Base configuration for local macOS arm64 developer builds",
+      "description": "Base configuration for developer builds",
       "generator": "Ninja",
       "hidden": true,
       "cacheVariables": {
@@ -35,7 +35,7 @@
         },
         "VCPKG_MANIFEST_FEATURES": {
           "type": "STRING",
-          "value": "tests;parallel"
+          "value": "tests;parallel;python"
         },
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
@@ -57,9 +57,9 @@
           "type": "BOOL",
           "value": "ON"
         },
-        "EbsdLib_BUILD_TESTS": {
+        "MTRSIM_BUILD_PYTHON_BINDINGS": {
           "type": "BOOL",
-          "value": "OFF"
+          "value": "ON"
         }
       },
       "environment": {
@@ -70,21 +70,37 @@
       "name": "mtrsim-Rel",
       "inherits": "default-all",
       "displayName": "mtrsim-Rel",
-      "description": "Release build for local macOS arm64",
+      "description": "Release build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/../Build/mtrsim-Rel",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": {
           "type": "STRING",
           "value": "Release"
-        }
+        },
+        "VCPKG_TARGET_TRIPLET": {
+          "type": "STRING",
+          "value": "arm64-osx-dynamic"
+        },
+        "VCPKG_HOST_TRIPLET": {
+          "type": "STRING",
+          "value": "arm64-osx-dynamic"
+        },
+        "MTRSIM_USE_LOCAL_EBSD_LIB": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "EBSDLIB_DATA_DIR": {
+          "type": "PATH",
+          "value": "${sourceDir}/../EbsdLib_Data"
+        }        
       }
     },
     {
       "name": "mtrsim-Dbg",
       "inherits": "mtrsim-Rel",
       "displayName": "mtrsim-Dbg",
-      "description": "Debug build for local macOS arm64",
+      "description": "Debug build",
       "binaryDir": "${sourceDir}/../Build/mtrsim-Dbg",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": {

@@ -1,0 +1,19 @@
+{
+  "_comment": "Low resolution: same physical volume, 2x coarser voxels. Runs fast.",
+  "_image_size": "953 x 318 px  (38.1 mm / 0.04 mm  x  12.7 mm / 0.04 mm)",
+  "_vs_default": "1/4 the pixels, ~8x faster Cholesky (halved nx and ny each)",
+  "xLen": 38.1,
+  "yLen": 12.7,
+  "zLen": 0.0,
+  "dx": 0.04,
+  "dy": 0.04,
+  "dz": 0.04,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

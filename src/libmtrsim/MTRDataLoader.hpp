@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mtrsim_export.h"
 #include <Eigen/Dense>
 #include <string>
 
@@ -11,7 +12,7 @@ namespace mtrsim
  *
  * Matches the variables read by load_MTR_data.m.
  */
-struct EBSDData
+struct MTRSIM_EXPORT EBSDData
 {
   Eigen::MatrixXd spatialCoords; ///< [N x 2] (X, Y) positions [mm]
   Eigen::MatrixXd eulerAngles;   ///< [N x 3] (phi1, PHI, phi2) [rad]
@@ -29,7 +30,7 @@ struct EBSDData
  *   - ParentIds.csv     (N rows × 1 col, integer grain IDs)
  *   - BoolMTR.csv       (N rows × 1 col, 0 or 1)
  */
-class MTRDataLoader
+class MTRSIM_EXPORT MTRDataLoader
 {
 public:
   MTRDataLoader() = default;

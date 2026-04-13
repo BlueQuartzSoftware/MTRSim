@@ -10,6 +10,7 @@ target_link_libraries(mtrsim_app
   PRIVATE
     mtrsim::mtrsim
     CLI11::CLI11
+    HDF5::HDF5
     nlohmann_json::nlohmann_json
     spdlog::spdlog
 )

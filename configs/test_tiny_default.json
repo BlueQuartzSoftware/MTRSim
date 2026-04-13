@@ -1,0 +1,19 @@
+{
+  "_comment": "Tiny grid for fast validation. Same parameters as default but 100x50 pixels instead of 1905x635.",
+  "_image_size": "100 x 50 px  (2.0 mm / 0.02 mm  x  1.0 mm / 0.02 mm)",
+  "_purpose": "Quick smoke test — verifies the full pipeline runs end-to-end in seconds.",
+  "xLen": 40.0,
+  "yLen": 20.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}

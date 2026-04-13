@@ -1,0 +1,19 @@
+{
+  "_comment": "Square domain — equal xLen and yLen. Tests behavior when the spatial domain has no preferred aspect ratio.",
+  "_image_size": "100 x 100 px  (2.0 mm x 2.0 mm)",
+  "_purpose": "Verifies correct behavior with a square grid. Anisotropic theta should still produce elongated MTRs despite the symmetric domain.",
+  "xLen": 2.0,
+  "yLen": 2.0,
+  "zLen": 0.0,
+  "dx": 0.02,
+  "dy": 0.02,
+  "dz": 0.02,
+  "volumeFractions": [0.30, 0.35, 0.35],
+  "thetaList": [
+    [0.10, 0.45, 0.10],
+    [0.08, 0.37, 0.08]
+  ],
+  "nuggetVariance": [0.67, 0.71, 0.72],
+  "odfInputPath": "data/simulation_ODF.h5",
+  "seed": 42
+}
