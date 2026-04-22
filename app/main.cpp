@@ -20,17 +20,14 @@
 #include <string>
 #include <vector>
 
-namespace
-{
+namespace {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HDF5 helper utilities
 
-int64_t readH5Int64(hid_t fileId, const std::string& path)
-{
+int64_t readH5Int64(hid_t fileId, const std::string &path) {
   const hid_t dsId = H5Dopen2(fileId, path.c_str(), H5P_DEFAULT);
-  if(dsId < 0)
-  {
+  if (dsId < 0) {
     throw std::runtime_error("HDF5: cannot open dataset: " + path);
   }
   int64_t val = 0;
@@ -39,11 +36,9 @@ int64_t readH5Int64(hid_t fileId, const std::string& path)
   return val;
 }
 
-std::vector<double> readH5Vector(hid_t fileId, const std::string& path)
-{
+std::vector<double> readH5Vector(hid_t fileId, const std::string &path) {
   const hid_t dsId = H5Dopen2(fileId, path.c_str(), H5P_DEFAULT);
-  if(dsId < 0)
-  {
+  if (dsId < 0) {
     throw std::runtime_error("HDF5: cannot open dataset: " + path);
   }
 
@@ -59,7 +54,8 @@ std::vector<double> readH5Vector(hid_t fileId, const std::string& path)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Load all ODF components from an HDF5 file produced by convert_simulation_ODF.py.
+// Load all ODF components from an HDF5 file produced by
+// convert_simulation_ODF.py.
 //
 // Expected HDF5 layout:
 //   /ODF_best/num_components               — int64 scalar
@@ -67,11 +63,10 @@ std::vector<double> readH5Vector(hid_t fileId, const std::string& path)
 //   /ODF_best/component_N/phi1_bins        — (73,)  float64  [rad]
 //   /ODF_best/component_N/PHI_bins         — (37,)  float64  [rad]
 //   /ODF_best/component_N/phi2_bins        — (73,)  float64  [rad]
-std::vector<mtrsim::ODFComponent> loadODFComponents(const std::string& hdfPath)
-{
+std::vector<mtrsim::ODFComponent>
+loadODFComponents(const std::string &hdfPath) {
   const hid_t fileId = H5Fopen(hdfPath.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
-  if(fileId < 0)
-  {
+  if (fileId < 0) {
     throw std::runtime_error("Cannot open HDF5 file: " + hdfPath);
   }
 
@@ -81,8 +76,7 @@ std::vector<mtrsim::ODFComponent> loadODFComponents(const std::string& hdfPath)
   std::vector<mtrsim::ODFComponent> components;
   components.reserve(static_cast<std::size_t>(numComponents));
 
-  for(int64_t j = 0; j < numComponents; ++j)
-  {
+  for (int64_t j = 0; j < numComponents; ++j) {
     const std::string prefix = "/ODF_best/component_" + std::to_string(j);
 
     auto odfVec = readH5Vector(fileId, prefix + "/ODFval");
@@ -91,15 +85,19 @@ std::vector<mtrsim::ODFComponent> loadODFComponents(const std::string& hdfPath)
     auto phi2Vec = readH5Vector(fileId, prefix + "/phi2_bins");
 
     mtrsim::ODFComponent comp;
-    comp.odfVal = Eigen::Map<Eigen::VectorXd>(odfVec.data(), static_cast<Eigen::Index>(odfVec.size()));
-    comp.phi1Bins = Eigen::Map<Eigen::VectorXd>(phi1Vec.data(), static_cast<Eigen::Index>(phi1Vec.size()));
-    comp.phiBins = Eigen::Map<Eigen::VectorXd>(phiVec.data(), static_cast<Eigen::Index>(phiVec.size()));
-    comp.phi2Bins = Eigen::Map<Eigen::VectorXd>(phi2Vec.data(), static_cast<Eigen::Index>(phi2Vec.size()));
+    comp.odfVal = Eigen::Map<Eigen::VectorXd>(
+        odfVec.data(), static_cast<Eigen::Index>(odfVec.size()));
+    comp.phi1Bins = Eigen::Map<Eigen::VectorXd>(
+        phi1Vec.data(), static_cast<Eigen::Index>(phi1Vec.size()));
+    comp.phiBins = Eigen::Map<Eigen::VectorXd>(
+        phiVec.data(), static_cast<Eigen::Index>(phiVec.size()));
+    comp.phi2Bins = Eigen::Map<Eigen::VectorXd>(
+        phi2Vec.data(), static_cast<Eigen::Index>(phi2Vec.size()));
 
-    // Normalise so that odfVal sums to 1 (matches MATLAB pre-processing in simulate_MTRs.m)
+    // Normalise so that odfVal sums to 1 (matches MATLAB pre-processing in
+    // simulate_MTRs.m)
     const double total = comp.odfVal.sum();
-    if(total > 0.0)
-    {
+    if (total > 0.0) {
       comp.odfVal /= total;
     }
 
@@ -111,27 +109,27 @@ std::vector<mtrsim::ODFComponent> loadODFComponents(const std::string& hdfPath)
 }
 
 // Build a uniform reference ODF with the flat 186624-element bin-centre arrays
-// that ODFSampler expects.  These match exactly what ODFCalculator::compute produces:
+// that ODFSampler expects.  These match exactly what ODFCalculator::compute
+// produces:
 //   phi1Bins[ix] = (i1   + 0.5) * 2π/72
 //   phiBins[ix]  = (iPHI + 0.5) *  π/36
 //   phi2Bins[ix] = (i2   + 0.5) * 2π/72
 // where ix = i1*(36*72) + iPHI*72 + i2.
-mtrsim::ODFComponent buildUniformODF()
-{
+mtrsim::ODFComponent buildUniformODF() {
   constexpr int nBins1 = 72;
   constexpr int nBinsPHI = 36;
   constexpr int nBins2 = 72;
   constexpr int nTotal = nBins1 * nBinsPHI * nBins2; // 186624
 
-  const double k_TwoPiOver = 2.0 * std::numbers::pi / static_cast<double>(nBins1);
+  const double k_TwoPiOver =
+      2.0 * std::numbers::pi / static_cast<double>(nBins1);
   const double k_PiOver = std::numbers::pi / static_cast<double>(nBinsPHI);
 
   Eigen::VectorXd phi1Bins(nTotal);
   Eigen::VectorXd phiBins(nTotal);
   Eigen::VectorXd phi2Bins(nTotal);
 
-  for(int ix = 0; ix < nTotal; ++ix)
-  {
+  for (int ix = 0; ix < nTotal; ++ix) {
     const int i1 = ix / (nBinsPHI * nBins2);
     const int iPHI = (ix % (nBinsPHI * nBins2)) / nBins2;
     const int i2 = ix % nBins2;
@@ -141,7 +139,8 @@ mtrsim::ODFComponent buildUniformODF()
   }
 
   mtrsim::ODFComponent uni;
-  uni.odfVal = Eigen::VectorXd::Constant(nTotal, 1.0 / static_cast<double>(nTotal));
+  uni.odfVal =
+      Eigen::VectorXd::Constant(nTotal, 1.0 / static_cast<double>(nTotal));
   uni.phi1Bins = std::move(phi1Bins);
   uni.phiBins = std::move(phiBins);
   uni.phi2Bins = std::move(phi2Bins);
@@ -153,8 +152,7 @@ mtrsim::ODFComponent buildUniformODF()
 // ─────────────────────────────────────────────────────────────────────────────
 // main
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   CLI::App app{"MTRsim — Microtexture Region Simulator"};
 
   std::string configPath;
@@ -170,92 +168,90 @@ int main(int argc, char** argv)
 
   spdlog::info("MTRsim v{}.{}.{}", 1, 0, 0);
 
-  // ── Parse JSON config ────────────────────────────────────────────────────────
+  // ── Parse JSON config
+  // ────────────────────────────────────────────────────────
   mtrsim::SimulationParams params;
   params.outputDir = outputDir;
   params.seed = seed; // may be overridden by JSON (unless CLI --seed was set)
 
-  if(!configPath.empty())
-  {
+  if (!configPath.empty()) {
     std::ifstream f(configPath);
-    if(!f.is_open())
-    {
+    if (!f.is_open()) {
       spdlog::error("Cannot open config file: {}", configPath);
       return 1;
     }
 
-    try
-    {
+    try {
       const nlohmann::json j = nlohmann::json::parse(f);
-      if(j.contains("xLen"))
+      if (j.contains("xLen"))
         params.xLen = j["xLen"].get<double>();
-      if(j.contains("yLen"))
+      if (j.contains("yLen"))
         params.yLen = j["yLen"].get<double>();
-      if(j.contains("zLen"))
+      if (j.contains("zLen"))
         params.zLen = j["zLen"].get<double>();
-      if(j.contains("dx"))
+      if (j.contains("dx"))
         params.dx = j["dx"].get<double>();
-      if(j.contains("dy"))
+      if (j.contains("dy"))
         params.dy = j["dy"].get<double>();
-      if(j.contains("dz"))
+      if (j.contains("dz"))
         params.dz = j["dz"].get<double>();
-      if(j.contains("volumeFractions"))
-        params.volumeFractions = j["volumeFractions"].get<std::vector<double>>();
-      if(j.contains("thetaList"))
-        params.thetaList = j["thetaList"].get<std::vector<std::vector<double>>>();
-      if(j.contains("nuggetVariance"))
+      if (j.contains("volumeFractions"))
+        params.volumeFractions =
+            j["volumeFractions"].get<std::vector<double>>();
+      if (j.contains("thetaList"))
+        params.thetaList =
+            j["thetaList"].get<std::vector<std::vector<double>>>();
+      if (j.contains("nuggetVariance"))
         params.nuggetVariance = j["nuggetVariance"].get<std::vector<double>>();
-      if(j.contains("odfInputPath"))
+      if (j.contains("odfInputPath"))
         params.odfInputPath = j["odfInputPath"].get<std::string>();
-      // JSON seed only applies when CLI --seed was not explicitly provided (seed == 0)
-      if(j.contains("seed") && params.seed == 0)
-      {
+      // JSON seed only applies when CLI --seed was not explicitly provided
+      // (seed == 0)
+      if (j.contains("seed") && params.seed == 0) {
         params.seed = j["seed"].get<uint64_t>();
       }
-    } catch(const nlohmann::json::exception& e)
-    {
+    } catch (const nlohmann::json::exception &e) {
       spdlog::error("JSON parse error: {}", e.what());
       return 1;
     }
   }
 
-  // ── Setup RNG ────────────────────────────────────────────────────────────────
+  // ── Setup RNG
+  // ────────────────────────────────────────────────────────────────
   std::mt19937_64 rng;
-  if(params.seed == 0)
-  {
+  if (params.seed == 0) {
     std::random_device rd;
     rng.seed(rd());
     spdlog::info("Using random seed from std::random_device");
-  }
-  else
-  {
+  } else {
     rng.seed(params.seed);
     spdlog::info("Using fixed seed: {}", params.seed);
   }
 
-  // ── Compute grid dimensions ──────────────────────────────────────────────────
+  // ── Compute grid dimensions
+  // ──────────────────────────────────────────────────
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
   const int ny = static_cast<int>(std::round(params.yLen / params.dy));
-  const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
+  const int nz =
+      std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
   const int N = nx * ny * nz;
 
   spdlog::info("Grid: nx={} ny={} nz={} N={}", nx, ny, nz, N);
-  spdlog::info("  xLen={:.3f} mm  yLen={:.3f} mm  zLen={:.3f} mm", params.xLen, params.yLen, params.zLen);
+  spdlog::info("  xLen={:.3f} mm  yLen={:.3f} mm  zLen={:.3f} mm", params.xLen,
+               params.yLen, params.zLen);
   spdlog::info("  dx={}  dy={}  dz={} [mm]", params.dx, params.dy, params.dz);
 
-  // ── Build spatial coordinate matrix ──────────────────────────────────────────
-  // Ordering matches simulate_MTRs.m: z outer → x middle → y inner.
+  // ── Build spatial coordinate matrix
+  // ────────────────────────────────────────── Ordering matches
+  // simulate_MTRs.m: z outer → x middle → y inner.
   //   s(k) = [j*dx,  i*dy,  zix*dz]
   //          j ∈ [1,nx],  i ∈ [1,ny],  zix ∈ [1,nz]
   Eigen::MatrixXd spatialCoords(N, 3);
   {
     int k = 0;
-    for(int zix = 1; zix <= nz; ++zix)
-    {
-      for(int j = 1; j <= nx; ++j)
-      {
-        for(int i = 1; i <= ny; ++i, ++k)
-        {
+    for (int zix = 1; zix <= nz; ++zix) {
+      for (int j = 1; j <= nx; ++j) {
+        for (int i = 1; i <= ny; ++i, ++k) {
           spatialCoords(k, 0) = j * params.dx;
           spatialCoords(k, 1) = i * params.dy;
           spatialCoords(k, 2) = zix * params.dz;
@@ -264,82 +260,84 @@ int main(int argc, char** argv)
     }
   }
 
-  // ── Run PGRF simulation ──────────────────────────────────────────────────────
+  // ── Run PGRF simulation
+  // ──────────────────────────────────────────────────────
   spdlog::info("Running PGRF simulation...");
   mtrsim::PGRFSimulation pgrf{rng};
   const mtrsim::PGRFResult result = pgrf.run(params);
   spdlog::info("PGRF simulation complete.");
 
-  // ── Load ODF components from HDF5 ───────────────────────────────────────────
+  // ── Load ODF components from HDF5
+  // ───────────────────────────────────────────
   spdlog::info("Loading ODF from: {}", params.odfInputPath);
   std::vector<mtrsim::ODFComponent> odfComponents;
-  try
-  {
+  try {
     odfComponents = loadODFComponents(params.odfInputPath);
-  } catch(const std::exception& e)
-  {
+  } catch (const std::exception &e) {
     spdlog::error("ODF load failed: {}", e.what());
     return 1;
   }
 
-  if(odfComponents.empty())
-  {
+  if (odfComponents.empty()) {
     spdlog::error("No ODF components loaded.");
     return 1;
   }
 
-  // ── Build uniform reference ODF ──────────────────────────────────────────────
+  // ── Build uniform reference ODF
+  // ──────────────────────────────────────────────
   const mtrsim::ODFComponent uniformOdf = buildUniformODF();
 
-  // ── Pre-sample N orientations per component (batched) ────────────────────────
+  // ── Pre-sample N orientations per component (batched)
+  // ────────────────────────
   const int numComponents = static_cast<int>(odfComponents.size());
-  spdlog::info("Sampling orientations ({} components, N={} each)...", numComponents, N);
+  spdlog::info("Sampling orientations ({} components, N={} each)...",
+               numComponents, N);
 
-  std::vector<Eigen::MatrixXd> orientSamples(static_cast<std::size_t>(numComponents));
+  std::vector<Eigen::MatrixXd> orientSamples(
+      static_cast<std::size_t>(numComponents));
   mtrsim::ODFSampler sampler{rng};
 
-  for(int j = 0; j < numComponents; ++j)
-  {
+  for (int j = 0; j < numComponents; ++j) {
     spdlog::info("  Component {} / {}", j + 1, numComponents);
-    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(N, odfComponents[static_cast<std::size_t>(j)], uniformOdf);
+    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(
+        N, odfComponents[static_cast<std::size_t>(j)], uniformOdf);
   }
   spdlog::info("Orientation sampling complete.");
 
-  // ── Assign orientations per voxel ───────────────────────────────────────────
-  // PGRFResult.mtrIndex is 1-based → component = mtrIndex[i] - 1 (0-based)
+  // ── Assign orientations per voxel
+  // ─────────────────────────────────────────── PGRFResult.mtrIndex is 1-based
+  // → component = mtrIndex[i] - 1 (0-based)
   Eigen::VectorXd phi1Vec(N);
   Eigen::VectorXd phiVec(N);
   Eigen::VectorXd phi2Vec(N);
 
-  for(int i = 0; i < N; ++i)
-  {
+  for (int i = 0; i < N; ++i) {
     const int comp = result.mtrIndex[i] - 1;
     phi1Vec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 0);
     phiVec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 1);
     phi2Vec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 2);
   }
 
-  // ── Write IPF map PNG ────────────────────────────────────────────────────────
+  // ── Write IPF map PNG
+  // ────────────────────────────────────────────────────────
   const std::string ipfPath = params.outputDir + "/sim_IPF_map.png";
   spdlog::info("Writing IPF map: {}", ipfPath);
-  try
-  {
+  try {
     mtrsim::IPFMapper mapper{mtrsim::CrystalSystem::HCP};
     const Eigen::MatrixXd coords2D = spatialCoords.leftCols(2);
     mapper.writePNG(coords2D, phi1Vec, phiVec, phi2Vec, ipfPath);
     spdlog::info("IPF map written.");
-  } catch(const std::exception& e)
-  {
+  } catch (const std::exception &e) {
     spdlog::warn("IPF map write failed: {}", e.what());
   }
 
-  // ── Write results CSV ────────────────────────────────────────────────────────
+  // ── Write results CSV
+  // ────────────────────────────────────────────────────────
   const std::string csvPath = params.outputDir + "/sim_results.csv";
   spdlog::info("Writing results CSV: {}", csvPath);
   {
     std::ofstream csv(csvPath);
-    if(!csv.is_open())
-    {
+    if (!csv.is_open()) {
       spdlog::error("Cannot open output file: {}", csvPath);
       return 1;
     }
@@ -348,9 +346,10 @@ int main(int argc, char** argv)
     csv << std::fixed;
     csv.precision(6);
 
-    for(int i = 0; i < N; ++i)
-    {
-      csv << spatialCoords(i, 0) << ',' << spatialCoords(i, 1) << ',' << spatialCoords(i, 2) << ',' << phi1Vec[i] << ',' << phiVec[i] << ',' << phi2Vec[i] << ',' << result.mtrIndex[i] << '\n';
+    for (int i = 0; i < N; ++i) {
+      csv << spatialCoords(i, 0) << ',' << spatialCoords(i, 1) << ','
+          << spatialCoords(i, 2) << ',' << phi1Vec[i] << ',' << phiVec[i] << ','
+          << phi2Vec[i] << ',' << result.mtrIndex[i] << '\n';
     }
   }
   spdlog::info("Results CSV written.");

@@ -12,18 +12,12 @@
 #include <numbers>
 #include <stdexcept>
 
-namespace mtrsim
-{
+namespace mtrsim {
 
-CrystalSymmetry::CrystalSymmetry(CrystalSystem system)
-: m_System(system)
-{
-}
+CrystalSymmetry::CrystalSymmetry(CrystalSystem system) : m_System(system) {}
 
-int CrystalSymmetry::numOperators() const
-{
-  switch(m_System)
-  {
+int CrystalSymmetry::numOperators() const {
+  switch (m_System) {
   case CrystalSystem::HCP:
     return 12;
   case CrystalSystem::FCC:
@@ -44,7 +38,8 @@ int CrystalSymmetry::numOperators() const
 // rotation matrix, which is the transpose of the passive rotation matrix used
 // in the MATLAB Bunge convention.  So O_passive = getMatSymOpD(k).transpose().
 //
-// The Bunge eu2om formula (matching EbsdLib's OrientationTransformation::eu2om):
+// The Bunge eu2om formula (matching EbsdLib's
+// OrientationTransformation::eu2om):
 //
 //   G = | c1c2-s1Cs2    s1c2+c1Cs2    Ss2 |
 //       | -c1s2-s1Cc2  -s1s2+c1Cc2   Sc2 |
@@ -55,19 +50,17 @@ int CrystalSymmetry::numOperators() const
 //   phi1 = atan2(R[2,0], -R[2,1])
 //   phi2 = atan2(R[0,2],  R[1,2])
 
-Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2) const
-{
+Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd &phi1,
+                                        const Eigen::VectorXd &phi,
+                                        const Eigen::VectorXd &phi2) const {
   const int N = static_cast<int>(phi1.size());
   const int numOps = numOperators();
 
   // Instantiate the appropriate LaueOps object
   std::shared_ptr<ebsdlib::LaueOps> ops;
-  if(m_System == CrystalSystem::HCP)
-  {
+  if (m_System == CrystalSystem::HCP) {
     ops = ebsdlib::HexagonalOps::New();
-  }
-  else
-  {
+  } else {
     ops = ebsdlib::CubicOps::New();
   }
 
@@ -77,8 +70,7 @@ Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd& phi1, const Eigen
   const double k_Pi = std::numbers::pi;
   const double k_TwoPi = 2.0 * k_Pi;
 
-  for(int i = 0; i < N; ++i)
-  {
+  for (int i = 0; i < N; ++i) {
     // ── Build passive rotation matrix G from Bunge Euler angles ─────────────
     const double c1 = std::cos(phi1[i]);
     const double s1 = std::sin(phi1[i]);
@@ -88,10 +80,12 @@ Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd& phi1, const Eigen
     const double s2 = std::sin(phi2[i]);
 
     // Row-major layout: G[row*3 + col]
-    const ebsdlib::Matrix3X3D G(c1 * c2 - s1 * s2 * C, s1 * c2 + c1 * s2 * C, s2 * S, -c1 * s2 - s1 * c2 * C, -s1 * s2 + c1 * c2 * C, c2 * S, s1 * S, -c1 * S, C);
+    const ebsdlib::Matrix3X3D G(c1 * c2 - s1 * s2 * C, s1 * c2 + c1 * s2 * C,
+                                s2 * S, -c1 * s2 - s1 * c2 * C,
+                                -s1 * s2 + c1 * c2 * C, c2 * S, s1 * S, -c1 * S,
+                                C);
 
-    for(int k = 0; k < numOps; ++k)
-    {
+    for (int k = 0; k < numOps; ++k) {
       // getMatSymOpD(k) stores the ACTIVE (= O_passive^T) rotation matrix.
       // O_passive = O_t.transpose()
       // R = O_passive * G = O_t.transpose() * G
@@ -106,22 +100,17 @@ Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd& phi1, const Eigen
       double ph = 0.0;
       double p2 = 0.0;
 
-      if(std::abs(std::abs(r33) - 1.0) > k_Eps)
-      {
+      if (std::abs(std::abs(r33) - 1.0) > k_Eps) {
         const double zeta = 1.0 / std::sqrt(1.0 - r33 * r33);
         ph = std::acos(std::clamp(r33, -1.0, 1.0));
         p1 = std::atan2(R[6] * zeta, -R[7] * zeta);
         p2 = std::atan2(R[2] * zeta, R[5] * zeta);
-      }
-      else if(r33 > 0.0)
-      {
+      } else if (r33 > 0.0) {
         // PHI ≈ 0: degenerate case
         p1 = std::atan2(R[1], R[0]);
         ph = 0.0;
         p2 = 0.0;
-      }
-      else
-      {
+      } else {
         // PHI ≈ π: degenerate case
         p1 = -std::atan2(-R[1], R[0]);
         ph = k_Pi;
@@ -129,16 +118,13 @@ Eigen::MatrixXd CrystalSymmetry::expand(const Eigen::VectorXd& phi1, const Eigen
       }
 
       // Wrap negative angles into canonical range
-      if(p1 < 0.0)
-      {
+      if (p1 < 0.0) {
         p1 = std::fmod(p1 + 100.0 * k_TwoPi, k_TwoPi);
       }
-      if(ph < 0.0)
-      {
+      if (ph < 0.0) {
         ph = std::fmod(ph + 100.0 * k_Pi, k_Pi);
       }
-      if(p2 < 0.0)
-      {
+      if (p2 < 0.0) {
         p2 = std::fmod(p2 + 100.0 * k_TwoPi, k_TwoPi);
       }
 

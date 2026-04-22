@@ -14,14 +14,14 @@ using namespace mtrsim;
 // GPGenerator tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace
-{
+namespace {
 // Exponential correlation: rho(lag, theta) = exp(-|lag|/theta)
-auto expCorrFn = [](double lag, double theta) -> double { return std::exp(-std::abs(lag) / theta); };
+auto expCorrFn = [](double lag, double theta) -> double {
+  return std::exp(-std::abs(lag) / theta);
+};
 } // anonymous namespace
 
-TEST_CASE("GPGenerator: output length equals nx*ny*nz", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: output length equals nx*ny*nz", "[gpgenerator]") {
   std::mt19937_64 rng(42);
   GPGenerator gpGen(rng, expCorrFn);
 
@@ -29,8 +29,8 @@ TEST_CASE("GPGenerator: output length equals nx*ny*nz", "[gpgenerator]")
   CHECK(gp.size() == 10 * 8 * 3);
 }
 
-TEST_CASE("GPGenerator: 2D slab (nz=1) output length is nx*ny", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: 2D slab (nz=1) output length is nx*ny",
+          "[gpgenerator]") {
   std::mt19937_64 rng(7);
   GPGenerator gpGen(rng, expCorrFn);
 
@@ -38,8 +38,7 @@ TEST_CASE("GPGenerator: 2D slab (nz=1) output length is nx*ny", "[gpgenerator]")
   CHECK(gp.size() == 20 * 15);
 }
 
-TEST_CASE("GPGenerator: same seed produces identical output", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: same seed produces identical output", "[gpgenerator]") {
   auto gp1 = [&]() {
     std::mt19937_64 rng(999);
     GPGenerator gpGen(rng, expCorrFn);
@@ -55,8 +54,8 @@ TEST_CASE("GPGenerator: same seed produces identical output", "[gpgenerator]")
   CHECK(gp1.isApprox(gp2));
 }
 
-TEST_CASE("GPGenerator: different seeds produce different output", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: different seeds produce different output",
+          "[gpgenerator]") {
   std::mt19937_64 rng1(1), rng2(2);
   GPGenerator g1(rng1, expCorrFn), g2(rng2, expCorrFn);
 
@@ -66,8 +65,8 @@ TEST_CASE("GPGenerator: different seeds produce different output", "[gpgenerator
   CHECK_FALSE(out1.isApprox(out2));
 }
 
-TEST_CASE("GPGenerator: sample mean ≈ 0 and variance ≈ 1 on large 1D grid", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: sample mean ≈ 0 and variance ≈ 1 on large 1D grid",
+          "[gpgenerator]") {
   // A large 1D grid (ny=nz=1) has enough voxels for reliable moment estimates.
   // The marginal distribution of each GP value is N(0,1) since Gamma(0,0) = 1.
   // Use a SHORT correlation length (theta=0.05) relative to spacing (h=0.02) so
@@ -80,15 +79,16 @@ TEST_CASE("GPGenerator: sample mean ≈ 0 and variance ≈ 1 on large 1D grid", 
   REQUIRE(gp.size() == nx);
 
   const double mean = gp.mean();
-  const double var = (gp.array() - mean).square().sum() / static_cast<double>(nx - 1);
+  const double var =
+      (gp.array() - mean).square().sum() / static_cast<double>(nx - 1);
 
   // n_eff ≈ 5000/6 ≈ 833 → σ_mean ≈ 0.035, σ_var ≈ 0.05.  Use generous margins.
   CHECK(mean == Approx(0.0).margin(0.15));
   CHECK(var == Approx(1.0).margin(0.20));
 }
 
-TEST_CASE("GPGenerator: exponential autocorrelation approximately correct", "[gpgenerator]")
-{
+TEST_CASE("GPGenerator: exponential autocorrelation approximately correct",
+          "[gpgenerator]") {
   // For a 1D GP with exp covariance rho(h,theta) = exp(-h/theta),
   // the lag-1 autocorrelation should be ≈ exp(-spacing/theta).
   std::mt19937_64 rng(77777);
@@ -97,13 +97,15 @@ TEST_CASE("GPGenerator: exponential autocorrelation approximately correct", "[gp
   const int nx = 5000;
   const double spacing = 0.05;
   const double theta = 0.5;
-  auto gp = gpGen.generate(spacing, spacing, spacing, {theta, theta, theta}, nx, 1, 1);
+  auto gp = gpGen.generate(spacing, spacing, spacing, {theta, theta, theta}, nx,
+                           1, 1);
 
   // Estimate lag-1 autocorrelation
   const double mean = gp.mean();
   const Eigen::VectorXd centred = gp.array() - mean;
   double cov0 = centred.dot(centred) / static_cast<double>(nx);
-  double cov1 = centred.head(nx - 1).dot(centred.tail(nx - 1)) / static_cast<double>(nx - 1);
+  double cov1 = centred.head(nx - 1).dot(centred.tail(nx - 1)) /
+                static_cast<double>(nx - 1);
   const double rho_estimated = cov1 / cov0;
 
   const double rho_expected = std::exp(-spacing / theta);
@@ -114,8 +116,7 @@ TEST_CASE("GPGenerator: exponential autocorrelation approximately correct", "[gp
 // PGRFSimulation tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_CASE("PGRFSimulation: output dimensions are correct", "[pgrfsimulation]")
-{
+TEST_CASE("PGRFSimulation: output dimensions are correct", "[pgrfsimulation]") {
   SimulationParams params;
   // Small grid for speed
   params.xLen = 0.5;
@@ -130,8 +131,9 @@ TEST_CASE("PGRFSimulation: output dimensions are correct", "[pgrfsimulation]")
   const int nx = static_cast<int>(std::round(params.xLen / params.dx)); // 5
   const int ny = static_cast<int>(std::round(params.yLen / params.dy)); // 5
   const int nz = 1;
-  const int N = nx * ny * nz;                                                   // 25
-  const int numGaussians = static_cast<int>(params.volumeFractions.size()) - 1; // 2
+  const int N = nx * ny * nz; // 25
+  const int numGaussians =
+      static_cast<int>(params.volumeFractions.size()) - 1; // 2
 
   std::mt19937_64 rng(42);
   PGRFSimulation sim(rng);
@@ -142,8 +144,8 @@ TEST_CASE("PGRFSimulation: output dimensions are correct", "[pgrfsimulation]")
   CHECK(result.latentFields.cols() == numGaussians);
 }
 
-TEST_CASE("PGRFSimulation: all voxel assignments are in valid range", "[pgrfsimulation]")
-{
+TEST_CASE("PGRFSimulation: all voxel assignments are in valid range",
+          "[pgrfsimulation]") {
   SimulationParams params;
   params.xLen = 0.5;
   params.yLen = 0.5;
@@ -164,11 +166,11 @@ TEST_CASE("PGRFSimulation: all voxel assignments are in valid range", "[pgrfsimu
   CHECK((result.mtrIndex.array() <= numComponents).all());
 }
 
-TEST_CASE("PGRFSimulation: volume fractions approximately match targets [slow]", "[pgrfsimulation][slow]")
-{
-  // Use a grid large enough relative to the correlation length for reliable estimates.
-  // theta=0.10, dx=0.02 → correlation range ≈ 3*theta = 0.3 mm.
-  // Grid 4mm×4mm = 200×200 voxels → n_eff ≈ (4/0.3)^2 ≈ 178 independent patches.
+TEST_CASE("PGRFSimulation: volume fractions approximately match targets [slow]",
+          "[pgrfsimulation][slow]") {
+  // Use a grid large enough relative to the correlation length for reliable
+  // estimates. theta=0.10, dx=0.02 → correlation range ≈ 3*theta = 0.3 mm. Grid
+  // 4mm×4mm = 200×200 voxels → n_eff ≈ (4/0.3)^2 ≈ 178 independent patches.
   // σ(P̂1) ≈ sqrt(0.30*0.70/178) ≈ 0.034 → 10% margin is ~3 sigma.
   SimulationParams params;
   params.xLen = 4.0;
@@ -191,10 +193,12 @@ TEST_CASE("PGRFSimulation: volume fractions approximately match targets [slow]",
 
   // Allow generous tolerance: 3-sigma for the correlated field estimator
   const double tol = 0.10;
-  for(int j = 1; j <= numComponents; ++j)
-  {
+  for (int j = 1; j <= numComponents; ++j) {
     const int count = (result.mtrIndex.array() == j).count();
-    const double empirical = static_cast<double>(count) / static_cast<double>(N);
-    CHECK(empirical == Approx(params.volumeFractions[static_cast<std::size_t>(j - 1)]).margin(tol));
+    const double empirical =
+        static_cast<double>(count) / static_cast<double>(N);
+    CHECK(empirical ==
+          Approx(params.volumeFractions[static_cast<std::size_t>(j - 1)])
+              .margin(tol));
   }
 }

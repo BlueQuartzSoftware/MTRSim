@@ -7,14 +7,12 @@
 #include <string>
 #include <vector>
 
-namespace mtrsim
-{
+namespace mtrsim {
 
 /**
  * @brief Selects the IPF colour-mapping algorithm.
  */
-enum class IPFColorScheme
-{
+enum class IPFColorScheme {
   EbsdLib, ///< Standard EbsdLib/TSL IPF colouring
   MatLab,  ///< Original MATLAB port colouring (Sparkman 2017)
 };
@@ -22,8 +20,7 @@ enum class IPFColorScheme
 /**
  * @brief RGB colour triple in [0, 255] uint8 range.
  */
-struct MTRSIM_EXPORT RGBColor
-{
+struct MTRSIM_EXPORT RGBColor {
   uint8_t r = 0;
   uint8_t g = 0;
   uint8_t b = 0;
@@ -39,8 +36,7 @@ struct MTRSIM_EXPORT RGBColor
  *               using polar-coordinate colour mapping inside the stereographic
  *               unit triangle.  Currently supports HCP only.
  */
-class MTRSIM_EXPORT IPFMapper
-{
+class MTRSIM_EXPORT IPFMapper {
 public:
   explicit IPFMapper(CrystalSystem system = CrystalSystem::HCP);
 
@@ -56,8 +52,11 @@ public:
    * @param scheme  Colour-mapping algorithm (default: EbsdLib)
    * @return        Per-voxel RGB colours, length N, values in [0, 255]
    */
-  std::vector<RGBColor> eulerToColors(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir = {0.0, 0.0, 1.0},
-                                       IPFColorScheme scheme = IPFColorScheme::EbsdLib) const;
+  std::vector<RGBColor>
+  eulerToColors(const Eigen::VectorXd &phi1, const Eigen::VectorXd &phi,
+                const Eigen::VectorXd &phi2,
+                std::array<double, 3> refDir = {0.0, 0.0, 1.0},
+                IPFColorScheme scheme = IPFColorScheme::EbsdLib) const;
 
   /**
    * @brief Render an IPF map image and write it to a PNG file.
@@ -69,7 +68,9 @@ public:
    * @param outputPath     Destination PNG file path
    * @param scheme         Colour-mapping algorithm (default: EbsdLib)
    */
-  void writePNG(const Eigen::MatrixXd& spatialCoords, const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, const std::string& outputPath,
+  void writePNG(const Eigen::MatrixXd &spatialCoords,
+                const Eigen::VectorXd &phi1, const Eigen::VectorXd &phi,
+                const Eigen::VectorXd &phi2, const std::string &outputPath,
                 IPFColorScheme scheme = IPFColorScheme::EbsdLib) const;
 
   /**
@@ -87,16 +88,22 @@ public:
    *                    computed to preserve the triangle's aspect ratio.
    * @param outputPath  Destination PNG file path.
    */
-  void writeIPFTriangleLegendMatLab(int imageDim, const std::string& outputPath) const;
+  void writeIPFTriangleLegendMatLab(int imageDim,
+                                    const std::string &outputPath) const;
 
 private:
   CrystalSystem m_System;
 
   /// EbsdLib colour path (delegates to LaueOps::generateIPFColor).
-  std::vector<RGBColor> eulerToColorsEbsdLib(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir) const;
+  std::vector<RGBColor>
+  eulerToColorsEbsdLib(const Eigen::VectorXd &phi1, const Eigen::VectorXd &phi,
+                       const Eigen::VectorXd &phi2,
+                       std::array<double, 3> refDir) const;
 
   /// MATLAB colour path — port of unit_triangle_IPF_coords.m + IPF_colors.m.
-  std::vector<RGBColor> eulerToColorsMatLab(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2) const;
+  std::vector<RGBColor> eulerToColorsMatLab(const Eigen::VectorXd &phi1,
+                                            const Eigen::VectorXd &phi,
+                                            const Eigen::VectorXd &phi2) const;
 };
 
 } // namespace mtrsim

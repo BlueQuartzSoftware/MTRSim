@@ -4,14 +4,12 @@
 #include "mtrsim_export.h"
 #include <Eigen/Dense>
 
-namespace mtrsim
-{
+namespace mtrsim {
 
 /**
  * @brief Pole figure data: projected (X, Y) coordinates and intensity values.
  */
-struct MTRSIM_EXPORT PoleFigureData
-{
+struct MTRSIM_EXPORT PoleFigureData {
   Eigen::VectorXd x;         ///< Stereographic X coordinates
   Eigen::VectorXd y;         ///< Stereographic Y coordinates
   Eigen::VectorXd intensity; ///< Normalised intensity per bin
@@ -25,8 +23,7 @@ struct MTRSIM_EXPORT PoleFigureData
  * to HexagonalOps::generatePoleFigure() for the stereographic
  * projection and intensity accumulation.
  */
-class MTRSIM_EXPORT PoleFigure
-{
+class MTRSIM_EXPORT PoleFigure {
 public:
   PoleFigure() = default;
 
@@ -35,9 +32,11 @@ public:
    *
    * @param component  ODF component (ODFval and bin arrays)
    * @param degSpacing Euler-space bin spacing in degrees (must match ODF)
-   * @return           PoleFigureData with stereographic coordinates and intensities
+   * @return           PoleFigureData with stereographic coordinates and
+   * intensities
    */
-  PoleFigureData fromODF(const ODFComponent& component, double degSpacing = 5.0);
+  PoleFigureData fromODF(const ODFComponent &component,
+                         double degSpacing = 5.0);
 };
 
 } // namespace mtrsim
