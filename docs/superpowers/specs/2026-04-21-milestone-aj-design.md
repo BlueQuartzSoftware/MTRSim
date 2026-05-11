@@ -8,7 +8,7 @@
 
 ## 1. Purpose and Context
 
-Milestone AJ delivers the data-model plumbing needed for MTR virtual-representation workflows inside DREAM3D-NX. The forward simulation algorithms (Milestone AH, delivered) live in `libmtrsim`. AJ adds the SIMPLNX-framework integration: filters that import, export, and construct the Orientation Distribution Functions (ODFs) that feed the Milestone AK simulation filter.
+Milestone AJ delivers the data-model plumbing needed for MTR virtual-representation workflows inside DREAM3D-NX. The forward simulation algorithms (Milestone AH, delivered) live in `LibMTRSim`. AJ adds the SIMPLNX-framework integration: filters that import, export, and construct the Orientation Distribution Functions (ODFs) that feed the Milestone AK simulation filter.
 
 The work is purely additive to simplnx core — no core changes — and preserves byte-exact round-trip compatibility with the existing MATLAB-produced HDF5 ODF format so that ongoing MATLAB-vs-C++ validation continues to work.
 
@@ -35,20 +35,21 @@ MTRSim/
 ├── CMakeLists.txt                     ← top-level: builds the simplnx plugin (always)
 ├── cmake/
 ├── src/
-│   ├── libmtrsim/                     ← existing library (unchanged structure)
+│   ├── LibMTRSim/                     ← existing library (unchanged structure)
 │   │   ├── <existing sources>
-│   │   ├── ODFBuilder.{hpp,cpp}       ← NEW helper
-│   │   └── SymmetricEulers.{hpp,cpp}  ← NEW helper
+│   │   └── ODFBuilder.{hpp,cpp}       ← NEW helper (binning only)
+│   │       (orientation symmetry expansion is NOT a local helper —
+│   │        consumers call EbsdLib's LaueOps + Euler/OrientationMatrix directly)
 │   └── MTRSim/                        ← NEW: simplnx plugin source tree
 │       ├── MTRSimPlugin.{hpp,cpp}
 │       └── Filters/
-│           ├── ImportMTRSimODFFilter.{hpp,cpp}
-│           ├── ExportMTRSimODFFilter.{hpp,cpp}
-│           ├── ComputeODFFromEulerAnglesFilter.{hpp,cpp}
+│           ├── ReadMTRSimODFFilter.{hpp,cpp}
+│           ├── WriteMTRSimODFFilter.{hpp,cpp}
+│           ├── ComputeODFFilter.{hpp,cpp}
 │           └── Algorithms/
-│               ├── ImportMTRSimODF.{hpp,cpp}
-│               ├── ExportMTRSimODF.{hpp,cpp}
-│               └── ComputeODFFromEulerAngles.{hpp,cpp}
+│               ├── ReadMTRSimODF.{hpp,cpp}
+│               ├── WriteMTRSimODF.{hpp,cpp}
+│               └── ComputeODFF.{hpp,cpp}
 ├── app/                                ← existing CLI driver (retained; opt-in build)
 ├── tests/
 │   ├── <existing library tests>
@@ -57,20 +58,29 @@ MTRSim/
 ├── configs/, data/, matlab/, tools/    ← unchanged
 └── docs/
     └── superpowers/specs/              ← this document
+├── test/
 ```
 
 The plugin file/directory layout (`src/MTRSim/Filters/{Name}Filter.{hpp,cpp}` and `Filters/Algorithms/{Name}.{hpp,cpp}`) matches what the simplnx `scripts/make_filter.py` generator produces. That generator will be used to scaffold each filter and its test skeleton.
 
 ### Build modes
 
-- **Default build:** simplnx `MTRSim` plugin only. `libmtrsim` sources are compiled directly into the plugin target via `target_sources()` — no separately-installed shared library in deployment.
-- **Opt-in (`MTRSIM_BUILD_STANDALONE_LIB=ON`):** additionally builds `libmtrsim.{so,dylib,dll}`, the `mtrsim` CLI (`app/`), and Python bindings (`wrapping/python/`). Preserves the existing MATLAB-comparison and scripting workflows.
+- **Default build:** simplnx `MTRSim` plugin only. `LibMTRSim` sources are compiled directly into the plugin target via `target_sources()` — no separately-installed shared library in deployment.
+- **Opt-in (`MTRSIM_BUILD_STANDALONE_LIB=ON`):** additionally builds `LibMTRSim.{so,dylib,dll}`, the `mtrsim` CLI (`app/`), and Python bindings (`wrapping/python/`). Preserves the existing MATLAB-comparison and scripting workflows.
+- Configuring DREAM3DNX
+  - `cd /Users/mjackson/Workspace7/DREAM3DNX && cmake --preset NX-Com-Qt69-Vtk96-Rel`
+- Building DREAM3DNX with MTRSim plugin
+  - `cd /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel && ninja --target all`
+- Configuring MTRSim stand alone library
+  - `cd /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim && cmake --preset mtrsim-Rel`
+- Building MTRSim stand alone library and tools
+  - `cd /Users/mjackson/Workspace7/Build/mtrsim-Rel && ninja --target all`
 
 ### Dependencies
 
 - Plugin: `EbsdLib::EbsdLib`, `HDF5::HDF5`, simplnx core libs declared by `make_filter.py`.
 - Standalone lib+CLI: adds `spdlog`, `CLI11`, `nlohmann_json`.
-- Plugin has no runtime dependency on `libmtrsim`-as-a-shared-library.
+- Plugin has no runtime dependency on `LibMTRSim`-as-a-shared-library.
 
 CMake file authoring is owned by the project lead; this spec documents the target shape and options.
 
@@ -127,7 +137,7 @@ The traditional `phi1_bins` / `PHI_bins` / `phi2_bins` edge arrays are **not sto
 
 ---
 
-## 4. Filter: `ImportMTRSimODFFilter`
+## 4. Filter: `ReadMTRSimODFFilter`
 
 **Purpose:** Read a MATLAB-compatible MTRSim ODF HDF5 file into an `ImageGeom` + N Float64 cell-data arrays.
 
@@ -181,7 +191,7 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
 }  // namespace mtrsim
 ```
 
-Preflight uses the metadata-only reader. Execute uses the full reader. Both live in `libmtrsim` and are unit-testable without the simplnx plugin loaded.
+Preflight uses the metadata-only reader. Execute uses the full reader. Both live in `LibMTRSim` and are unit-testable without the simplnx plugin loaded.
 
 ### Tests
 
@@ -190,9 +200,9 @@ Preflight uses the metadata-only reader. Execute uses the full reader. Both live
 
 ---
 
-## 5. Filter: `ExportMTRSimODFFilter`
+## 5. Filter: `WriteMTRSimODFFilter`
 
-**Purpose:** Write a SIMPLNX ODF (ImageGeom + N Float64 cell-data arrays) back to the MATLAB-compatible HDF5 layout. Round-trips losslessly with `ImportMTRSimODFFilter`.
+**Purpose:** Write a SIMPLNX ODF (ImageGeom + N Float64 cell-data arrays) back to the MATLAB-compatible HDF5 layout. Round-trips losslessly with `ReadMTRSimODFFilter`.
 
 ### Parameters
 
@@ -231,7 +241,7 @@ The HDF5 output uses `component_0 .. component_{N-1}` where `i` is the user's **
 
 ---
 
-## 6. Filter: `ComputeODFFromEulerAnglesFilter`
+## 6. Filter: `ComputeODFFilter`
 
 **Purpose:** Build an ODF from an EBSD scan (per-voxel Euler angles + per-voxel phase labels + per-phase crystal structures), applying crystal-symmetry expansion and optional tri-linear neighbor-bin smoothing. Functionally equivalent to MATLAB `calc_ODF.m` + `symmetric_euler_angles.m`.
 
@@ -247,7 +257,8 @@ This is the only AJ filter where we write genuinely new algorithm code. The othe
 | `euler_angles` | `ArraySelectionParameter` | — | `Float32`, 3 components, cell-level data |
 | `phases` | `ArraySelectionParameter` | — | `Int32`, 1 component, same cell attribute matrix as `euler_angles` |
 | `crystal_structures` | `ArraySelectionParameter` | — | `UInt32`, 1 component, ensemble-level data (produced upstream by "Create Ensemble Info") |
-| `mask` | `ArraySelectionParameter` (optional) | — | `Bool`, 1 component, same cell attribute matrix as `euler_angles`. When present, only masked-true voxels contribute |
+| `use_mask` | `BoolParameter` | `false` | Gates the `mask` parameter's activation via `linkParameters`. See *Optional-mask idiom* note below. |
+| `mask` | `ArraySelectionParameter` | — | `Bool`, 1 component, same cell attribute matrix as `euler_angles`. Only active when `use_mask == true`. Voxels where `mask[i] == false` are skipped. |
 | **Create New mode parameters:** | | | |
 | `output_image_geometry` | `DataGroupCreationParameter` | `/ODF` | |
 | `cell_attribute_matrix_name` | `DataObjectNameParameter` | `Cell Data` | |
@@ -256,13 +267,36 @@ This is the only AJ filter where we write genuinely new algorithm code. The othe
 | `existing_odf_geometry` | `GeometrySelectionParameter` | — | Restricted to `IGeometry::Type::Image` |
 | `component_name` | `DataObjectNameParameter` | `Component 1` | Must not collide with an existing cell-data array name on the target geometry |
 
+### Optional-mask idiom
+
+SIMPLNX's `ArraySelectionParameter` rejects an empty DataPath in its own parameter-level validation, which runs *before* `preflightImpl`. That prevents the naive "empty DataPath means no mask" pattern from working. Instead, follow the SimplnxCore convention used by `ComputeArrayHistogramFilter`: pair a `use_mask` `BoolParameter` with the optional `mask` `ArraySelectionParameter` and link them via `params.linkParameters(k_UseMask_Key, k_Mask_Key, true)`. When `use_mask == false` the mask parameter is inactive (and its validation is skipped), effectively disabling the feature without requiring a sentinel value.
+
+This is why the table above lists **10** concrete parameters, not the 9 the original scoping anticipated.
+
+### Parameter-level auto-validation and error-code shadowing
+
+Several SIMPLNX parameter types (`ArraySelectionParameter`, `GeometrySelectionParameter`, `MultiArraySelectionParameter`) run their own validators *before* the filter's `preflightImpl` executes. If a user-supplied array violates the parameter's declared constraints (wrong component shape, wrong geometry type, empty DataPath on a required field, etc.), the outer framework fails with a framework-level error code (e.g., `-208` for component-shape mismatches, `-3` for wrong geometry types) and the filter's own error branches (`-12201`, `-12206`, etc.) never run.
+
+Implications:
+- `-12201` (wrong component count on `euler_angles`) is shadowed by `-208` when the `ArraySelectionParameter`'s `AllowedComponentShapes{{3}}` validator catches the mismatch first.
+- `-12206` (non-ImageGeom on `existing_odf_geometry`) is shadowed by `-3` when the `GeometrySelectionParameter`'s `AllowedTypes{IGeometry::Type::Image}` validator catches it first.
+- The filter's own branches remain as belt-and-suspenders defensive checks (they'd fire if someone invoked the filter via a pathway that bypassed parameter validation, e.g., programmatic Arguments construction in a unit test).
+
+Tests that exercise these branches assert the framework-level codes (`-208`, `-3`) where appropriate, with comments documenting the shadowing.
+
 ### Algorithm
 
 For each voxel `i` where the mask (if present) is true and the phase is non-zero:
 
 1. Read `(phi1, PHI, phi2)` from `euler_angles[i]`.
 2. Look up `crystal_structures[phases[i]]` to get the crystal-symmetry enum.
-3. Use `SymmetricEulers` helper to expand to the full list of symmetric-equivalent tuples for that crystal system (via EbsdLib).
+3. Use EbsdLib's orientation pipeline directly to expand to the full list of symmetric-equivalent tuples for that crystal system. The canonical idiom (also used by `simplnx`'s OrientationAnalysis filters such as `ComputeGBCD`) is:
+   - Look up the per-phase Laue group: `auto laueOps = ebsdlib::LaueOps::GetAllOrientationOps()[crystalCode];`
+   - Build the passive G matrix from the (double-promoted) Euler triple: `ebsdlib::EulerDType eu(...); auto G = eu.toOrientationMatrix().toGMatrix();`
+   - For each `k` in `[0, laueOps->getNumSymOps())`, compose `R = laueOps->getMatSymOpD(k).transpose() * G;`
+   - Recover Euler via `ebsdlib::OrientationMatrixDType(R[0],...,R[8]).toEuler();`
+
+   No local wrapper class is interposed — consumers call EbsdLib at the use site. This matches the project's preference for direct EbsdLib usage (see `feedback_use_ebsdlib_directly` memory).
 4. For each symmetric tuple:
    - Compute bin index `(i_phi1, i_PHI, i_phi2)` from `bin_size_deg`.
    - If `apply_smoothing` is **on**, distribute 1.0 of contribution across:
@@ -270,25 +304,17 @@ For each voxel `i` where the mask (if present) is true and the phase is non-zero
      - 6 face-neighbors × `0.448 / 6` each
      - 12 edge-neighbors × `0.16 / 12` each
      - 8 corner-neighbors × `0.06 / 8` each
-     - All neighbor accumulations per symmetric tuple. Boundary bins wrap via Bunge-angle periodicity (phi1 and phi2 modulo 2π; PHI reflects at 0 and π under crystal symmetry) exactly as implemented in `matlab/calc_ODF.m` (see the `jf_minus` / `jf_plus` / `kf_minus` / `kf_plus` / `lf_minus` / `lf_plus` index logic).
+     - Smoothing-neighbor identification: all three Bunge axes use uniform modulo wrap for the +1/-1 stencil, matching `matlab/calc_ODF.m` lines 95-113 (see the `jf_minus` / `jf_plus` / `kf_minus` / `kf_plus` / `lf_minus` / `lf_plus` index logic, which IS uniform modulo on every axis).
+     - Bin **assignment** (separate from neighbor identification): an angle exactly at the upper bound (`phi1 = 2π`, `PHI = π`, or `phi2 = 2π`) is clamped to the LAST bin on that axis, not wrapped to bin 0. This matches `matlab/calc_ODF.m` lines 43-48 (`phi1_ix(phi1_ix == num_bins+1) = phi1_ix(...) - 1;` etc.) and is required for bin-by-bin agreement with the reference output, because crystal-symmetry expansion routinely places variants exactly on `PHI = π` (e.g. HCP `C2_⊥` rotations map `PHI = 0` to `PHI = π`).
    - If `apply_smoothing` is **off**, add `1.0` to the center bin only.
-5. Normalize the entire `ODFval` array by `N` = count of voxels contributing (not the expanded count). Matches MATLAB normalization.
+5. Normalize the entire `ODFval` array by `N` = total count of symmetric-equivalent orientation deposits (i.e. for each contributing voxel, sum the number of symmetric variants it produces under its phase's crystal-symmetry expansion). For a single-phase HCP dataset of `M` voxels, `N = 12 × M`; for cubic, `N = 24 × M`; for mixed-phase data, `N` is the sum across phases. This matches MATLAB `calc_ODF.m` (line 80: `N = size(phi1_vec, 1)` after symmetric expansion).
 
-### New library helpers (in `libmtrsim`)
+### New library helper (in `LibMTRSim`)
 
-Both helpers live in `src/libmtrsim/`, are namespaced under `mtrsim::`, and ship with library-level unit tests independent of the plugin.
+Only one new helper lives in `src/LibMTRSim/` (binning), namespaced under `mtrsim::`, with library-level unit tests independent of the plugin. There is intentionally NO local wrapper around EbsdLib's orientation symmetry expansion — consumers call `ebsdlib::LaueOps`, `ebsdlib::EulerDType`, and `ebsdlib::OrientationMatrixDType` directly at the use site (see Algorithm step 3 above).
 
 ```
-// SymmetricEulers.hpp
-namespace mtrsim {
-  // Returns the list of symmetric-equivalent Euler tuples (Bunge phi1/PHI/phi2, radians)
-  // for the given input and crystal system. Thin wrapper over EbsdLib's orientation
-  // operator classes. Result length depends on the crystal system (e.g., HCP = 12).
-  std::vector<std::array<double, 3>>
-  expandSymmetric(double phi1, double PHI, double phi2, uint32_t ebsdLibCrystalCode);
-}
-
-// ODFBuilder.hpp
+// ODFBuilder.hpp — binning concern only.
 namespace mtrsim {
   struct ODFBuildParams {
     int32_t nphi1;                 // bins along phi1 (ImageGeom Z)
@@ -372,9 +398,9 @@ Gzipped HDF5 files (HDF5 has built-in gzip dataset compression; no tar layer nee
 | SOW Criterion | AJ Evidence |
 |---|---|
 | Integrated into DREAM3D-NX | Plugin builds against simplnx core; filters listed under the "MTRSim" plugin group in DREAM3D-NX UI |
-| Access | `ImportMTRSimODFFilter` reads existing MATLAB-format HDF5; geometry + arrays become visible to all downstream filters |
-| Modification | `ComputeODFFromEulerAnglesFilter` creates or appends ODF components in-place in the DataStructure |
-| Serialization | `ExportMTRSimODFFilter` round-trips to MATLAB-compatible HDF5; byte-exact against imported exemplar |
+| Access | `ReadMTRSimODFFilter` reads existing MATLAB-format HDF5; geometry + arrays become visible to all downstream filters |
+| Modification | `ComputeODFFilter` creates or appends ODF components in-place in the DataStructure |
+| Serialization | `WriteMTRSimODFFilter` round-trips to MATLAB-compatible HDF5; byte-exact against imported exemplar |
 | Without disrupting existing workflows | Purely additive plugin — no changes to simplnx core; MATLAB workflow preserved via round-trip guarantee |
 
 ### Report framing: deliverable adequacy
@@ -382,7 +408,7 @@ Gzipped HDF5 files (HDF5 has built-in gzip dataset compression; no tar layer nee
 Although AJ reuses existing SIMPLNX types rather than introducing a bespoke `ODFData` class, the deliverable is satisfied by three concrete categories of artifact:
 
 1. **Extended Data-Structure Usage Convention** — the "ODF as ImageGeom" convention documented in Section 3 is a reusable contract future filters and workflows will consume.
-2. **New library helpers** — `ODFBuilder` and `SymmetricEulers` in `libmtrsim` (the "supporting code" per the deliverable language).
+2. **New library helper** — `ODFBuilder` in `LibMTRSim` (the "supporting code" per the deliverable language). Orientation symmetry expansion is intentionally NOT a local helper: it routes through EbsdLib's `LaueOps`/`Euler<double>`/`OrientationMatrix<double>` directly at the use site.
 3. **Three SIMPLNX filters** — access, modification, and serialization surfaces for MTR descriptor data.
 
 The report narrative will frame this as *"we extended the DataStructure's usage conventions to represent Euler-space distributions without requiring a bespoke type — this is the SIMPLNX-idiomatic approach."* Similar precedents exist in the simplnx codebase where established types model domain-specific concepts via convention rather than new classes.
@@ -392,7 +418,7 @@ The report narrative will frame this as *"we extended the DataStructure's usage 
 ## 9. Out-of-Scope / Future Work
 
 - **Transpose ODF Axes helper filter** (textbook phi1-X / PHI-Y / phi2-Z orientation). Nice-to-have but breaks MATLAB round-trip by default; defer until a concrete user request arises.
-- **Non-uniform bin-size support** in `ComputeODFFromEulerAnglesFilter`. Current design enforces uniform bins across all three axes.
+- **Non-uniform bin-size support** in `ComputeODFFilter`. Current design enforces uniform bins across all three axes.
 - **Additional EBSD reader variants** beyond what EbsdLib and existing simplnx filters already provide. AJ's EBSD→ODF filter consumes Euler-angle cell arrays produced by the existing simplnx EBSD-read filters; it does not re-invent file readers.
 - **MTR Index renumbering to zero-based.** MATLAB / C++ / AK retain 1-based indexing (where 0 is reserved for "unindexed" per DREAM3D convention).
 - **AK / AL milestones.** Covered in separate design specs.
@@ -406,7 +432,7 @@ Explicit TBDs to revisit before or during implementation:
 | Item | When to decide |
 |---|---|
 | Exemplar storage location (in-repo vs GitHub releases vs local webserver) | First test-data commit |
-| Exact tolerance threshold for `ComputeODFFromEulerAnglesFilter` tests | When first reference comparison is run |
+| Exact tolerance threshold for `ComputeODFFilter` tests | When first reference comparison is run |
 | Whether the Append-mode filter's `bin_size_deg` parameter is grayed out (UI convention) or hidden (structural) | During filter-parameter UI construction |
 
 ---
@@ -415,9 +441,9 @@ Explicit TBDs to revisit before or during implementation:
 
 Informational sequencing for the writing-plans step; not binding. All of the below are within the single AJ milestone and can be PR'd separately.
 
-1. Plugin scaffolding + dual-build CMake (`MTRSIM_BUILD_STANDALONE_LIB` option, plugin target pulls in `libmtrsim` sources).
-2. `ImportMTRSimODFFilter` + `readODFMetadata` / `readODFComponents` library helpers + tests.
-3. `ExportMTRSimODFFilter` + round-trip tests against #2's exemplar.
-4. `SymmetricEulers` + `ODFBuilder` library helpers + library-level unit tests.
-5. `ComputeODFFromEulerAnglesFilter` + tolerance-based tests using MATLAB reference.
+1. Plugin scaffolding + dual-build CMake (`MTRSIM_BUILD_STANDALONE_LIB` option, plugin target pulls in `LibMTRSim` sources).
+2. `ReadMTRSimODFFilter` + `readODFMetadata` / `readODFComponents` library helpers + tests.
+3. `WriteMTRSimODFFilter` + round-trip tests against #2's exemplar.
+4. `ODFBuilder` library helper + library-level unit tests. (Orientation symmetry expansion uses EbsdLib's `LaueOps` directly — no local wrapper.)
+5. `ComputeODFFilter` + tolerance-based tests using MATLAB reference.
 6. Report draft, acceptance-criteria mapping, deliverable framing.

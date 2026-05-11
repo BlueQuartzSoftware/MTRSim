@@ -4,12 +4,16 @@
 
 if(MTRSIM_USE_LOCAL_EBSD_LIB)
     if(NOT TARGET EbsdLib::EbsdLib)
-        if(EXISTS "${MTRSim_SOURCE_DIR}/../EbsdLib")
+        if("${EbsdLibProj_SOURCE_DIR}" STREQUAL "")
+            message(STATUS "EbsdLibProj_SOURCE_DIR being set to '${MTRSim_SOURCE_DIR}/../EbsdLib'")
             set(EbsdLibProj_SOURCE_DIR "${MTRSim_SOURCE_DIR}/../EbsdLib")
         else()
-            message(FATAL_ERROR "EbsdLibProj_SOURCE_DIR was not set. Where is the EbsdLib project directory. Please set the EbsdLibProj_SOURCE_DIR variable to the EbsdLib directory.")
+            message(STATUS "EbsdLibProj_SOURCE_DIR: ${EbsdLibProj_SOURCE_DIR}")
         endif()
-        message(STATUS "EbsdLibProj_SOURCE_DIR: ${EbsdLibProj_SOURCE_DIR}")
+
+        if(NOT EXISTS "${EbsdLibProj_SOURCE_DIR}")
+            message(FATAL_ERROR "${EbsdLibProj_SOURCE_DIR} does not exist. Please set the EbsdLibProj_SOURCE_DIR variable to the EbsdLib directory.")
+        endif()
 
         set(EbsdLib_ENABLE_HDF5 ON)
         set(EbsdLib_USE_PARALLEL_ALGORITHMS ${MTRSIM_ENABLE_MULTICORE})

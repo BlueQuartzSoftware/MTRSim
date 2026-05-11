@@ -36,6 +36,10 @@
         "MTRSIM_BUILD_PYTHON_BINDINGS": {
           "type": "BOOL",
           "value": "ON"
+        },
+        "MTRSIM_BUILD_STANDALONE_LIB": {
+          "type": "BOOL",
+          "value": "ON"
         }
       }
     },

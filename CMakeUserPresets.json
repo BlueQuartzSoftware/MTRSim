@@ -19,7 +19,7 @@
         },
         "VCPKG_INSTALLED_DIR": {
           "type": "STRING",
-          "value": "${sourceDir}/../vcpkg-installed"
+          "value": "${sourceDir}/../vcpkg-installed-ebsdlib"
         },
         "VCPKG_MANIFEST_INSTALL": {
           "type": "BOOL",
@@ -60,6 +60,22 @@
         "MTRSIM_BUILD_PYTHON_BINDINGS": {
           "type": "BOOL",
           "value": "ON"
+        },
+        "MTRSIM_BUILD_STANDALONE_LIB": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "EBSDLIB_DATA_DIR": {
+          "type": "PATH",
+          "value": "${sourceDir}/../../EbsdLib_Data"
+        },
+        "MTRSIM_USE_LOCAL_EBSD_LIB": {
+          "type": "BOOL",
+          "value": "ON"
+        },
+        "EbsdLibProj_SOURCE_DIR": {
+          "type": "PATH",
+          "value": "${sourceDir}/../../EbsdLib"
         }
       },
       "environment": {
@@ -72,7 +88,7 @@
       "displayName": "mtrsim-Rel",
       "description": "Release build",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/../Build/mtrsim-Rel",
+      "binaryDir": "${sourceDir}/../../Build/mtrsim-Rel",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": {
           "type": "STRING",
@@ -85,15 +101,7 @@
         "VCPKG_HOST_TRIPLET": {
           "type": "STRING",
           "value": "arm64-osx-dynamic"
-        },
-        "MTRSIM_USE_LOCAL_EBSD_LIB": {
-          "type": "BOOL",
-          "value": "ON"
-        },
-        "EBSDLIB_DATA_DIR": {
-          "type": "PATH",
-          "value": "${sourceDir}/../EbsdLib_Data"
-        }        
+        }       
       }
     },
     {
@@ -101,7 +109,7 @@
       "inherits": "mtrsim-Rel",
       "displayName": "mtrsim-Dbg",
       "description": "Debug build",
-      "binaryDir": "${sourceDir}/../Build/mtrsim-Dbg",
+      "binaryDir": "${sourceDir}/../../Build/mtrsim-Dbg",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": {
           "type": "STRING",

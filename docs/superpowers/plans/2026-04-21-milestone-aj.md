@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Deliver the SIMPLNX plugin integration for MTRSim — three filters (Import, Export, ComputeODFFromEulerAngles), two new `libmtrsim` library helpers (`ODFBuilder`, `SymmetricEulers`), a `libmtrsim`-internal HDF5 I/O helper, a dual-build plugin/library CMake shape, and the full test suite.
+**Goal:** Deliver the SIMPLNX plugin integration for MTRSim — three filters (Import, Export, ComputeODF), two new `LibMTRSim` library helpers (`ODFBuilder`, `SymmetricEulers`), a `LibMTRSim`-internal HDF5 I/O helper, a dual-build plugin/library CMake shape, and the full test suite.
 
-**Architecture:** A new `MTRSim` simplnx plugin is hosted in the existing MTRSim repository. The plugin's default build compiles `libmtrsim` sources directly into the plugin target. A `MTRSIM_BUILD_STANDALONE_LIB` option opts-in to additionally building `libmtrsim` as a shared library, the `mtrsim` CLI, and the Python bindings — preserving the current MATLAB-comparison workflow. All three filters share the "ODF as ImageGeom" DataStructure convention (see spec Section 3).
+**Architecture:** A new `MTRSim` simplnx plugin is hosted in the existing MTRSim repository. The plugin's default build compiles `LibMTRSim` sources directly into the plugin target. A `MTRSIM_BUILD_STANDALONE_LIB` option opts-in to additionally building `LibMTRSim` as a shared library, the `mtrsim` CLI, and the Python bindings — preserving the current MATLAB-comparison workflow. All three filters share the "ODF as ImageGeom" DataStructure convention (see spec Section 3).
 
 **Tech Stack:** C++20, CMake 3.26+, vcpkg, simplnx core, EbsdLib, HDF5 1.14+, Catch2 v3 (tests), Python 3 (scaffolding via `make_filter.py`).
 
@@ -30,35 +30,35 @@ src/MTRSim/CMakeLists.txt                       (plugin subdir CMakeLists)
 src/MTRSim/src/MTRSim/MTRSimPlugin.hpp
 src/MTRSim/src/MTRSim/MTRSimPlugin.cpp
 src/MTRSim/src/MTRSim/Filters/
-    ImportMTRSimODFFilter.{hpp,cpp}
-    ExportMTRSimODFFilter.{hpp,cpp}
-    ComputeODFFromEulerAnglesFilter.{hpp,cpp}
+    ReadMTRSimODFFilter.{hpp,cpp}
+    WriteMTRSimODFFilter.{hpp,cpp}
+    ComputeODFFilter.{hpp,cpp}
     Algorithms/
-      ImportMTRSimODF.{hpp,cpp}
-      ExportMTRSimODF.{hpp,cpp}
-      ComputeODFFromEulerAngles.{hpp,cpp}
-src/libmtrsim/ODFFileIO.{hpp,cpp}               (HDF5 read/write for MATLAB ODF format)
-src/libmtrsim/SymmetricEulers.{hpp,cpp}         (EbsdLib symmetry expansion)
-src/libmtrsim/ODFBuilder.{hpp,cpp}              (binning + smoothing accumulator)
+      ReadMTRSimODF.{hpp,cpp}
+      WriteMTRSimODF.{hpp,cpp}
+      ComputeODF.{hpp,cpp}
+src/LibMTRSim/ODFFileIO.{hpp,cpp}               (HDF5 read/write for MATLAB ODF format)
+src/LibMTRSim/SymmetricEulers.{hpp,cpp}         (EbsdLib symmetry expansion)
+src/LibMTRSim/ODFBuilder.{hpp,cpp}              (binning + smoothing accumulator)
 tests/test_odf_file_io.cpp
 tests/test_symmetric_eulers.cpp
 tests/test_odf_builder.cpp
-src/MTRSim/test/ImportMTRSimODFFilterTest.cpp
-src/MTRSim/test/ExportMTRSimODFFilterTest.cpp
-src/MTRSim/test/ComputeODFFromEulerAnglesFilterTest.cpp
-src/MTRSim/test/test_data/
+test/ReadMTRSimODFFilterTest.cpp
+test/WriteMTRSimODFFilterTest.cpp
+test/ComputeODFFilterTest.cpp
+test/test_data/
     simulation_ODF_roundtrip.h5.gz              (small exemplar from data/simulation_ODF.h5)
     hcp_euler_sample.h5.gz                      (small EBSD fixture)
     hcp_euler_sample_odf_reference.h5.gz        (MATLAB-computed reference ODF)
-src/MTRSim/docs/ImportMTRSimODFFilter.md
-src/MTRSim/docs/ExportMTRSimODFFilter.md
-src/MTRSim/docs/ComputeODFFromEulerAnglesFilter.md
+docs/ReadMTRSimODFFilter.md
+docs/WriteMTRSimODFFilter.md
+docs/ComputeODFFilter.md
 ```
 
 **Modified files:**
 
 ```
-src/libmtrsim/CMakeLists.txt   (add new helper sources)
+src/LibMTRSim/CMakeLists.txt   (add new helper sources)
 tests/CMakeLists.txt            (register new library-level tests)
 vcpkg.json                      (no new deps expected; verify Catch2 + HDF5)
 ```
@@ -75,7 +75,7 @@ vcpkg.json                      (no new deps expected; verify Catch2 + HDF5)
 
 ### Context
 
-The existing top-level `CMakeLists.txt` builds `libmtrsim` (`add_subdirectory(src/libmtrsim)`), `app/`, `tools/`, `tests/`, and `wrapping/python/`. We're restructuring so that the simplnx `MTRSim` plugin is the default build target, while the library/CLI/Python stack becomes opt-in.
+The existing top-level `CMakeLists.txt` builds `LibMTRSim` (`add_subdirectory(src/LibMTRSim)`), `app/`, `tools/`, `tests/`, and `wrapping/python/`. We're restructuring so that the simplnx `MTRSim` plugin is the default build target, while the library/CLI/Python stack becomes opt-in.
 
 simplnx plugin CMake convention: each plugin includes `${simplnx_SOURCE_DIR}/cmake/Plugin.cmake`, declares a `FilterList`, and invokes `create_simplnx_plugin(...)`. Reference example: `/Users/mjackson/Workspace7/simplnx/src/Plugins/SimplnxCore/CMakeLists.txt`. This plan does NOT enumerate the CMake details — the project lead (Mike Jackson) authors them. This task establishes **the target shape and verification gates**.
 
@@ -85,13 +85,13 @@ Insert after the existing option blocks (around line 60):
 
 ```cmake
 # ------------------------------------------------------------------------------
-# Dual-build mode: when ON, build standalone libmtrsim + CLI + Python bindings
+# Dual-build mode: when ON, build standalone LibMTRSim + CLI + Python bindings
 # in addition to the simplnx plugin. Default OFF — plugin-only build.
 # ------------------------------------------------------------------------------
-option(MTRSIM_BUILD_STANDALONE_LIB "Build the standalone libmtrsim shared library, the mtrsim CLI, and Python bindings" OFF)
+option(MTRSIM_BUILD_STANDALONE_LIB "Build the standalone LibMTRSim shared library, the mtrsim CLI, and Python bindings" OFF)
 ```
 
-Gate the existing `add_subdirectory(app)`, `add_subdirectory(tools)`, and `add_subdirectory(wrapping/python)` blocks behind `if(MTRSIM_BUILD_STANDALONE_LIB)`. Keep `add_subdirectory(src/libmtrsim)` unconditional — the plugin will link against it.
+Gate the existing `add_subdirectory(app)`, `add_subdirectory(tools)`, and `add_subdirectory(wrapping/python)` blocks behind `if(MTRSIM_BUILD_STANDALONE_LIB)`. Keep `add_subdirectory(src/LibMTRSim)` unconditional — the plugin will link against it.
 
 - [ ] **Step 2: Add plugin subdirectory**
 
@@ -100,7 +100,7 @@ At the end of `CMakeLists.txt` (after the existing sub-projects block):
 ```cmake
 # ------------------------------------------------------------------------------
 # SIMPLNX plugin — always built. Requires simplnx as a parent project or via
-# `SIMPLNX_SOURCE_DIR` being set. Plugin target depends on libmtrsim.
+# `SIMPLNX_SOURCE_DIR` being set. Plugin target depends on LibMTRSim.
 # ------------------------------------------------------------------------------
 add_subdirectory(src/MTRSim)
 ```
@@ -117,9 +117,9 @@ set(PLUGIN_NAME "MTRSim")
 set(${PLUGIN_NAME}_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 set(FilterList
-  ImportMTRSimODFFilter
-  ExportMTRSimODFFilter
-  ComputeODFFromEulerAnglesFilter
+  ReadMTRSimODFFilter
+  WriteMTRSimODFFilter
+  ComputeODFFilter
 )
 
 set(ActionList
@@ -127,9 +127,9 @@ set(ActionList
 )
 
 set(AlgorithmList
-  ImportMTRSimODF
-  ExportMTRSimODF
-  ComputeODFFromEulerAngles
+  ReadMTRSimODF
+  WriteMTRSimODF
+  ComputeODF
 )
 
 create_simplnx_plugin(NAME ${PLUGIN_NAME}
@@ -154,22 +154,22 @@ Run these three commands:
 cd /Users/mjackson/Workspace7/MTRSim
 SIMPLNX=/Users/mjackson/Workspace7/simplnx
 mkdir -p src/MTRSim/src/MTRSim/Filters/Algorithms
-mkdir -p src/MTRSim/docs
+mkdir -p docs
 mkdir -p src/MTRSim/test
 
 python "$SIMPLNX/scripts/make_filter.py" \
   --plugin_dir "$PWD/src/MTRSim" \
-  --name ImportMTRSimODF \
+  --name ReadMTRSimODF \
   --template_dir "$SIMPLNX/scripts"
 
 python "$SIMPLNX/scripts/make_filter.py" \
   --plugin_dir "$PWD/src/MTRSim" \
-  --name ExportMTRSimODF \
+  --name WriteMTRSimODF \
   --template_dir "$SIMPLNX/scripts"
 
 python "$SIMPLNX/scripts/make_filter.py" \
   --plugin_dir "$PWD/src/MTRSim" \
-  --name ComputeODFFromEulerAngles \
+  --name ComputeODF \
   --template_dir "$SIMPLNX/scripts"
 ```
 
@@ -194,7 +194,7 @@ cd /Users/mjackson/Workspace7/Build/mtrsim-Rel
 cmake --build . --target MTRSim 2>&1 | tail -20
 ```
 
-**Expected:** Plugin shared library built, linked against `mtrsim` (libmtrsim). No symbol errors. The three filter skeletons compile as no-op stubs because `make_filter.py` generates compilable boilerplate.
+**Expected:** Plugin shared library built, linked against `mtrsim` (LibMTRSim). No symbol errors. The three filter skeletons compile as no-op stubs because `make_filter.py` generates compilable boilerplate.
 
 - [ ] **Step 7: Commit**
 
@@ -206,7 +206,7 @@ feat(plugin): scaffold MTRSim simplnx plugin with dual-build CMake
 
 Add MTRSIM_BUILD_STANDALONE_LIB option (default OFF) to gate the
 existing lib+CLI+Python stack. Plugin is the default build target; it
-links libmtrsim sources directly. Three empty filter skeletons
+links LibMTRSim sources directly. Three empty filter skeletons
 generated via make_filter.py.
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
@@ -219,24 +219,24 @@ EOF
 ## Task 2: `mtrsim::ODFFileIO` library helper (TDD)
 
 **Files:**
-- Create: `src/libmtrsim/ODFFileIO.hpp`
-- Create: `src/libmtrsim/ODFFileIO.cpp`
+- Create: `src/LibMTRSim/ODFFileIO.hpp`
+- Create: `src/LibMTRSim/ODFFileIO.cpp`
 - Create: `tests/test_odf_file_io.cpp`
-- Modify: `src/libmtrsim/CMakeLists.txt` (add new sources)
+- Modify: `src/LibMTRSim/CMakeLists.txt` (add new sources)
 - Modify: `tests/CMakeLists.txt` (register test)
 
 ### Context
 
-HDF5 read/write helpers for the MATLAB-compatible ODF format. Implements spec Section 4 (`readODFMetadata`, `readODFComponents`) plus a writer. The layout is documented in `app/main.cpp:60-65`. No simplnx dependency here — pure `libmtrsim` + HDF5. This is the best candidate for parallel subagent execution alongside Task 5.
+HDF5 read/write helpers for the MATLAB-compatible ODF format. Implements spec Section 4 (`readODFMetadata`, `readODFComponents`) plus a writer. The layout is documented in `app/main.cpp:60-65`. No simplnx dependency here — pure `LibMTRSim` + HDF5. This is the best candidate for parallel subagent execution alongside Task 5.
 
 - [ ] **Step 1: Write the header interface**
 
-Create `src/libmtrsim/ODFFileIO.hpp`:
+Create `src/LibMTRSim/ODFFileIO.hpp`:
 
 ```cpp
 #pragma once
 
-#include "mtrsim_export.h"
+#include "libmtrsim_export.h"
 
 #include <array>
 #include <cstdint>
@@ -286,7 +286,7 @@ MTRSIM_EXPORT void writeODFFile(const std::filesystem::path& file,
 Create `tests/test_odf_file_io.cpp`:
 
 ```cpp
-#include "libmtrsim/ODFFileIO.hpp"
+#include "LibMTRSim/ODFFileIO.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
@@ -350,7 +350,7 @@ ctest -R ODFFileIO --output-on-failure
 
 - [ ] **Step 5: Implement `readODFMetadata`**
 
-Create `src/libmtrsim/ODFFileIO.cpp`:
+Create `src/LibMTRSim/ODFFileIO.cpp`:
 
 ```cpp
 #include "ODFFileIO.hpp"
@@ -482,7 +482,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file)
 
 Add `#include <cstring>` for `std::memcmp`.
 
-Also update `src/libmtrsim/CMakeLists.txt` to include the new source. Find the `target_sources(mtrsim ...)` block and add `ODFFileIO.cpp`.
+Also update `src/LibMTRSim/CMakeLists.txt` to include the new source. Find the `target_sources(mtrsim ...)` block and add `ODFFileIO.cpp`.
 
 - [ ] **Step 6: Run tests, verify metadata tests PASS**
 
@@ -542,7 +542,7 @@ TEST_CASE("ODFFileIO write/read round-trip is byte-exact", "[ODFFileIO]")
 
 - [ ] **Step 8: Implement `readODFComponents` and `writeODFFile`**
 
-Append to `src/libmtrsim/ODFFileIO.cpp`:
+Append to `src/LibMTRSim/ODFFileIO.cpp`:
 
 ```cpp
 std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& file)
@@ -662,10 +662,10 @@ ctest -R ODFFileIO --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/libmtrsim/ODFFileIO.{hpp,cpp} src/libmtrsim/CMakeLists.txt \
+git add src/LibMTRSim/ODFFileIO.{hpp,cpp} src/LibMTRSim/CMakeLists.txt \
         tests/test_odf_file_io.cpp tests/CMakeLists.txt
 git commit -m "$(cat <<'EOF'
-feat(libmtrsim): add ODFFileIO helper for MATLAB-format HDF5 round-trip
+feat(LibMTRSim): add ODFFileIO helper for MATLAB-format HDF5 round-trip
 
 New mtrsim::readODFMetadata / readODFComponents / writeODFFile API.
 Validates byte-exact bin-array consistency across components on read.
@@ -678,13 +678,13 @@ EOF
 
 ---
 
-## Task 3: `ImportMTRSimODFFilter`
+## Task 3: `ReadMTRSimODFFilter`
 
 **Files:**
-- Modify: `src/MTRSim/src/MTRSim/Filters/ImportMTRSimODFFilter.{hpp,cpp}` (from Task 1)
-- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/ImportMTRSimODF.{hpp,cpp}`
-- Modify: `src/MTRSim/test/ImportMTRSimODFFilterTest.cpp`
-- Create: `src/MTRSim/test/test_data/simulation_ODF_roundtrip.h5.gz` (copy + gzip of `data/simulation_ODF.h5`)
+- Modify: `src/MTRSim/src/MTRSim/Filters/ReadMTRSimODFFilter.{hpp,cpp}` (from Task 1)
+- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/ReadMTRSimODF.{hpp,cpp}`
+- Modify: `test/ReadMTRSimODFFilterTest.cpp`
+- Create: `test/test_data/simulation_ODF_roundtrip.h5.gz` (copy + gzip of `data/simulation_ODF.h5`)
 
 ### Context
 
@@ -694,14 +694,14 @@ SIMPLNX filter pattern: `parameters()` returns a `Parameters` object with typed 
 
 - [ ] **Step 1: Fill in the filter class metadata**
 
-In `ImportMTRSimODFFilter.cpp`, fill in:
+In `ReadMTRSimODFFilter.cpp`, fill in:
 
 ```cpp
-std::string ImportMTRSimODFFilter::name() const   { return FilterTraits<ImportMTRSimODFFilter>::name; }
-std::string ImportMTRSimODFFilter::className() const { return FilterTraits<ImportMTRSimODFFilter>::className; }
-Uuid ImportMTRSimODFFilter::uuid() const          { return FilterTraits<ImportMTRSimODFFilter>::uuid; }
-std::string ImportMTRSimODFFilter::humanName() const { return "Import MTRSim ODF (HDF5)"; }
-std::vector<std::string> ImportMTRSimODFFilter::defaultTags() const {
+std::string ReadMTRSimODFFilter::name() const   { return FilterTraits<ReadMTRSimODFFilter>::name; }
+std::string ReadMTRSimODFFilter::className() const { return FilterTraits<ReadMTRSimODFFilter>::className; }
+Uuid ReadMTRSimODFFilter::uuid() const          { return FilterTraits<ReadMTRSimODFFilter>::uuid; }
+std::string ReadMTRSimODFFilter::humanName() const { return "Read MTRSim ODF (HDF5)"; }
+std::vector<std::string> ReadMTRSimODFFilter::defaultTags() const {
   return {className(), "IO", "Input", "Read", "Import", "MTRSim", "ODF"};
 }
 ```
@@ -711,7 +711,7 @@ std::vector<std::string> ImportMTRSimODFFilter::defaultTags() const {
 Replace the `parameters()` TODO block:
 
 ```cpp
-Parameters ImportMTRSimODFFilter::parameters() const
+Parameters ReadMTRSimODFFilter::parameters() const
 {
   Parameters params;
 
@@ -752,7 +752,7 @@ Add includes:
 #include "simplnx/Parameters/FileSystemPathParameter.hpp"
 #include "simplnx/Parameters/DataGroupCreationParameter.hpp"
 #include "simplnx/Parameters/DataObjectNameParameter.hpp"
-#include "libmtrsim/ODFFileIO.hpp"
+#include "LibMTRSim/ODFFileIO.hpp"
 ```
 
 - [ ] **Step 3: Implement preflight**
@@ -760,7 +760,7 @@ Add includes:
 Replace the `preflightImpl` TODO block:
 
 ```cpp
-IFilter::PreflightResult ImportMTRSimODFFilter::preflightImpl(
+IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(
   const DataStructure& dataStructure, const Arguments& args,
   const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel) const
 {
@@ -819,7 +819,7 @@ Add includes:
 Replace the `executeImpl` TODO block:
 
 ```cpp
-Result<> ImportMTRSimODFFilter::executeImpl(
+Result<> ReadMTRSimODFFilter::executeImpl(
   DataStructure& dataStructure, const Arguments& args,
   const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
   const std::atomic_bool& /*shouldCancel*/) const
@@ -860,20 +860,20 @@ Add include:
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-mkdir -p src/MTRSim/test/test_data
-cp data/simulation_ODF.h5 src/MTRSim/test/test_data/
-gzip -9 src/MTRSim/test/test_data/simulation_ODF.h5
-ls -lh src/MTRSim/test/test_data/
+mkdir -p test/test_data
+cp data/simulation_ODF.h5 test/test_data/
+gzip -9 test/test_data/simulation_ODF.h5
+ls -lh test/test_data/
 ```
 
 **Expected:** `simulation_ODF.h5.gz` present (~1 MB).
 
 - [ ] **Step 6: Write the filter-level test**
 
-Replace the scaffolded `ImportMTRSimODFFilterTest.cpp` with:
+Replace the scaffolded `ReadMTRSimODFFilterTest.cpp` with:
 
 ```cpp
-#include "MTRSim/Filters/ImportMTRSimODFFilter.hpp"
+#include "MTRSim/Filters/ReadMTRSimODFFilter.hpp"
 
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 
@@ -898,16 +898,16 @@ fs::path decompressFixture(const std::string& name)
 }
 }  // namespace
 
-TEST_CASE("ImportMTRSimODFFilter: round-trip import populates ImageGeom + components",
-         "[MTRSim][ImportMTRSimODFFilter]")
+TEST_CASE("ReadMTRSimODFFilter: round-trip import populates ImageGeom + components",
+         "[MTRSim][ReadMTRSimODFFilter]")
 {
   const fs::path input = decompressFixture("simulation_ODF.h5.gz");
 
-  ImportMTRSimODFFilter filter;
+  ReadMTRSimODFFilter filter;
   Arguments args;
-  args.insertOrAssign(ImportMTRSimODFFilter::k_InputFile_Key,      std::make_any<FileSystemPathParameter::ValueType>(input));
-  args.insertOrAssign(ImportMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
-  args.insertOrAssign(ImportMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<std::string>("Cell Data"));
+  args.insertOrAssign(ReadMTRSimODFFilter::k_InputFile_Key,      std::make_any<FileSystemPathParameter::ValueType>(input));
+  args.insertOrAssign(ReadMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
+  args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<std::string>("Cell Data"));
 
   DataStructure ds;
   auto pre = filter.preflight(ds, args);
@@ -933,16 +933,16 @@ TEST_CASE("ImportMTRSimODFFilter: round-trip import populates ImageGeom + compon
   }
 }
 
-TEST_CASE("ImportMTRSimODFFilter: missing file errors at preflight",
-         "[MTRSim][ImportMTRSimODFFilter][ErrorPath]")
+TEST_CASE("ReadMTRSimODFFilter: missing file errors at preflight",
+         "[MTRSim][ReadMTRSimODFFilter][ErrorPath]")
 {
-  ImportMTRSimODFFilter filter;
+  ReadMTRSimODFFilter filter;
   Arguments args;
-  args.insertOrAssign(ImportMTRSimODFFilter::k_InputFile_Key,
+  args.insertOrAssign(ReadMTRSimODFFilter::k_InputFile_Key,
                      std::make_any<FileSystemPathParameter::ValueType>(fs::path("/nonexistent.h5")));
-  args.insertOrAssign(ImportMTRSimODFFilter::k_OutputImageGeometry_Key,
+  args.insertOrAssign(ReadMTRSimODFFilter::k_OutputImageGeometry_Key,
                      std::make_any<DataPath>(DataPath({"ODF"})));
-  args.insertOrAssign(ImportMTRSimODFFilter::k_CellAttrMatName_Key,
+  args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key,
                      std::make_any<std::string>("Cell Data"));
 
   DataStructure ds;
@@ -964,7 +964,7 @@ target_compile_definitions(MTRSimTest PRIVATE
 ```bash
 cd /Users/mjackson/Workspace7/Build/mtrsim-Rel
 cmake --build . --target MTRSimTest
-ctest -R ImportMTRSimODF --output-on-failure
+ctest -R ReadMTRSimODF --output-on-failure
 ```
 
 **Expected:** Both test cases pass.
@@ -973,12 +973,12 @@ ctest -R ImportMTRSimODF --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/MTRSim/src/MTRSim/Filters/ImportMTRSimODFFilter.{hpp,cpp} \
-        src/MTRSim/src/MTRSim/Filters/Algorithms/ImportMTRSimODF.{hpp,cpp} \
-        src/MTRSim/test/ImportMTRSimODFFilterTest.cpp \
-        src/MTRSim/test/test_data/simulation_ODF.h5.gz
+git add src/MTRSim/src/MTRSim/Filters/ReadMTRSimODFFilter.{hpp,cpp} \
+        src/MTRSim/src/MTRSim/Filters/Algorithms/ReadMTRSimODF.{hpp,cpp} \
+        test/ReadMTRSimODFFilterTest.cpp \
+        test/test_data/simulation_ODF.h5.gz
 git commit -m "$(cat <<'EOF'
-feat(MTRSim): implement ImportMTRSimODFFilter
+feat(MTRSim): implement ReadMTRSimODFFilter
 
 Reads a MATLAB-format MTRSim ODF HDF5 file into an ImageGeom with N
 Float64 cell-data arrays (one per component). Preflight uses
@@ -992,23 +992,23 @@ EOF
 
 ---
 
-## Task 4: `ExportMTRSimODFFilter` (+ round-trip test)
+## Task 4: `WriteMTRSimODFFilter` (+ round-trip test)
 
 **Files:**
-- Modify: `src/MTRSim/src/MTRSim/Filters/ExportMTRSimODFFilter.{hpp,cpp}`
-- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/ExportMTRSimODF.{hpp,cpp}`
-- Modify: `src/MTRSim/test/ExportMTRSimODFFilterTest.cpp`
+- Modify: `src/MTRSim/src/MTRSim/Filters/WriteMTRSimODFFilter.{hpp,cpp}`
+- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/WriteMTRSimODF.{hpp,cpp}`
+- Modify: `test/WriteMTRSimODFFilterTest.cpp`
 
 ### Context
 
-Writes a SIMPLNX ODF (ImageGeom + selected Float64 cell arrays) back out to the MATLAB-compatible HDF5 format, per spec Section 5. Round-trips losslessly with `ImportMTRSimODFFilter`. Uses `mtrsim::writeODFFile` from Task 2.
+Writes a SIMPLNX ODF (ImageGeom + selected Float64 cell arrays) back out to the MATLAB-compatible HDF5 format, per spec Section 5. Round-trips losslessly with `ReadMTRSimODFFilter`. Uses `mtrsim::writeODFFile` from Task 2.
 
 - [ ] **Step 1: Fill in class metadata + parameters**
 
-In `ExportMTRSimODFFilter.cpp`, fill in `name()` / `humanName()` / `defaultTags()` analogously to Task 3 (human name: `"Export MTRSim ODF (HDF5)"`; tags include `"Output", "Write", "Export"`). Add parameters:
+In `WriteMTRSimODFFilter.cpp`, fill in `name()` / `humanName()` / `defaultTags()` analogously to Task 3 (human name: `"Write MTRSim ODF (HDF5)"`; tags include `"Output", "Write", "Export"`). Add parameters:
 
 ```cpp
-Parameters ExportMTRSimODFFilter::parameters() const
+Parameters WriteMTRSimODFFilter::parameters() const
 {
   Parameters params;
   params.insertSeparator(Parameters::Separator{"Output Parameter(s)"});
@@ -1049,7 +1049,7 @@ constexpr StringLiteral k_ODFComponents_Key       = "odf_components";
 - [ ] **Step 2: Implement preflight**
 
 ```cpp
-IFilter::PreflightResult ExportMTRSimODFFilter::preflightImpl(
+IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(
   const DataStructure& dataStructure, const Arguments& args, ...) const
 {
   const auto geomPath = args.value<DataPath>(k_InputImageGeometry_Key);
@@ -1093,7 +1093,7 @@ IFilter::PreflightResult ExportMTRSimODFFilter::preflightImpl(
 - [ ] **Step 3: Implement execute**
 
 ```cpp
-Result<> ExportMTRSimODFFilter::executeImpl(
+Result<> WriteMTRSimODFFilter::executeImpl(
   DataStructure& dataStructure, const Arguments& args, ...) const
 {
   const auto outputFile  = args.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
@@ -1136,11 +1136,11 @@ Result<> ExportMTRSimODFFilter::executeImpl(
 
 - [ ] **Step 4: Write round-trip test**
 
-In `ExportMTRSimODFFilterTest.cpp`:
+In `WriteMTRSimODFFilterTest.cpp`:
 
 ```cpp
-TEST_CASE("ExportMTRSimODFFilter: Import→Export produces byte-exact round-trip",
-         "[MTRSim][ExportMTRSimODFFilter]")
+TEST_CASE("WriteMTRSimODFFilter: Import→Export produces byte-exact round-trip",
+         "[MTRSim][WriteMTRSimODFFilter]")
 {
   const fs::path input  = decompressFixture("simulation_ODF.h5.gz");
   const fs::path output = fs::temp_directory_path() / "mtrsim_export_roundtrip.h5";
@@ -1149,26 +1149,26 @@ TEST_CASE("ExportMTRSimODFFilter: Import→Export produces byte-exact round-trip
   DataStructure ds;
   // --- Import
   {
-    ImportMTRSimODFFilter imp;
+    ReadMTRSimODFFilter imp;
     Arguments a;
-    a.insertOrAssign(ImportMTRSimODFFilter::k_InputFile_Key, std::make_any<FileSystemPathParameter::ValueType>(input));
-    a.insertOrAssign(ImportMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
-    a.insertOrAssign(ImportMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<std::string>("Cell Data"));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_InputFile_Key, std::make_any<FileSystemPathParameter::ValueType>(input));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<std::string>("Cell Data"));
     SIMPLNX_RESULT_REQUIRE_VALID(imp.preflight(ds, a).outputActions);
     SIMPLNX_RESULT_REQUIRE_VALID(imp.execute(ds, a).result);
   }
   // --- Export
   {
-    ExportMTRSimODFFilter exp;
+    WriteMTRSimODFFilter exp;
     Arguments a;
-    a.insertOrAssign(ExportMTRSimODFFilter::k_OutputFile_Key, std::make_any<FileSystemPathParameter::ValueType>(output));
-    a.insertOrAssign(ExportMTRSimODFFilter::k_InputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
+    a.insertOrAssign(WriteMTRSimODFFilter::k_OutputFile_Key, std::make_any<FileSystemPathParameter::ValueType>(output));
+    a.insertOrAssign(WriteMTRSimODFFilter::k_InputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
     std::vector<DataPath> comps = {
       DataPath({"ODF","Cell Data","component_0"}),
       DataPath({"ODF","Cell Data","component_1"}),
       DataPath({"ODF","Cell Data","component_2"}),
     };
-    a.insertOrAssign(ExportMTRSimODFFilter::k_ODFComponents_Key, std::make_any<std::vector<DataPath>>(comps));
+    a.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<std::vector<DataPath>>(comps));
     SIMPLNX_RESULT_REQUIRE_VALID(exp.preflight(ds, a).outputActions);
     SIMPLNX_RESULT_REQUIRE_VALID(exp.execute(ds, a).result);
   }
@@ -1182,17 +1182,17 @@ TEST_CASE("ExportMTRSimODFFilter: Import→Export produces byte-exact round-trip
   }
 }
 
-TEST_CASE("ExportMTRSimODFFilter: rejects zero component selection",
-         "[MTRSim][ExportMTRSimODFFilter][ErrorPath]")
+TEST_CASE("WriteMTRSimODFFilter: rejects zero component selection",
+         "[MTRSim][WriteMTRSimODFFilter][ErrorPath]")
 {
   DataStructure ds;
   // Build a minimal ImageGeom by hand (or skip — just test preflight)
-  ExportMTRSimODFFilter exp;
+  WriteMTRSimODFFilter exp;
   Arguments a;
-  a.insertOrAssign(ExportMTRSimODFFilter::k_OutputFile_Key,
+  a.insertOrAssign(WriteMTRSimODFFilter::k_OutputFile_Key,
                   std::make_any<FileSystemPathParameter::ValueType>(fs::temp_directory_path() / "unused.h5"));
-  a.insertOrAssign(ExportMTRSimODFFilter::k_InputImageGeometry_Key, std::make_any<DataPath>(DataPath{}));
-  a.insertOrAssign(ExportMTRSimODFFilter::k_ODFComponents_Key, std::make_any<std::vector<DataPath>>({}));
+  a.insertOrAssign(WriteMTRSimODFFilter::k_InputImageGeometry_Key, std::make_any<DataPath>(DataPath{}));
+  a.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<std::vector<DataPath>>({}));
   auto pre = exp.preflight(ds, a);
   REQUIRE(pre.outputActions.invalid());
 }
@@ -1203,7 +1203,7 @@ TEST_CASE("ExportMTRSimODFFilter: rejects zero component selection",
 ```bash
 cd /Users/mjackson/Workspace7/Build/mtrsim-Rel
 cmake --build . --target MTRSimTest
-ctest -R ExportMTRSimODF --output-on-failure
+ctest -R WriteMTRSimODF --output-on-failure
 ```
 
 **Expected:** Round-trip + error-path tests pass.
@@ -1212,11 +1212,11 @@ ctest -R ExportMTRSimODF --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/MTRSim/src/MTRSim/Filters/ExportMTRSimODFFilter.{hpp,cpp} \
-        src/MTRSim/src/MTRSim/Filters/Algorithms/ExportMTRSimODF.{hpp,cpp} \
-        src/MTRSim/test/ExportMTRSimODFFilterTest.cpp
+git add src/MTRSim/src/MTRSim/Filters/WriteMTRSimODFFilter.{hpp,cpp} \
+        src/MTRSim/src/MTRSim/Filters/Algorithms/WriteMTRSimODF.{hpp,cpp} \
+        test/WriteMTRSimODFFilterTest.cpp
 git commit -m "$(cat <<'EOF'
-feat(MTRSim): implement ExportMTRSimODFFilter
+feat(MTRSim): implement WriteMTRSimODFFilter
 
 Writes selected Float64 cell-data arrays on an ODF ImageGeom to the
 MATLAB-format HDF5 layout. Round-trip test confirms byte-exact
@@ -1232,9 +1232,9 @@ EOF
 ## Task 5: `mtrsim::SymmetricEulers` library helper (TDD)
 
 **Files:**
-- Create: `src/libmtrsim/SymmetricEulers.{hpp,cpp}`
+- Create: `src/LibMTRSim/SymmetricEulers.{hpp,cpp}`
 - Create: `tests/test_symmetric_eulers.cpp`
-- Modify: `src/libmtrsim/CMakeLists.txt`
+- Modify: `src/LibMTRSim/CMakeLists.txt`
 - Modify: `tests/CMakeLists.txt`
 
 ### Context
@@ -1243,12 +1243,12 @@ Wraps EbsdLib's `LaueOps::getMatSymOpD(i)` API to produce all symmetrically-equi
 
 - [ ] **Step 1: Write the header**
 
-Create `src/libmtrsim/SymmetricEulers.hpp`:
+Create `src/LibMTRSim/SymmetricEulers.hpp`:
 
 ```cpp
 #pragma once
 
-#include "mtrsim_export.h"
+#include "libmtrsim_export.h"
 
 #include <array>
 #include <cstdint>
@@ -1271,7 +1271,7 @@ expandSymmetric(double phi1Rad, double PHIRad, double phi2Rad, uint32_t ebsdLibC
 Create `tests/test_symmetric_eulers.cpp`:
 
 ```cpp
-#include "libmtrsim/SymmetricEulers.hpp"
+#include "LibMTRSim/SymmetricEulers.hpp"
 
 #include "EbsdLib/Core/EbsdLibConstants.h"
 
@@ -1342,7 +1342,7 @@ cmake --build . --target test_symmetric_eulers 2>&1 | tail -10
 
 - [ ] **Step 4: Implement using EbsdLib**
 
-Create `src/libmtrsim/SymmetricEulers.cpp`:
+Create `src/LibMTRSim/SymmetricEulers.cpp`:
 
 ```cpp
 #include "SymmetricEulers.hpp"
@@ -1394,7 +1394,7 @@ expandSymmetric(double phi1Rad, double PHIRad, double phi2Rad, uint32_t ebsdLibC
 }  // namespace mtrsim
 ```
 
-Add to `src/libmtrsim/CMakeLists.txt`:
+Add to `src/LibMTRSim/CMakeLists.txt`:
 
 ```cmake
 target_sources(mtrsim PRIVATE SymmetricEulers.cpp)
@@ -1416,10 +1416,10 @@ ctest -R SymmetricEulers --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/libmtrsim/SymmetricEulers.{hpp,cpp} src/libmtrsim/CMakeLists.txt \
+git add src/LibMTRSim/SymmetricEulers.{hpp,cpp} src/LibMTRSim/CMakeLists.txt \
         tests/test_symmetric_eulers.cpp tests/CMakeLists.txt
 git commit -m "$(cat <<'EOF'
-feat(libmtrsim): add SymmetricEulers helper (EbsdLib-backed)
+feat(LibMTRSim): add SymmetricEulers helper (EbsdLib-backed)
 
 Returns all symmetrically-equivalent Bunge Euler tuples for an input
 orientation + crystal structure. Wraps EbsdLib::LaueOps symmetry
@@ -1435,9 +1435,9 @@ EOF
 ## Task 6: `mtrsim::ODFBuilder` library helper (TDD)
 
 **Files:**
-- Create: `src/libmtrsim/ODFBuilder.{hpp,cpp}`
+- Create: `src/LibMTRSim/ODFBuilder.{hpp,cpp}`
 - Create: `tests/test_odf_builder.cpp`
-- Modify: `src/libmtrsim/CMakeLists.txt`
+- Modify: `src/LibMTRSim/CMakeLists.txt`
 - Modify: `tests/CMakeLists.txt`
 
 ### Context
@@ -1446,12 +1446,12 @@ The core binning + smoothing accumulator. Given a list of symmetric Euler tuples
 
 - [ ] **Step 1: Write the header**
 
-Create `src/libmtrsim/ODFBuilder.hpp`:
+Create `src/LibMTRSim/ODFBuilder.hpp`:
 
 ```cpp
 #pragma once
 
-#include "mtrsim_export.h"
+#include "libmtrsim_export.h"
 
 #include <array>
 #include <cstdint>
@@ -1486,7 +1486,7 @@ MTRSIM_EXPORT void normalize(std::vector<double>& values, double normalizer);
 Create `tests/test_odf_builder.cpp`:
 
 ```cpp
-#include "libmtrsim/ODFBuilder.hpp"
+#include "LibMTRSim/ODFBuilder.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
@@ -1569,7 +1569,7 @@ cmake --build . --target test_odf_builder 2>&1 | tail -5
 
 - [ ] **Step 4: Implement**
 
-Create `src/libmtrsim/ODFBuilder.cpp`:
+Create `src/LibMTRSim/ODFBuilder.cpp`:
 
 ```cpp
 #include "ODFBuilder.hpp"
@@ -1672,7 +1672,7 @@ void normalize(std::vector<double>& values, double normalizer)
 }  // namespace mtrsim
 ```
 
-Add to `src/libmtrsim/CMakeLists.txt`: `target_sources(mtrsim PRIVATE ODFBuilder.cpp)`.
+Add to `src/LibMTRSim/CMakeLists.txt`: `target_sources(mtrsim PRIVATE ODFBuilder.cpp)`.
 
 - [ ] **Step 5: Run tests, verify PASS**
 
@@ -1688,10 +1688,10 @@ ctest -R ODFBuilder --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/libmtrsim/ODFBuilder.{hpp,cpp} src/libmtrsim/CMakeLists.txt \
+git add src/LibMTRSim/ODFBuilder.{hpp,cpp} src/LibMTRSim/CMakeLists.txt \
         tests/test_odf_builder.cpp tests/CMakeLists.txt
 git commit -m "$(cat <<'EOF'
-feat(libmtrsim): add ODFBuilder with MATLAB tri-linear smoothing weights
+feat(LibMTRSim): add ODFBuilder with MATLAB tri-linear smoothing weights
 
 Accumulates Euler-tuple contributions into a row-major ODFval vector,
 with optional tri-linear face/edge/corner smoothing using the
@@ -1705,14 +1705,14 @@ EOF
 
 ---
 
-## Task 7: `ComputeODFFromEulerAnglesFilter`
+## Task 7: `ComputeODFFilter`
 
 **Files:**
-- Modify: `src/MTRSim/src/MTRSim/Filters/ComputeODFFromEulerAnglesFilter.{hpp,cpp}`
-- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/ComputeODFFromEulerAngles.{hpp,cpp}`
-- Modify: `src/MTRSim/test/ComputeODFFromEulerAnglesFilterTest.cpp`
-- Create: `src/MTRSim/test/test_data/hcp_euler_sample.h5.gz` (EBSD fixture, produced below)
-- Create: `src/MTRSim/test/test_data/hcp_euler_sample_odf_reference.h5.gz` (MATLAB-generated reference)
+- Modify: `src/MTRSim/src/MTRSim/Filters/ComputeODFFilter.{hpp,cpp}`
+- Modify: `src/MTRSim/src/MTRSim/Filters/Algorithms/ComputeODF.{hpp,cpp}`
+- Modify: `test/ComputeODFFilterTest.cpp`
+- Create: `test/test_data/hcp_euler_sample.h5.gz` (EBSD fixture, produced below)
+- Create: `test/test_data/hcp_euler_sample_odf_reference.h5.gz` (MATLAB-generated reference)
 
 ### Context
 
@@ -1720,15 +1720,15 @@ Spec Section 6. Consumes Euler angles + phases + crystal structures (+ optional 
 
 - [ ] **Step 1: Fill in class metadata + parameters**
 
-In `ComputeODFFromEulerAnglesFilter.cpp`:
+In `ComputeODFFilter.cpp`:
 
 ```cpp
-std::string ComputeODFFromEulerAnglesFilter::humanName() const { return "Compute ODF From Euler Angles"; }
-std::vector<std::string> ComputeODFFromEulerAnglesFilter::defaultTags() const {
+std::string ComputeODFFilter::humanName() const { return "Compute ODF From Euler Angles"; }
+std::vector<std::string> ComputeODFFilter::defaultTags() const {
   return {className(), "ODF", "MTRSim", "Orientation", "Statistics"};
 }
 
-Parameters ComputeODFFromEulerAnglesFilter::parameters() const
+Parameters ComputeODFFilter::parameters() const
 {
   Parameters params;
 
@@ -1823,7 +1823,7 @@ constexpr StringLiteral k_ComponentName_Key       = "component_name";
 - [ ] **Step 2: Implement preflight**
 
 ```cpp
-IFilter::PreflightResult ComputeODFFromEulerAnglesFilter::preflightImpl(
+IFilter::PreflightResult ComputeODFFilter::preflightImpl(
   const DataStructure& ds, const Arguments& args, ...) const
 {
   const auto mode       = args.value<ChoicesParameter::ValueType>(k_OutputMode_Key);
@@ -1899,13 +1899,13 @@ IFilter::PreflightResult ComputeODFFromEulerAnglesFilter::preflightImpl(
 
 - [ ] **Step 3: Implement execute**
 
-Pull most of the logic into the Algorithm class (`ComputeODFFromEulerAngles`):
+Pull most of the logic into the Algorithm class (`ComputeODF`):
 
 ```cpp
-// ComputeODFFromEulerAngles.hpp
+// ComputeODF.hpp
 namespace nx::core::MTRSim {
 
-struct ComputeODFFromEulerAnglesInputValues {
+struct ComputeODFInputValues {
   DataPath eulerAnglesPath;
   DataPath phasesPath;
   DataPath crystalStructuresPath;
@@ -1916,10 +1916,10 @@ struct ComputeODFFromEulerAnglesInputValues {
   bool     smoothing;
 };
 
-class ComputeODFFromEulerAngles
+class ComputeODF
 {
 public:
-  ComputeODFFromEulerAngles(DataStructure&, const ComputeODFFromEulerAnglesInputValues*,
+  ComputeODF(DataStructure&, const ComputeODFInputValues*,
                            const IFilter::MessageHandler&, const std::atomic_bool&);
   Result<> operator()();
 private:
@@ -1932,7 +1932,7 @@ private:
 Algorithm body (in `.cpp`):
 
 ```cpp
-Result<> ComputeODFFromEulerAngles::operator()()
+Result<> ComputeODF::operator()()
 {
   const auto& eulers = m_DataStructure.getDataRefAs<Float32Array>(m_Inputs->eulerAnglesPath);
   const auto& phases = m_DataStructure.getDataRefAs<Int32Array>(m_Inputs->phasesPath);
@@ -1987,15 +1987,15 @@ cd /Users/mjackson/Workspace7/MTRSim
 # 3. Save both to HDF5 and gzip:
 #      hcp_euler_sample.h5             — {phi1, PHI, phi2 arrays; num tuples; crystal code}
 #      hcp_euler_sample_odf_reference.h5 — {ODFval array, binSizeDeg, smoothing flag}
-gzip -9 src/MTRSim/test/test_data/hcp_euler_sample.h5
-gzip -9 src/MTRSim/test/test_data/hcp_euler_sample_odf_reference.h5
+gzip -9 test/test_data/hcp_euler_sample.h5
+gzip -9 test/test_data/hcp_euler_sample_odf_reference.h5
 ```
 
 **Note:** If MATLAB is not immediately available on the implementation machine, defer this step until the test-data phase, stub the test with `WARN("reference missing; skipping tolerance check")`, and file a follow-up task. The algorithmic tests in Task 6 already verify the binning/smoothing unit logic against known numeric weights.
 
 - [ ] **Step 5: Write the filter-level test**
 
-Minimum viable test in `ComputeODFFromEulerAnglesFilterTest.cpp`:
+Minimum viable test in `ComputeODFFilterTest.cpp`:
 
 ```cpp
 // Fixture schema (hcp_euler_sample.h5):
@@ -2009,8 +2009,8 @@ Minimum viable test in `ComputeODFFromEulerAnglesFilterTest.cpp`:
 //   /smoothing             uint8   scalar (0 or 1)
 //   /odf_val               float64[nphi1*nPHI*nphi2]  — MATLAB calc_ODF.m reference
 
-TEST_CASE("ComputeODFFromEulerAnglesFilter: Create New mode against MATLAB reference",
-         "[MTRSim][ComputeODFFromEulerAnglesFilter]")
+TEST_CASE("ComputeODFFilter: Create New mode against MATLAB reference",
+         "[MTRSim][ComputeODFFilter]")
 {
   const fs::path euler = decompressFixture("hcp_euler_sample.h5.gz");
   const fs::path ref   = decompressFixture("hcp_euler_sample_odf_reference.h5.gz");
@@ -2057,21 +2057,21 @@ TEST_CASE("ComputeODFFromEulerAnglesFilter: Create New mode against MATLAB refer
     }
   }
 
-  ComputeODFFromEulerAnglesFilter filter;
+  ComputeODFFilter filter;
   Arguments args;
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(0));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_Smoothing_Key,  std::make_any<bool>(smoothing != 0));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_BinSizeDeg_Key, std::make_any<float>(static_cast<float>(binSizeDeg)));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_EulerAngles_Key,
+  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(0));
+  args.insertOrAssign(ComputeODFFilter::k_Smoothing_Key,  std::make_any<bool>(smoothing != 0));
+  args.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, std::make_any<float>(static_cast<float>(binSizeDeg)));
+  args.insertOrAssign(ComputeODFFilter::k_EulerAngles_Key,
                      std::make_any<DataPath>(DataPath({"EBSD","Cell Data","EulerAngles"})));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_Phases_Key,
+  args.insertOrAssign(ComputeODFFilter::k_Phases_Key,
                      std::make_any<DataPath>(DataPath({"EBSD","Cell Data","Phases"})));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_CrystalStructures_Key,
+  args.insertOrAssign(ComputeODFFilter::k_CrystalStructures_Key,
                      std::make_any<DataPath>(DataPath({"EBSD","Ensemble","CrystalStructures"})));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_UseMask_Key, std::make_any<bool>(false));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_NewGeom_Key, std::make_any<DataPath>(DataPath({"ODF"})));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_NewCellAttrMat_Key, std::make_any<std::string>("Cell Data"));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_ComponentName_Key, std::make_any<std::string>("Component 1"));
+  args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(false));
+  args.insertOrAssign(ComputeODFFilter::k_NewGeom_Key, std::make_any<DataPath>(DataPath({"ODF"})));
+  args.insertOrAssign(ComputeODFFilter::k_NewCellAttrMat_Key, std::make_any<std::string>("Cell Data"));
+  args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<std::string>("Component 1"));
 
   SIMPLNX_RESULT_REQUIRE_VALID(filter.preflight(ds, args).outputActions);
   SIMPLNX_RESULT_REQUIRE_VALID(filter.execute(ds, args).result);
@@ -2086,10 +2086,10 @@ TEST_CASE("ComputeODFFromEulerAnglesFilter: Create New mode against MATLAB refer
   REQUIRE(maxAbsDiff < 1e-10);
 }
 
-TEST_CASE("ComputeODFFromEulerAnglesFilter: Append mode adds a new component",
-         "[MTRSim][ComputeODFFromEulerAnglesFilter]")
+TEST_CASE("ComputeODFFilter: Append mode adds a new component",
+         "[MTRSim][ComputeODFFilter]")
 {
-  // Seed with an ODF geometry produced by ImportMTRSimODFFilter, then run
+  // Seed with an ODF geometry produced by ReadMTRSimODFFilter, then run
   // ComputeODF in Append mode with the same fixture. After execute, the
   // target geometry should carry N+1 components where N is the original count.
   const fs::path input = decompressFixture("simulation_ODF.h5.gz");
@@ -2098,24 +2098,24 @@ TEST_CASE("ComputeODFFromEulerAnglesFilter: Append mode adds a new component",
   DataStructure ds;
   // Import first to create /ODF geometry with component_0..component_2
   {
-    ImportMTRSimODFFilter imp;
+    ReadMTRSimODFFilter imp;
     Arguments a;
-    a.insertOrAssign(ImportMTRSimODFFilter::k_InputFile_Key,           std::make_any<FileSystemPathParameter::ValueType>(input));
-    a.insertOrAssign(ImportMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
-    a.insertOrAssign(ImportMTRSimODFFilter::k_CellAttrMatName_Key,     std::make_any<std::string>("Cell Data"));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_InputFile_Key,           std::make_any<FileSystemPathParameter::ValueType>(input));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
+    a.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key,     std::make_any<std::string>("Cell Data"));
     SIMPLNX_RESULT_REQUIRE_VALID(imp.preflight(ds, a).outputActions);
     SIMPLNX_RESULT_REQUIRE_VALID(imp.execute(ds, a).result);
   }
   // [Populate EBSD arrays per the fixture, same as Create-New test above]
 
-  ComputeODFFromEulerAnglesFilter filter;
+  ComputeODFFilter filter;
   Arguments args;
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(1));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_ExistingGeom_Key,
+  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(1));
+  args.insertOrAssign(ComputeODFFilter::k_ExistingGeom_Key,
                      std::make_any<DataPath>(DataPath({"ODF"})));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_ExistingCellAttrMat_Key,
+  args.insertOrAssign(ComputeODFFilter::k_ExistingCellAttrMat_Key,
                      std::make_any<std::string>("Cell Data"));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_ComponentName_Key,
+  args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key,
                      std::make_any<std::string>("Component 3"));
   // [plus the common input/smoothing args — per Create-New test]
 
@@ -2129,17 +2129,17 @@ TEST_CASE("ComputeODFFromEulerAnglesFilter: Append mode adds a new component",
   REQUIRE(ds.getDataAs<Float64Array>(DataPath({"ODF","Cell Data","component_2"})) != nullptr);
 }
 
-TEST_CASE("ComputeODFFromEulerAnglesFilter: non-integer bin size rejected at preflight",
-         "[MTRSim][ComputeODFFromEulerAnglesFilter][ErrorPath]")
+TEST_CASE("ComputeODFFilter: non-integer bin size rejected at preflight",
+         "[MTRSim][ComputeODFFilter][ErrorPath]")
 {
   DataStructure ds;
   // Build the minimum ensemble+cell arrays required to pass the earlier input checks.
   // [Populate dummy ensemble + single-tuple cell-level arrays as in Create-New test]
 
-  ComputeODFFromEulerAnglesFilter filter;
+  ComputeODFFilter filter;
   Arguments args;
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(0));
-  args.insertOrAssign(ComputeODFFromEulerAnglesFilter::k_BinSizeDeg_Key, std::make_any<float>(7.0f));  // 180/7 non-integer
+  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(0));
+  args.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, std::make_any<float>(7.0f));  // 180/7 non-integer
   // [plus the common input args]
 
   auto pre = filter.preflight(ds, args);
@@ -2161,13 +2161,13 @@ ctest -R ComputeODF --output-on-failure
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/MTRSim/src/MTRSim/Filters/ComputeODFFromEulerAnglesFilter.{hpp,cpp} \
-        src/MTRSim/src/MTRSim/Filters/Algorithms/ComputeODFFromEulerAngles.{hpp,cpp} \
-        src/MTRSim/test/ComputeODFFromEulerAnglesFilterTest.cpp \
-        src/MTRSim/test/test_data/hcp_euler_sample.h5.gz \
-        src/MTRSim/test/test_data/hcp_euler_sample_odf_reference.h5.gz
+git add src/MTRSim/src/MTRSim/Filters/ComputeODFFilter.{hpp,cpp} \
+        src/MTRSim/src/MTRSim/Filters/Algorithms/ComputeODF.{hpp,cpp} \
+        test/ComputeODFFilterTest.cpp \
+        test/test_data/hcp_euler_sample.h5.gz \
+        test/test_data/hcp_euler_sample_odf_reference.h5.gz
 git commit -m "$(cat <<'EOF'
-feat(MTRSim): implement ComputeODFFromEulerAnglesFilter
+feat(MTRSim): implement ComputeODFFilter
 
 Builds an ODF from per-voxel Bunge Euler angles + phase data, with
 optional tri-linear smoothing. Uses EbsdLib-backed symmetry expansion
@@ -2185,20 +2185,20 @@ EOF
 ## Task 8: Filter documentation
 
 **Files:**
-- Modify: `src/MTRSim/docs/ImportMTRSimODFFilter.md`
-- Modify: `src/MTRSim/docs/ExportMTRSimODFFilter.md`
-- Modify: `src/MTRSim/docs/ComputeODFFromEulerAnglesFilter.md`
+- Modify: `docs/ReadMTRSimODFFilter.md`
+- Modify: `docs/WriteMTRSimODFFilter.md`
+- Modify: `docs/ComputeODFFilter.md`
 
 ### Context
 
 Follow the BlueQuartz `filter-documentation` skill's template. Each filter gets one markdown file covering purpose, parameters, data requirements, output, and an example use case. The axis-mapping note from spec Section 3 must appear in each filter's doc.
 
-- [ ] **Step 1: Write ImportMTRSimODFFilter.md**
+- [ ] **Step 1: Write ReadMTRSimODFFilter.md**
 
 Follow the template:
 
 ```markdown
-# Import MTRSim ODF (HDF5)
+# Read MTRSim ODF (HDF5)
 
 ## Group (Subgroup)
 
@@ -2233,7 +2233,7 @@ None — the input file is the sole source.
 
 ## Example Pipeline
 
-1. Import MTRSim ODF (HDF5) → creates `/ODF`.
+1. Read MTRSim ODF (HDF5) → creates `/ODF`.
 2. Compute IPF Colors (downstream, for visualization).
 
 ## Authors
@@ -2245,10 +2245,10 @@ BlueQuartz Software, LLC
 Commercial license (DREAM3D-NX plugin).
 ```
 
-- [ ] **Step 2: Write ExportMTRSimODFFilter.md**
+- [ ] **Step 2: Write WriteMTRSimODFFilter.md**
 
 ```markdown
-# Export MTRSim ODF (HDF5)
+# Write MTRSim ODF (HDF5)
 
 ## Group (Subgroup)
 
@@ -2300,7 +2300,7 @@ is documented and not enforced.
 BlueQuartz Software, LLC
 ```
 
-- [ ] **Step 3: Write ComputeODFFromEulerAnglesFilter.md**
+- [ ] **Step 3: Write ComputeODFFilter.md**
 
 ```markdown
 # Compute ODF From Euler Angles
@@ -2315,7 +2315,7 @@ Builds an Orientation Distribution Function (ODF) from per-voxel Bunge Euler ang
 phase data. Applies crystal-symmetry expansion (via EbsdLib's LaueOps) and optional
 tri-linear neighbor-bin smoothing matching the weights in MATLAB's `calc_ODF.m`. Output
 is a Float64 cell-data array on an ImageGeom Euler-space grid — compatible with
-`ExportMTRSimODFFilter`.
+`WriteMTRSimODFFilter`.
 
 ## Axis Mapping
 
@@ -2406,7 +2406,7 @@ cmake . 2>&1 | grep -i "doc"
 
 ```bash
 cd /Users/mjackson/Workspace7/MTRSim
-git add src/MTRSim/docs/
+git add docs/
 git commit -m "$(cat <<'EOF'
 docs(MTRSim): filter documentation for Import/Export/ComputeODF
 
@@ -2423,7 +2423,7 @@ EOF
 
 ## Deferred decisions to revisit
 
-- **Exemplar storage location** (Task 3 currently stores gzipped HDF5 in-repo under `src/MTRSim/test/test_data/`). Revisit when a fixture exceeds ~10 MB; candidates are GitHub release artifacts and a shared simplnx webserver (see spec Section 10).
+- **Exemplar storage location** (Task 3 currently stores gzipped HDF5 in-repo under `test/test_data/`). Revisit when a fixture exceeds ~10 MB; candidates are GitHub release artifacts and a shared simplnx webserver (see spec Section 10).
 - **Tolerance threshold** for the ComputeODF filter's MATLAB-reference test (Task 7 uses 1e-10 tentatively). Tune once the first comparison is run.
 - **Append-mode `bin_size_deg` visibility** — Task 7 currently uses `linkParameters` to hide it; if the simplnx convention for grayed-out-but-visible differs, switch accordingly.
 

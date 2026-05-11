@@ -1,4 +1,3 @@
-#include "CrystalSymmetry.hpp"
 #include "ODFCalculator.hpp"
 #include "ODFSampler.hpp"
 
@@ -12,81 +11,11 @@
 using namespace mtrsim;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CrystalSymmetry tests
+// CrystalSymmetry tests removed — orientation symmetry expansion now goes
+// through EbsdLib's `LaueOps` / `Euler<double>` / `OrientationMatrix<double>`
+// directly inside the consumers (ODFCalculator, ComputeODF). EbsdLib's own
+// unit tests cover the expansion math.
 // ─────────────────────────────────────────────────────────────────────────────
-
-TEST_CASE("CrystalSymmetry HCP: numOperators returns 12", "[crystalsymmetry]") {
-  CrystalSymmetry cs{CrystalSystem::HCP};
-  CHECK(cs.numOperators() == 12);
-}
-
-TEST_CASE("CrystalSymmetry FCC: numOperators returns 24", "[crystalsymmetry]") {
-  CrystalSymmetry cs{CrystalSystem::FCC};
-  CHECK(cs.numOperators() == 24);
-}
-
-TEST_CASE("CrystalSymmetry HCP: expand output dimensions are N*12 x 3",
-          "[crystalsymmetry]") {
-  CrystalSymmetry cs{CrystalSystem::HCP};
-
-  const int N = 5;
-  Eigen::VectorXd phi1 = Eigen::VectorXd::Constant(N, 0.1);
-  Eigen::VectorXd phi = Eigen::VectorXd::Constant(N, 0.5);
-  Eigen::VectorXd phi2 = Eigen::VectorXd::Constant(N, 0.3);
-
-  const Eigen::MatrixXd result = cs.expand(phi1, phi, phi2);
-  CHECK(result.rows() == N * 12);
-  CHECK(result.cols() == 3);
-}
-
-TEST_CASE("CrystalSymmetry HCP: identity operator preserves orientation",
-          "[crystalsymmetry]") {
-  // For HCP the first symmetry operator is the identity.
-  // expand({phi1},{phi},{phi2})[0,:] should equal (phi1, phi, phi2) up to
-  // numerical precision.
-  CrystalSymmetry cs{CrystalSystem::HCP};
-
-  const double p1 = 1.2;
-  const double ph = 0.7;
-  const double p2 = 0.4;
-
-  Eigen::VectorXd phi1(1), phi(1), phi2(1);
-  phi1 << p1;
-  phi << ph;
-  phi2 << p2;
-
-  const Eigen::MatrixXd result = cs.expand(phi1, phi, phi2);
-
-  // Row 0 is operator 0 (identity): should reproduce the input angles
-  CHECK(result(0, 0) == Approx(p1).margin(1e-6));
-  CHECK(result(0, 1) == Approx(ph).margin(1e-6));
-  CHECK(result(0, 2) == Approx(p2).margin(1e-6));
-}
-
-TEST_CASE("CrystalSymmetry HCP: all output angles in valid range",
-          "[crystalsymmetry]") {
-  CrystalSymmetry cs{CrystalSystem::HCP};
-
-  // Use a handful of orientations with varied Euler angles
-  Eigen::VectorXd phi1(3), phi(3), phi2(3);
-  phi1 << 0.3, 1.5, 5.0;
-  phi << 0.1, 0.9, 1.5;
-  phi2 << 0.6, 2.0, 4.0;
-
-  const Eigen::MatrixXd result = cs.expand(phi1, phi, phi2);
-
-  const double twoPi = 2.0 * std::numbers::pi;
-  const double piVal = std::numbers::pi;
-
-  for (int r = 0; r < result.rows(); ++r) {
-    CHECK(result(r, 0) >= -1e-10);
-    CHECK(result(r, 0) <= twoPi + 1e-10); // phi1 ∈ [0, 2π)
-    CHECK(result(r, 1) >= -1e-10);
-    CHECK(result(r, 1) <= piVal + 1e-10); // PHI  ∈ [0, π]
-    CHECK(result(r, 2) >= -1e-10);
-    CHECK(result(r, 2) <= twoPi + 1e-10); // phi2 ∈ [0, 2π)
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ODFCalculator tests

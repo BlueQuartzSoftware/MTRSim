@@ -8,7 +8,7 @@
     {
       "kind": "git",
       "repository": "https://github.com/bluequartzsoftware/simplnx-registry",
-      "baseline": "fc1e12b6502374fdda171a1df44d8e3f3b61e84c",
+      "baseline": "4dd8a2b973349943e23b58237a986785bfc6d7de",
       "packages": [
         "catch2",
         "ebsdlib",
