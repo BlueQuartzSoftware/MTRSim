@@ -3,6 +3,7 @@ set(MTRSIM_HEADERS
   GPGenerator.hpp
   IPFMapper.hpp
   MTRDataLoader.hpp
+  MTRSimDriver.hpp
   ODFBuilder.hpp
   ODFCalculator.hpp
   ODFFileIO.hpp
@@ -17,6 +18,7 @@ set(MTRSIM_SOURCES
   GPGenerator.cpp
   IPFMapper.cpp
   MTRDataLoader.cpp
+  MTRSimDriver.cpp
   ODFBuilder.cpp
   ODFCalculator.cpp
   ODFFileIO.cpp

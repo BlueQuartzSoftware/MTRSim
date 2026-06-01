@@ -5,6 +5,7 @@ add_executable(mtrsim_tests
   test_gp_generator.cpp
   test_odf_file_io.cpp
   test_odf_sampler.cpp
+  test_mtrsim_driver.cpp
   test_ipf_mapper.cpp
   test_odf_builder.cpp
 )

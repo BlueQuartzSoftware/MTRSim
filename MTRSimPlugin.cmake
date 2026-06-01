@@ -112,6 +112,7 @@ set(PLUGIN_EXTRA_SOURCES
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PGRFSimulation.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PoleFigure.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/QSimVN.cpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRSimDriver.cpp
 )
 set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.hpp
@@ -125,6 +126,7 @@ set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PGRFSimulation.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PoleFigure.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/QSimVN.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRSimDriver.hpp
 )
 
 target_sources(${PLUGIN_NAME} 
