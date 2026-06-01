@@ -2,6 +2,7 @@
 
 #include <catch2/catch.hpp>
 
+#include <array>
 #include <numbers>
 
 TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]") {
@@ -58,4 +59,35 @@ TEST_CASE("remapSimToZYX moves y-fastest data to x-fastest layout", "[mtrsim_dri
   REQUIRE(out[6] == 6);
   // Same total size.
   REQUIRE(out.size() == in.size());
+}
+
+TEST_CASE("simulateMTR reproduces target volume fractions (statistical)", "[mtrsim_driver][statistical]") {
+  mtrsim::SimulationParams params;
+  params.xLen = 6.0; params.yLen = 6.0; params.zLen = 0.0;
+  params.dx = 0.02; params.dy = 0.02; params.dz = 0.02;
+  params.volumeFractions = {0.30, 0.35, 0.35};
+  params.thetaList = {{0.10, 0.45, 0.10}, {0.08, 0.37, 0.08}};
+  params.seed = 42;
+
+  std::vector<mtrsim::ODFComponent> comps = {
+      mtrsim::buildUniformODF(72, 36, 72),
+      mtrsim::buildUniformODF(72, 36, 72),
+      mtrsim::buildUniformODF(72, 36, 72)};
+
+  std::mt19937_64 rng(params.seed);
+  const mtrsim::MTRSimResult r = mtrsim::simulateMTR(params, comps, rng, 72, 36, 72);
+
+  const int N = r.nx * r.ny * r.nz;
+  REQUIRE(static_cast<int>(r.mtrIndex.size()) == N);
+
+  for (int v : r.mtrIndex) { REQUIRE(v >= 1); REQUIRE(v <= 3); }
+
+  std::array<int, 3> counts{0, 0, 0};
+  for (int v : r.mtrIndex) { counts[static_cast<std::size_t>(v - 1)]++; }
+  REQUIRE(static_cast<double>(counts[0]) / N == Approx(0.30).margin(0.05));
+  REQUIRE(static_cast<double>(counts[1]) / N == Approx(0.35).margin(0.05));
+  REQUIRE(static_cast<double>(counts[2]) / N == Approx(0.35).margin(0.05));
+
+  for (double a : r.phi1) { REQUIRE(a >= 0.0); REQUIRE(a <= 2.0 * std::numbers::pi); }
+  for (double a : r.phi) { REQUIRE(a >= 0.0); REQUIRE(a <= std::numbers::pi); }
 }

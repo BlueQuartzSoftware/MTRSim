@@ -59,4 +59,32 @@ std::vector<T> remapSimToZYX(const std::vector<T>& in, int nx, int ny, int nz) {
   return out;
 }
 
+/**
+ * @brief Per-voxel simulation output in SIMPLNX z,y,x order.
+ */
+struct LIBMTRSIM_EXPORT MTRSimResult {
+  int nx = 0;
+  int ny = 0;
+  int nz = 0;
+  std::vector<int32_t> mtrIndex;   ///< 1-based component id per voxel, length N
+  std::vector<double> phi1;        ///< Euler phi1 [rad] per voxel, length N
+  std::vector<double> phi;         ///< Euler PHI  [rad] per voxel, length N
+  std::vector<double> phi2;        ///< Euler phi2 [rad] per voxel, length N
+};
+
+/**
+ * @brief Run the full MTR simulation: PGRF assignment -> per-component ODF
+ *        sampling -> per-voxel orientation assignment, returned in SIMPLNX
+ *        z,y,x voxel order.
+ *
+ * @param params         Fully populated SimulationParams (consistent length unit).
+ * @param odfComponents  One ODFComponent per volume-fraction entry, shared grid.
+ * @param rng            Seeded RNG (mt19937_64).
+ * @param n1,nPHI,n2     Bin counts of the ODF grid (for the uniform reference).
+ */
+LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params,
+                                          const std::vector<ODFComponent>& odfComponents,
+                                          std::mt19937_64& rng,
+                                          int n1, int nPHI, int n2);
+
 } // namespace mtrsim

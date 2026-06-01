@@ -2,8 +2,8 @@
 // Orchestrates PGRF simulation, ODF loading, orientation sampling, and output.
 
 #include "IPFMapper.hpp"
+#include "MTRSimDriver.hpp"
 #include "ODFSampler.hpp"
-#include "PGRFSimulation.hpp"
 #include "SimulationParams.hpp"
 
 #include <CLI/CLI.hpp>
@@ -106,45 +106,6 @@ loadODFComponents(const std::string &hdfPath) {
 
   H5Fclose(fileId);
   return components;
-}
-
-// Build a uniform reference ODF with the flat 186624-element bin-centre arrays
-// that ODFSampler expects.  These match exactly what ODFCalculator::compute
-// produces:
-//   phi1Bins[ix] = (i1   + 0.5) * 2π/72
-//   phiBins[ix]  = (iPHI + 0.5) *  π/36
-//   phi2Bins[ix] = (i2   + 0.5) * 2π/72
-// where ix = i1*(36*72) + iPHI*72 + i2.
-mtrsim::ODFComponent buildUniformODF() {
-  constexpr int nBins1 = 72;
-  constexpr int nBinsPHI = 36;
-  constexpr int nBins2 = 72;
-  constexpr int nTotal = nBins1 * nBinsPHI * nBins2; // 186624
-
-  const double k_TwoPiOver =
-      2.0 * std::numbers::pi / static_cast<double>(nBins1);
-  const double k_PiOver = std::numbers::pi / static_cast<double>(nBinsPHI);
-
-  Eigen::VectorXd phi1Bins(nTotal);
-  Eigen::VectorXd phiBins(nTotal);
-  Eigen::VectorXd phi2Bins(nTotal);
-
-  for (int ix = 0; ix < nTotal; ++ix) {
-    const int i1 = ix / (nBinsPHI * nBins2);
-    const int iPHI = (ix % (nBinsPHI * nBins2)) / nBins2;
-    const int i2 = ix % nBins2;
-    phi1Bins[ix] = (i1 + 0.5) * k_TwoPiOver;
-    phiBins[ix] = (iPHI + 0.5) * k_PiOver;
-    phi2Bins[ix] = (i2 + 0.5) * k_TwoPiOver;
-  }
-
-  mtrsim::ODFComponent uni;
-  uni.odfVal =
-      Eigen::VectorXd::Constant(nTotal, 1.0 / static_cast<double>(nTotal));
-  uni.phi1Bins = std::move(phi1Bins);
-  uni.phiBins = std::move(phiBins);
-  uni.phi2Bins = std::move(phi2Bins);
-  return uni;
 }
 
 } // anonymous namespace
@@ -260,13 +221,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // ── Run PGRF simulation
-  // ──────────────────────────────────────────────────────
-  spdlog::info("Running PGRF simulation...");
-  mtrsim::PGRFSimulation pgrf{rng};
-  const mtrsim::PGRFResult result = pgrf.run(params);
-  spdlog::info("PGRF simulation complete.");
-
   // ── Load ODF components from HDF5
   // ───────────────────────────────────────────
   spdlog::info("Loading ODF from: {}", params.odfInputPath);
@@ -283,40 +237,15 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  // ── Build uniform reference ODF
-  // ──────────────────────────────────────────────
-  const mtrsim::ODFComponent uniformOdf = buildUniformODF();
+  // ── Run full MTR simulation (PGRF + ODF sampling + remap to z,y,x order)
+  // ─────────────────────────────────────────────────────────────────────────
+  spdlog::info("Running MTR simulation...");
+  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, 72, 36, 72);
+  spdlog::info("MTR simulation complete.");
 
-  // ── Pre-sample N orientations per component (batched)
-  // ────────────────────────
-  const int numComponents = static_cast<int>(odfComponents.size());
-  spdlog::info("Sampling orientations ({} components, N={} each)...",
-               numComponents, N);
-
-  std::vector<Eigen::MatrixXd> orientSamples(
-      static_cast<std::size_t>(numComponents));
-  mtrsim::ODFSampler sampler{rng};
-
-  for (int j = 0; j < numComponents; ++j) {
-    spdlog::info("  Component {} / {}", j + 1, numComponents);
-    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(
-        N, odfComponents[static_cast<std::size_t>(j)], uniformOdf);
-  }
-  spdlog::info("Orientation sampling complete.");
-
-  // ── Assign orientations per voxel
-  // ─────────────────────────────────────────── PGRFResult.mtrIndex is 1-based
-  // → component = mtrIndex[i] - 1 (0-based)
-  Eigen::VectorXd phi1Vec(N);
-  Eigen::VectorXd phiVec(N);
-  Eigen::VectorXd phi2Vec(N);
-
-  for (int i = 0; i < N; ++i) {
-    const int comp = result.mtrIndex[i] - 1;
-    phi1Vec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 0);
-    phiVec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 1);
-    phi2Vec[i] = orientSamples[static_cast<std::size_t>(comp)](i, 2);
-  }
+  Eigen::VectorXd phi1Vec = Eigen::Map<Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(sim.phi1.size()));
+  Eigen::VectorXd phiVec  = Eigen::Map<Eigen::VectorXd>(sim.phi.data(),  static_cast<Eigen::Index>(sim.phi.size()));
+  Eigen::VectorXd phi2Vec = Eigen::Map<Eigen::VectorXd>(sim.phi2.data(), static_cast<Eigen::Index>(sim.phi2.size()));
 
   // ── Write IPF map PNG
   // ────────────────────────────────────────────────────────
@@ -349,7 +278,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < N; ++i) {
       csv << spatialCoords(i, 0) << ',' << spatialCoords(i, 1) << ','
           << spatialCoords(i, 2) << ',' << phi1Vec[i] << ',' << phiVec[i] << ','
-          << phi2Vec[i] << ',' << result.mtrIndex[i] << '\n';
+          << phi2Vec[i] << ',' << sim.mtrIndex[static_cast<std::size_t>(i)] << '\n';
     }
   }
   spdlog::info("Results CSV written.");
