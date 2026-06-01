@@ -86,7 +86,7 @@ Parameters MTRSimFilter::parameters() const
                                                           "Size/Spacing.",
                                                           thetaInfo));
   }
-  params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSize_Key, "Physical Size (microns)", "Domain extent X,Y,Z.", std::vector<float32>{38.1f, 12.7f, 0.0f},
+  params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSize_Key, "Physical Size (microns)", "Domain extent X, Y, Z in microns. Set Z = 0 to generate a single-layer (2D) microstructure.", std::vector<float32>{38.1f, 12.7f, 0.0f},
                                                          std::vector<std::string>{"X", "Y", "Z"}));
   params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSpacing_Key, "Physical Spacing (microns)", "Voxel spacing X,Y,Z.", std::vector<float32>{0.02f, 0.02f, 0.02f},
                                                          std::vector<std::string>{"X", "Y", "Z"}));
@@ -96,7 +96,7 @@ Parameters MTRSimFilter::parameters() const
   params.insert(std::make_unique<NumberParameter<uint64>>(k_SeedValue_Key, "Seed Value", "The seed fed into the random generator.", std::mt19937::default_seed));
   params.insert(std::make_unique<DataObjectNameParameter>(k_SeedArrayName_Key, "Stored Seed Value Array Name", "Top-level array recording the seed used.", "MTRSim SeedValue"));
 
-  params.insertSeparator(Parameters::Separator{"Outputs"});
+  params.insertSeparator(Parameters::Separator{"Output Data Object(s)"});
   params.insertLinkableParameter(
       std::make_unique<BoolParameter>(k_GeneratePolarColoring_Key, "Generate Polar Coloring", "Create a 3-component UInt8 RGB array using the MATLAB polar color mapping.", false));
   params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputGeometry_Key, "Output Image Geometry", "Path of the new microstructure Image Geometry.", DataPath({"MTR Microstructure"})));
@@ -171,6 +171,11 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
     {
       return {MakeErrorResult<OutputActions>(-13005, "Each Theta List row must have exactly 3 columns.")};
     }
+  }
+
+  if(pSpacing[0] <= 0.0f || pSpacing[1] <= 0.0f)
+  {
+    return {MakeErrorResult<OutputActions>(-13006, "Physical Spacing X and Y must be greater than 0.")};
   }
 
   const auto dim = [](float len, float sp) { return static_cast<usize>(std::max(std::lround(len / sp), 1L)); };

@@ -17,8 +17,8 @@ struct MTRSIM_EXPORT MTRSimInputValues
   std::vector<DataPath> odfComponentPaths;
   std::vector<std::vector<double>> volumeFractions; // 1 row x N cols
   std::vector<std::vector<double>> thetaList;       // M rows x 3 cols
-  std::vector<float> physicalSize;                  // [x,y,z] microns
-  std::vector<float> physicalSpacing;               // [x,y,z] microns
+  std::vector<float32> physicalSize;                // [x,y,z] microns
+  std::vector<float32> physicalSpacing;             // [x,y,z] microns
   uint64 seed;
   bool generatePolarColoring;
   DataPath outputGeometryPath;

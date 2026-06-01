@@ -7,6 +7,7 @@
  *   2. Theta List rows < numComponents - 1 -> invalid.
  *   3. Volume Fraction values do not sum to 1.0 -> invalid.
  *   4. Happy-path args -> preflight VALID (builds geometry + array actions).
+ *   5. Theta List rows with wrong column count (2 instead of 3) -> invalid (-13005).
  */
 
 #include <catch2/catch.hpp>
@@ -142,6 +143,24 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0", "[
   Arguments args = MakeValidArgs(compPaths);
   // Columns sum to 0.6, not 1.0.
   args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.2, 0.2, 0.2}});
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count", "[MTRSim][MTRSimFilter][ErrorPath]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  // 2 rows supplied (enough for 3 components: needs >= 2), but each row has only 2
+  // columns instead of 3 — must trigger the column-count check (-13005), not the
+  // row-count check (-13004).
+  args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45}, {0.08, 0.37}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);

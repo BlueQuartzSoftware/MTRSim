@@ -1,7 +1,5 @@
 #include "MTRSim.hpp"
 
-#include "simplnx/DataStructure/DataArray.hpp"
-
 using namespace nx::core;
 
 // -----------------------------------------------------------------------------
