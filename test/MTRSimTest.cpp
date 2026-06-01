@@ -133,10 +133,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
-  // Modest domain: 100x100 = 10000 voxels (Z=0 -> single layer).
-  args.insertOrAssign(MTRSimFilter::k_PhysicalSize_Key, std::vector<float32>{2.0f, 2.0f, 0.0f});
-  args.insertOrAssign(MTRSimFilter::k_PhysicalSpacing_Key, std::vector<float32>{0.02f, 0.02f, 0.02f});
-  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.30, 0.35, 0.35}});
+  // size/spacing/VF come from MakeValidArgs (100x100 grid)
   args.insertOrAssign(MTRSimFilter::k_UseSeed_Key, true);
   args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
 

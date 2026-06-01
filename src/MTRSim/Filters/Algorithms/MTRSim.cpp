@@ -7,7 +7,6 @@
 
 #include <fmt/format.h>
 
-#include <cmath>
 #include <exception>
 #include <random>
 #include <vector>
@@ -62,7 +61,7 @@ Result<> MTRSim::operator()()
   params.dz = m_InputValues->physicalSpacing[2];
   params.volumeFractions = m_InputValues->volumeFractions[0]; // 1 row
   params.thetaList = m_InputValues->thetaList;
-  params.seed = m_InputValues->seed;
+  // Note: simulateMTR is driven by the seeded rng passed below; SimulationParams::seed is not consulted.
 
   if(m_ShouldCancel)
   {
