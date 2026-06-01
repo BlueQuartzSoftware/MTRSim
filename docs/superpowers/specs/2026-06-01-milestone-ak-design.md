@@ -61,9 +61,21 @@ work is implemented and verified.
 | Theta List | `DynamicTableParameter` — 3 fixed cols × M rows | Preflight: `M >= numComponents - 1`. Columns are `[theta_x, theta_y, theta_z]` correlation lengths. |
 | Physical Size | `VectorFloat32Parameter` (FloatVec3), µm | Domain extent. |
 | Physical Spacing | `VectorFloat32Parameter` (FloatVec3), µm | Voxel spacing. |
-| Seed | `UInt64Parameter` | `0` ⇒ seed from `std::random_device`. |
+| Use Seed for Random Generation | `BoolParameter` (default `false`), linkable | Standard simplnx seed pattern (see below). |
+| Seed Value | `NumberParameter<uint64>` (default `std::mt19937::default_seed`) | Linked to "Use Seed"; enabled when it is on. |
+| Stored Seed Value Array Name | `DataObjectNameParameter` (default `"MTRSim SeedValue"`) | Top-level UInt64 array that records the seed actually used. |
 | Generate Polar Coloring | `BoolParameter` (default `false`) | Gates creation of the RGB output array. |
 | *nuggetVariance* | — | **Not exposed.** Unused by the simulation. |
+
+> **Random seed pattern.** Follow the established simplnx convention (e.g.
+> `MergeTwinsFilter`): a linkable `BoolParameter` "Use Seed for Random
+> Generation" gates a `NumberParameter<uint64>` "Seed Value", with
+> `params.linkParameters(k_UseSeed_Key, k_SeedValue_Key, true)`. In
+> `executeImpl`, if "Use Seed" is off the seed is taken from
+> `std::chrono::steady_clock::now().time_since_epoch().count()`. The seed
+> actually used is written into a top-level UInt64 array (created in preflight
+> via `CreateArrayAction`, named by "Stored Seed Value Array Name") for
+> reproducibility, then passed to `std::mt19937_64`.
 
 > **Units note:** `Physical Size`, `Physical Spacing`, and the `Theta List`
 > correlation lengths must share the same length unit. Internally the
@@ -76,16 +88,16 @@ work is implemented and verified.
 The filter **creates a new** Image Geometry (it does not write into the ODF
 geometry):
 
-- **Geometry:** dims `n_i = round(Size_i / Spacing_i)`, origin `(0,0,0)`,
-  spacing = `Physical Spacing`. Created in preflight via
-  `CreateImageGeometryAction` (all inputs are parameters, so dims are known at
-  preflight).
+- **Geometry:** default name **`MTR Microstructure`**; dims
+  `n_i = round(Size_i / Spacing_i)`, origin `(0,0,0)`, spacing =
+  `Physical Spacing`. Created in preflight via `CreateImageGeometryAction` (all
+  inputs are parameters, so dims are known at preflight).
 - **Cell arrays:**
-  | Array | Type | Comps | Notes |
+  | Array (default name) | Type | Comps | Notes |
   |---|---|---|---|
-  | MTR Index | Int32 | 1 | Values start at **1** (0 reserved, matches FeatureIds convention). |
-  | Euler Angles | Float32 | 3 | Bunge `phi1, PHI, phi2` [radians]. |
-  | Polar Colors | UInt8 | 3 | RGB. **Created only when** "Generate Polar Coloring" is on. |
+  | `MTRIds` | Int32 | 1 | Values start at **1** (0 reserved, matches FeatureIds convention). |
+  | `Eulers` | Float32 | 3 | Bunge `phi1, PHI, phi2` [radians]. |
+  | `Polar Colors` | UInt8 | 3 | RGB. **Created only when** "Generate Polar Coloring" is on. |
 
 Downstream, users can run the stock **Compute IPF Colors** and **Write Image**
 filters for additional visualization; only the bespoke MATLAB polar coloring is
@@ -114,12 +126,13 @@ built in.
 
 ### Concerns that drive correctness
 
-1. **Voxel index remapping (highest risk).** The standalone driver iterates
-   `z → x → y` (`main.cpp`), producing `k = ((z)·nx + x)·ny + y`. A DREAM3D
-   ImageGeometry cell index is `(z·ny + y)·nx + x`. These orderings differ — the
-   algorithm must remap sim-order → geometry-order when filling cell arrays, or
-   the field comes out transposed. This remap gets a dedicated small-grid
-   deterministic test.
+1. **Voxel index remapping (highest risk).** SIMPLNX requires cell data laid
+   out **`z` (slowest) → `y` → `x` (fastest)** in memory — index
+   `(z·ny + y)·nx + x`. The standalone driver instead iterates `z → x → y`
+   (`main.cpp`), producing `k = ((z)·nx + x)·ny + y` — the column-major MATLAB
+   ordering. The algorithm must remap the simulation's `z,x,y` output into the
+   SIMPLNX `z,y,x` layout when filling cell arrays, or the field comes out
+   transposed. This remap gets a dedicated small-grid deterministic test.
 2. **`buildUniformODF()` exposure.** Currently in `main.cpp`'s anonymous
    namespace, hardcoded to 72×36×72. Move it into `LibMTRSim` and
    **parameterize by grid dims** so the uniform reference is derived from the
