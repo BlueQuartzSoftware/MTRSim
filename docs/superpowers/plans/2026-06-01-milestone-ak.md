@@ -6,7 +6,11 @@
 
 **Architecture:** The heavy lifting is consolidated into a single reusable LibMTRSim entry point `simulateMTR()` that runs PGRF → orientation sampling → per-voxel assignment and returns results in **SIMPLNX z,y,x voxel order**. LibMTRSim Catch2 tests (in `tests/`) cover the numerics (deterministic helpers + a statistical end-to-end test reusing the ODF exemplar). The filter is a thin SIMPLNX wrapper (`MTRSimFilter` + `MTRSim` algorithm) whose tests (in `test/`) only verify the filter's value-add: parameter→params mapping, ODF-geometry→component reconstruction, array creation/types/names/1-based ids, seed handling, preflight validation, and the optional color array.
 
-**Tech Stack:** C++17, Eigen, simplnx filter framework, Catch2 v2 (note: `Catch::Approx`, not `Approx`), CMake, GitHub Actions.
+**Tech Stack:** C++17, Eigen, simplnx filter framework, Catch2 v2 (this repo uses the **bare `Approx`** matcher — `Approx` does NOT compile here), CMake, GitHub Actions.
+
+> **Correction applied during execution:** all Catch2 tests in this plan use
+> bare `Approx(...)`, not `Approx(...)`. The standalone LibMTRSim source
+> list is in `src/LibMTRSim/CMakeLists.txt` (not `LibMTRSim.cmake`).
 
 ---
 
@@ -69,7 +73,7 @@ simplnx checkout is at `/Users/mjackson/Workspace7/simplnx`):
 - `src/app/main.cpp` — call `simulateMTR()` instead of inline orchestration.
 - `MTRSimPlugin.cmake` — add `MTRSimDriver.{hpp,cpp}` to LibMTRSim sources;
   add `MTRSimFilter`/`MTRSim` to `FilterList`/`AlgorithmList`.
-- `LibMTRSim.cmake` — add `MTRSimDriver.{hpp,cpp}` to the standalone library.
+- `src/LibMTRSim/CMakeLists.txt` — add `MTRSimDriver.{hpp,cpp}` to the standalone library source/header lists.
 - `tests/CMakeLists.txt` — add `test_mtrsim_driver.cpp`.
 - `test/CMakeLists.txt` — add `MTRSimTest.cpp`.
 
@@ -194,13 +198,13 @@ TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]") {
   REQUIRE(uni.phi1Bins.size() == 72 * 36 * 72);
 
   // Uniform mass: every bin equal, sums to 1.
-  REQUIRE(uni.odfVal.sum() == Catch::Approx(1.0));
-  REQUIRE(uni.odfVal[0] == Catch::Approx(1.0 / (72.0 * 36.0 * 72.0)));
+  REQUIRE(uni.odfVal.sum() == Approx(1.0));
+  REQUIRE(uni.odfVal[0] == Approx(1.0 / (72.0 * 36.0 * 72.0)));
 
   // First bin centre: i1=iPHI=i2=0 -> all 0.5 * step.
-  REQUIRE(uni.phi1Bins[0] == Catch::Approx(0.5 * 2.0 * std::numbers::pi / 72.0));
-  REQUIRE(uni.phiBins[0] == Catch::Approx(0.5 * std::numbers::pi / 36.0));
-  REQUIRE(uni.phi2Bins[0] == Catch::Approx(0.5 * 2.0 * std::numbers::pi / 72.0));
+  REQUIRE(uni.phi1Bins[0] == Approx(0.5 * 2.0 * std::numbers::pi / 72.0));
+  REQUIRE(uni.phiBins[0] == Approx(0.5 * std::numbers::pi / 36.0));
+  REQUIRE(uni.phi2Bins[0] == Approx(0.5 * 2.0 * std::numbers::pi / 72.0));
 }
 ```
 
@@ -266,12 +270,12 @@ TEST_CASE("gridToODFComponent derives bin centres in radians and normalizes", "[
       mtrsim::gridToODFComponent(values, n1, nPHI, n2, 5.0, 5.0, 5.0);
 
   REQUIRE(c.odfVal.size() == n1 * nPHI * n2);
-  REQUIRE(c.odfVal.sum() == Catch::Approx(1.0)); // normalized
+  REQUIRE(c.odfVal.sum() == Approx(1.0)); // normalized
   // 5 deg step -> first bin centre 2.5 deg in radians.
   const double deg2rad = std::numbers::pi / 180.0;
-  REQUIRE(c.phi1Bins[0] == Catch::Approx(2.5 * deg2rad));
-  REQUIRE(c.phiBins[0] == Catch::Approx(2.5 * deg2rad));
-  REQUIRE(c.phi2Bins[0] == Catch::Approx(2.5 * deg2rad));
+  REQUIRE(c.phi1Bins[0] == Approx(2.5 * deg2rad));
+  REQUIRE(c.phiBins[0] == Approx(2.5 * deg2rad));
+  REQUIRE(c.phi2Bins[0] == Approx(2.5 * deg2rad));
 }
 ```
 
@@ -569,9 +573,9 @@ TEST_CASE("simulateMTR reproduces target volume fractions (statistical)", "[mtrs
   // Empirical volume fractions within tolerance of targets.
   std::array<int, 3> counts{0, 0, 0};
   for (int v : r.mtrIndex) { counts[v - 1]++; }
-  REQUIRE(static_cast<double>(counts[0]) / N == Catch::Approx(0.30).margin(0.05));
-  REQUIRE(static_cast<double>(counts[1]) / N == Catch::Approx(0.35).margin(0.05));
-  REQUIRE(static_cast<double>(counts[2]) / N == Catch::Approx(0.35).margin(0.05));
+  REQUIRE(static_cast<double>(counts[0]) / N == Approx(0.30).margin(0.05));
+  REQUIRE(static_cast<double>(counts[1]) / N == Approx(0.35).margin(0.05));
+  REQUIRE(static_cast<double>(counts[2]) / N == Approx(0.35).margin(0.05));
 
   // Euler ranges valid.
   for (double a : r.phi1) { REQUIRE(a >= 0.0); REQUIRE(a <= 2.0 * std::numbers::pi); }
@@ -821,31 +825,31 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   const usize numComponents = pOdfArrays.size();
   if (numComponents < 2)
   {
-    return {MakeErrorResult<OutputActions>(-13001, "MTRSim requires at least 2 ODF component arrays.")};
+    return {MakeErrorResult<OutputActions>(-13501, "MTRSim requires at least 2 ODF component arrays.")};
   }
 
   // Volume fractions: exactly 1 row, numComponents columns, sum ~ 1.0.
   if (pVolumeFractions.size() != 1 || pVolumeFractions[0].size() != numComponents)
   {
-    return {MakeErrorResult<OutputActions>(-13002, fmt::format("Volume Fraction must be 1 row x {} columns (one per ODF component).", numComponents))};
+    return {MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one per ODF component).", numComponents))};
   }
   double vfSum = 0.0;
   for (double v : pVolumeFractions[0]) { vfSum += v; }
   if (std::abs(vfSum - 1.0) > 1.0e-3)
   {
-    return {MakeErrorResult<OutputActions>(-13003, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
+    return {MakeErrorResult<OutputActions>(-13503, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
   }
 
   // Theta list: >= numComponents - 1 rows, 3 columns each.
   if (pThetaList.size() < numComponents - 1)
   {
-    return {MakeErrorResult<OutputActions>(-13004, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
+    return {MakeErrorResult<OutputActions>(-13504, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
   }
   for (const auto& row : pThetaList)
   {
     if (row.size() != 3)
     {
-      return {MakeErrorResult<OutputActions>(-13005, "Each Theta List row must have exactly 3 columns.")};
+      return {MakeErrorResult<OutputActions>(-13505, "Each Theta List row must have exactly 3 columns.")};
     }
   }
 
@@ -1005,8 +1009,8 @@ TEST_CASE("MTRSimFilter: preflight rejects mismatched volume fraction count", "[
 Run: `cmake --build /Users/mjackson/Workspace7/simplnx/build --config Release`
 then `ctest --test-dir /Users/mjackson/Workspace7/simplnx/build -R MTRSim --output-on-failure`
 Expected: the mismatch test PASSES (preflight returns invalid). Also add and run
-analogous tests for: theta rows `< numComponents-1` (error -13004), VF sum ≠ 1
-(error -13003). Each follows the same builder with one field changed.
+analogous tests for: theta rows `< numComponents-1` (error -13504), VF sum ≠ 1
+(error -13503). Each follows the same builder with one field changed.
 
 - [ ] **Step 8: Commit**
 
@@ -1090,7 +1094,7 @@ Result<> MTRSim::operator()()
     sim = mtrsim::simulateMTR(params, components, rng, n1, nPHI, n2);
   } catch (const std::exception& e)
   {
-    return MakeErrorResult(-13050, fmt::format("MTR simulation failed: {}", e.what()));
+    return MakeErrorResult(-13550, fmt::format("MTR simulation failed: {}", e.what()));
   }
 
   if (m_ShouldCancel) { return {}; }
@@ -1166,8 +1170,8 @@ TEST_CASE("MTRSimFilter: execute produces valid MTR ids + Eulers", "[MTRSim]")
     counts[v - 1]++;
   }
   const double n = static_cast<double>(ids.getNumberOfTuples());
-  REQUIRE(counts[0] / n == Catch::Approx(0.30).margin(0.06));
-  REQUIRE(counts[1] / n == Catch::Approx(0.35).margin(0.06));
+  REQUIRE(counts[0] / n == Approx(0.30).margin(0.06));
+  REQUIRE(counts[1] / n == Approx(0.35).margin(0.06));
 
   // Seed array recorded.
   auto& seedArr = ds.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));

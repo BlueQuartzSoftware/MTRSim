@@ -246,12 +246,16 @@ int main(int argc, char **argv) {
   constexpr int k_OdfBinsPhi2 = 72;
 
   spdlog::info("Running MTR simulation...");
-  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, k_OdfBinsPhi1, k_OdfBinsPHI, k_OdfBinsPhi2);
+  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(
+      params, odfComponents, rng, k_OdfBinsPhi1, k_OdfBinsPHI, k_OdfBinsPhi2);
   spdlog::info("MTR simulation complete.");
 
-  Eigen::VectorXd phi1Vec = Eigen::Map<Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(sim.phi1.size()));
-  Eigen::VectorXd phiVec  = Eigen::Map<Eigen::VectorXd>(sim.phi.data(),  static_cast<Eigen::Index>(sim.phi.size()));
-  Eigen::VectorXd phi2Vec = Eigen::Map<Eigen::VectorXd>(sim.phi2.data(), static_cast<Eigen::Index>(sim.phi2.size()));
+  Eigen::VectorXd phi1Vec = Eigen::Map<Eigen::VectorXd>(
+      sim.phi1.data(), static_cast<Eigen::Index>(sim.phi1.size()));
+  Eigen::VectorXd phiVec = Eigen::Map<Eigen::VectorXd>(
+      sim.phi.data(), static_cast<Eigen::Index>(sim.phi.size()));
+  Eigen::VectorXd phi2Vec = Eigen::Map<Eigen::VectorXd>(
+      sim.phi2.data(), static_cast<Eigen::Index>(sim.phi2.size()));
 
   // ── Write IPF map PNG
   // ────────────────────────────────────────────────────────
@@ -286,7 +290,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < simN; ++i) {
       csv << spatialCoords(i, 0) << ',' << spatialCoords(i, 1) << ','
           << spatialCoords(i, 2) << ',' << phi1Vec[i] << ',' << phiVec[i] << ','
-          << phi2Vec[i] << ',' << sim.mtrIndex[static_cast<std::size_t>(i)] << '\n';
+          << phi2Vec[i] << ',' << sim.mtrIndex[static_cast<std::size_t>(i)]
+          << '\n';
     }
   }
   spdlog::info("Results CSV written.");

@@ -9,11 +9,9 @@
 #include <cstdint>
 #include <string>
 
-namespace nx::core
-{
+namespace nx::core {
 
-struct MTRSIM_EXPORT ComputeODFInputValues
-{
+struct MTRSIM_EXPORT ComputeODFInputValues {
   bool applySmoothing;
   double binSizeDeg;
   bool useMask;
@@ -40,24 +38,26 @@ struct MTRSIM_EXPORT ComputeODFInputValues
  * @brief This algorithm implements support code for the ComputeODFFilter
  */
 
-class MTRSIM_EXPORT ComputeODF
-{
+class MTRSIM_EXPORT ComputeODF {
 public:
-  ComputeODF(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, ComputeODFInputValues* inputValues);
+  ComputeODF(DataStructure &dataStructure,
+             const IFilter::MessageHandler &mesgHandler,
+             const std::atomic_bool &shouldCancel,
+             ComputeODFInputValues *inputValues);
   ~ComputeODF() noexcept;
 
-  ComputeODF(const ComputeODF&) = delete;
-  ComputeODF(ComputeODF&&) noexcept = delete;
-  ComputeODF& operator=(const ComputeODF&) = delete;
-  ComputeODF& operator=(ComputeODF&&) noexcept = delete;
+  ComputeODF(const ComputeODF &) = delete;
+  ComputeODF(ComputeODF &&) noexcept = delete;
+  ComputeODF &operator=(const ComputeODF &) = delete;
+  ComputeODF &operator=(ComputeODF &&) noexcept = delete;
 
   Result<> operator()();
 
 private:
-  DataStructure& m_DataStructure;
-  const ComputeODFInputValues* m_InputValues = nullptr;
-  const std::atomic_bool& m_ShouldCancel;
-  const IFilter::MessageHandler& m_MessageHandler;
+  DataStructure &m_DataStructure;
+  const ComputeODFInputValues *m_InputValues = nullptr;
+  const std::atomic_bool &m_ShouldCancel;
+  const IFilter::MessageHandler &m_MessageHandler;
 };
 
 } // namespace nx::core

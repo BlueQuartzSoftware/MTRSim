@@ -4,17 +4,16 @@
 
 #include "simplnx/Plugin/AbstractPlugin.hpp"
 
-class MTRSIM_EXPORT MTRSimPlugin : public nx::core::AbstractPlugin
-{
+class MTRSIM_EXPORT MTRSimPlugin : public nx::core::AbstractPlugin {
 public:
   MTRSimPlugin();
   ~MTRSimPlugin() override;
 
-  MTRSimPlugin(const MTRSimPlugin&) = delete;
-  MTRSimPlugin(MTRSimPlugin&&) = delete;
+  MTRSimPlugin(const MTRSimPlugin &) = delete;
+  MTRSimPlugin(MTRSimPlugin &&) = delete;
 
-  MTRSimPlugin& operator=(const MTRSimPlugin&) = delete;
-  MTRSimPlugin& operator=(MTRSimPlugin&&) = delete;
+  MTRSimPlugin &operator=(const MTRSimPlugin &) = delete;
+  MTRSimPlugin &operator=(MTRSimPlugin &&) = delete;
 
   /**
    * @brief Returns a map of UUIDs as strings, where SIMPL UUIDs are keys to

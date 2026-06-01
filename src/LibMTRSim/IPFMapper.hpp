@@ -17,8 +17,10 @@ namespace mtrsim {
  * EbsdLib's `LaueOps` and `ebsdlib::CrystalStructure::*` codes directly.
  */
 enum class CrystalSystem {
-  HCP, ///< Hexagonal close-packed (maps to ebsdlib::CrystalStructure::Hexagonal_High)
-  FCC, ///< Face-centred cubic    (maps to ebsdlib::CrystalStructure::Cubic_High)
+  HCP, ///< Hexagonal close-packed (maps to
+       ///< ebsdlib::CrystalStructure::Hexagonal_High)
+  FCC, ///< Face-centred cubic    (maps to
+       ///< ebsdlib::CrystalStructure::Cubic_High)
 };
 
 /**

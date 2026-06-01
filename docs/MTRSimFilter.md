@@ -57,14 +57,14 @@ A scalar `UInt64` array (default name `MTRSim SeedValue`) is created at the top 
 
 | Code | Meaning |
 | --- | --- |
-| `-13001` | (Preflight) Fewer than 2 ODF component arrays were selected. MTRSim requires at least 2 components. |
-| `-13002` | (Preflight) The **Volume Fraction** table must have exactly 1 row and exactly one column per ODF component. |
-| `-13007` | (Preflight) One or more Volume Fraction values is outside the range [0, 1]. |
-| `-13003` | (Preflight) Volume Fraction values do not sum to 1.0 (tolerance: 1 × 10⁻³). |
-| `-13004` | (Preflight) The **Theta List** has fewer than (components − 1) rows. Each pair of adjacent components requires one latent Gaussian field with its own correlation lengths. |
-| `-13005` | (Preflight) A row in the **Theta List** does not have exactly 3 columns (`theta_x`, `theta_y`, `theta_z`). |
-| `-13006` | (Preflight) Physical Spacing X or Y is ≤ 0. Both must be strictly positive; the Z spacing is unused when Physical Size Z ≤ 0. |
-| `-13050` | (Execute) The core MTR simulation threw an unexpected exception. The error message includes the underlying cause. |
+| `-13501` | (Preflight) Fewer than 2 ODF component arrays were selected. MTRSim requires at least 2 components. |
+| `-13502` | (Preflight) The **Volume Fraction** table must have exactly 1 row and exactly one column per ODF component. |
+| `-13507` | (Preflight) One or more Volume Fraction values is outside the range [0, 1]. |
+| `-13503` | (Preflight) Volume Fraction values do not sum to 1.0 (tolerance: 1 × 10⁻³). |
+| `-13504` | (Preflight) The **Theta List** has fewer than (components − 1) rows. Each pair of adjacent components requires one latent Gaussian field with its own correlation lengths. |
+| `-13505` | (Preflight) A row in the **Theta List** does not have exactly 3 columns (`theta_x`, `theta_y`, `theta_z`). |
+| `-13506` | (Preflight) Physical Spacing X or Y is ≤ 0. Both must be strictly positive; the Z spacing is unused when Physical Size Z ≤ 0. |
+| `-13550` | (Execute) The core MTR simulation threw an unexpected exception. The error message includes the underlying cause. |
 
 % Auto generated parameter table will be inserted here
 
