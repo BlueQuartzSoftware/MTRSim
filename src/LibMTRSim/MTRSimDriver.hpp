@@ -6,6 +6,7 @@
 #include "SimulationParams.hpp"
 
 #include <Eigen/Dense>
+#include <cstddef>
 #include <cstdint>
 #include <random>
 #include <vector>
@@ -33,5 +34,29 @@ LIBMTRSIM_EXPORT ODFComponent buildUniformODF(int n1, int nPHI, int n2);
  * @return ODFComponent with bin centres [rad] and values normalized to sum 1.
  */
 LIBMTRSIM_EXPORT ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2);
+
+/**
+ * @brief Remap a per-voxel vector from simulation order to SIMPLNX z,y,x order.
+ *
+ * Simulation order:  kSim = iz*(nx*ny) + ix*ny + iy   (y fastest).
+ * SIMPLNX order:     kNx  = iz*(ny*nx) + iy*nx + ix   (x fastest).
+ *   out[kNx] = in[kSim].
+ *
+ * @tparam T element type (int or double).
+ */
+template <typename T>
+std::vector<T> remapSimToZYX(const std::vector<T>& in, int nx, int ny, int nz) {
+  std::vector<T> out(in.size());
+  for (int iz = 0; iz < nz; ++iz) {
+    for (int iy = 0; iy < ny; ++iy) {
+      for (int ix = 0; ix < nx; ++ix) {
+        const std::size_t kSim = static_cast<std::size_t>(iz) * nx * ny + static_cast<std::size_t>(ix) * ny + iy;
+        const std::size_t kNx = static_cast<std::size_t>(iz) * ny * nx + static_cast<std::size_t>(iy) * nx + ix;
+        out[kNx] = in[kSim];
+      }
+    }
+  }
+  return out;
+}
 
 } // namespace mtrsim
