@@ -23,6 +23,8 @@
 
 #include <fmt/format.h>
 
+#include <array>
+#include <cmath>
 #include <vector>
 
 using namespace nx::core;
@@ -114,6 +116,107 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects mismatched Volume Fraction column count
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[MTRSim][MTRSimFilter]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+  // Fill every component array with a uniform value so ODF sampling is well-defined.
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    arr.fill(1.0);
+  }
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  // Modest domain: 100x100 = 10000 voxels (Z=0 -> single layer).
+  args.insertOrAssign(MTRSimFilter::k_PhysicalSize_Key, std::vector<float32>{2.0f, 2.0f, 0.0f});
+  args.insertOrAssign(MTRSimFilter::k_PhysicalSpacing_Key, std::vector<float32>{0.02f, 0.02f, 0.02f});
+  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.30, 0.35, 0.35}});
+  args.insertOrAssign(MTRSimFilter::k_UseSeed_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+
+  auto executeResult = filter.execute(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  // Output ImageGeom exists.
+  const DataPath outGeomPath({"MTR Microstructure"});
+  REQUIRE_NOTHROW(dataStructure.getDataRefAs<ImageGeom>(outGeomPath));
+
+  const DataPath cellAm = outGeomPath.createChildPath("Cell Data");
+  const usize expectedTuples = 100 * 100;
+
+  // MTRIds: Int32, 1 component, 10000 tuples.
+  auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
+  REQUIRE(mtrIds.getNumberOfComponents() == 1);
+  REQUIRE(mtrIds.getNumberOfTuples() == expectedTuples);
+
+  // Eulers: Float32, 3 components, 10000 tuples.
+  auto& eulers = dataStructure.getDataRefAs<Float32Array>(cellAm.createChildPath("Eulers"));
+  REQUIRE(eulers.getNumberOfComponents() == 3);
+  REQUIRE(eulers.getNumberOfTuples() == expectedTuples);
+
+  // MTR ids in {1,2,3}; at least 2 distinct ids appear. Also accumulate empirical
+  // volume fractions for a loose wiring check.
+  const auto& mtrStore = mtrIds.getDataStoreRef();
+  std::array<usize, 4> counts = {0, 0, 0, 0};
+  for(usize i = 0; i < mtrStore.getSize(); ++i)
+  {
+    const int32 id = mtrStore[i];
+    REQUIRE(id >= 1);
+    REQUIRE(id <= 3);
+    counts[static_cast<usize>(id)]++;
+  }
+  usize distinct = 0;
+  for(usize id = 1; id <= 3; ++id)
+  {
+    if(counts[id] > 0)
+    {
+      distinct++;
+    }
+  }
+  REQUIRE(distinct >= 2);
+
+  // Euler values finite and within Bunge bounds (interleaved 3/voxel).
+  constexpr float twoPi = 2.0f * static_cast<float>(M_PI);
+  constexpr float pi = static_cast<float>(M_PI);
+  const auto& eulerStore = eulers.getDataStoreRef();
+  for(usize t = 0; t < expectedTuples; ++t)
+  {
+    const float phi1 = eulerStore[t * 3 + 0];
+    const float Phi = eulerStore[t * 3 + 1];
+    const float phi2 = eulerStore[t * 3 + 2];
+    REQUIRE(std::isfinite(phi1));
+    REQUIRE(std::isfinite(Phi));
+    REQUIRE(std::isfinite(phi2));
+    REQUIRE(phi1 >= 0.0f);
+    REQUIRE(phi1 <= twoPi);
+    REQUIRE(Phi >= 0.0f);
+    REQUIRE(Phi <= pi);
+    REQUIRE(phi2 >= 0.0f);
+    REQUIRE(phi2 <= twoPi);
+  }
+
+  // Seed array records 42.
+  auto& seedArray = dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
+  REQUIRE(seedArray[0] == 42);
+
+  // Loose volume-fraction wiring check (NOT a statistics check; rigorous VF
+  // validation lives in the LibMTRSim statistical test). A 100x100 correlated
+  // field has real variance, so use a generous margin of 0.12.
+  const std::array<double, 4> targets = {0.0, 0.30, 0.35, 0.35};
+  for(usize id = 1; id <= 3; ++id)
+  {
+    const double empirical = static_cast<double>(counts[id]) / static_cast<double>(expectedTuples);
+    REQUIRE(empirical == Approx(targets[id]).margin(0.12));
+  }
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Rejects too few Theta List rows", "[MTRSim][MTRSimFilter][ErrorPath]")

@@ -161,6 +161,13 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   {
     return {MakeErrorResult<OutputActions>(-13003, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
   }
+  for(double v : pVolumeFractions[0])
+  {
+    if(v < 0.0 || v > 1.0)
+    {
+      return {MakeErrorResult<OutputActions>(-13007, fmt::format("Each Volume Fraction value must be in the range [0, 1] (got {:.4f}).", v))};
+    }
+  }
   if(pThetaList.size() < numComponents - 1)
   {
     return {MakeErrorResult<OutputActions>(-13004, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
