@@ -3,8 +3,10 @@
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 
+#include "LibMTRSim/IPFMapper.hpp"
 #include "LibMTRSim/MTRSimDriver.hpp"
 
+#include <Eigen/Dense>
 #include <fmt/format.h>
 
 #include <exception>
@@ -102,7 +104,38 @@ Result<> MTRSim::operator()()
   }
 
   m_MessageHandler(IFilter::Message::Type::Info, "MTR simulation complete.");
-  // Polar coloring (Task 8) is handled in a later task; the optional array (if
-  // requested) is left created-but-unfilled here and populated next task.
+
+  if(m_InputValues->generatePolarColoring)
+  {
+    m_MessageHandler(IFilter::Message::Type::Info, "Computing polar coloring...");
+    auto colorResult = applyPolarColoring(sim, cellAm);
+    if(colorResult.invalid())
+    {
+      return colorResult;
+    }
+  }
+
+  return {};
+}
+
+// -----------------------------------------------------------------------------
+Result<> MTRSim::applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataPath& cellAttrMatPath)
+{
+  const std::size_t N = sim.phi1.size();
+  Eigen::VectorXd phi1 = Eigen::Map<const Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(N));
+  Eigen::VectorXd phi = Eigen::Map<const Eigen::VectorXd>(sim.phi.data(), static_cast<Eigen::Index>(N));
+  Eigen::VectorXd phi2 = Eigen::Map<const Eigen::VectorXd>(sim.phi2.data(), static_cast<Eigen::Index>(N));
+
+  mtrsim::IPFMapper mapper{mtrsim::CrystalSystem::HCP};
+  const std::vector<mtrsim::RGBColor> colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, mtrsim::IPFColorScheme::MatLab);
+
+  auto& rgb = m_DataStructure.getDataRefAs<UInt8Array>(cellAttrMatPath.createChildPath(m_InputValues->polarColorsArrayName));
+  auto& store = rgb.getDataStoreRef();
+  for(std::size_t i = 0; i < N; ++i)
+  {
+    store[i * 3 + 0] = colors[i].r;
+    store[i * 3 + 1] = colors[i].g;
+    store[i * 3 + 2] = colors[i].b;
+  }
   return {};
 }

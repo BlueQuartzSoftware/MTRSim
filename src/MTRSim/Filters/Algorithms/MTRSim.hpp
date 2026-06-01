@@ -6,6 +6,8 @@
 #include "simplnx/DataStructure/DataStructure.hpp"
 #include "simplnx/Filter/IFilter.hpp"
 
+#include "LibMTRSim/MTRSimDriver.hpp"
+
 #include <vector>
 
 namespace nx::core
@@ -48,6 +50,7 @@ public:
   Result<> operator()();
 
 private:
+  Result<> applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataPath& cellAttrMatPath);
   DataStructure& m_DataStructure;
   const MTRSimInputValues* m_InputValues = nullptr;
   const std::atomic_bool& m_ShouldCancel;

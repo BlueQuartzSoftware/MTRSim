@@ -248,6 +248,72 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0", "[
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
 }
 
+TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar Colors array", "[MTRSim][MTRSimFilter]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    arr.fill(1.0);
+  }
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  args.insertOrAssign(MTRSimFilter::k_GeneratePolarColoring_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_UseSeed_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+
+  auto executeResult = filter.execute(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  constexpr usize expectedTuples = 100 * 100;
+
+  auto& rgb = dataStructure.getDataRefAs<UInt8Array>(cellAm.createChildPath("Polar Colors"));
+  REQUIRE(rgb.getNumberOfComponents() == 3);
+  REQUIRE(rgb.getNumberOfTuples() == expectedTuples);
+  uint64 sum = 0;
+  for(usize i = 0; i < rgb.getSize(); ++i)
+  {
+    sum += rgb[i];
+  }
+  REQUIRE(sum > 0);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring OFF omits Polar Colors array", "[MTRSim][MTRSimFilter]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    arr.fill(1.0);
+  }
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  // k_GeneratePolarColoring_Key is false by default in MakeValidArgs
+  args.insertOrAssign(MTRSimFilter::k_UseSeed_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+
+  auto executeResult = filter.execute(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  REQUIRE(dataStructure.getDataAs<UInt8Array>(cellAm.createChildPath("Polar Colors")) == nullptr);
+}
+
 TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count", "[MTRSim][MTRSimFilter][ErrorPath]")
 {
   UnitTest::LoadPlugins();
