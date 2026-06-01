@@ -7,6 +7,7 @@
 # Define the list of unit test source files
 set(${PLUGIN_NAME}UnitTest_SRCS
     ComputeODFTest.cpp
+    MTRSimTest.cpp
     ReadMTRSimODFTest.cpp
     WriteMTRSimODFTest.cpp
 )

@@ -31,6 +31,7 @@ set(${PLUGIN_NAME}_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 # MTRSim/src/MTRSim/Filters/ directory.
 set(FilterList
     ComputeODFFilter
+    MTRSimFilter
     ReadMTRSimODFFilter
     WriteMTRSimODFFilter
 )
@@ -44,6 +45,7 @@ set(ActionList
 # ------------------------------------------------------------------------------
 set(AlgorithmList
     ComputeODF
+    MTRSim
     ReadMTRSimODF
     WriteMTRSimODF
 )
