@@ -81,7 +81,7 @@ Result<> MTRSim::operator()() {
   try {
     sim = mtrsim::simulateMTR(params, components, rng, n1, nPHI, n2);
   } catch (const std::exception &e) {
-    return MakeErrorResult(-13050,
+    return MakeErrorResult(-13550,
                            fmt::format("MTR simulation failed: {}", e.what()));
   }
 

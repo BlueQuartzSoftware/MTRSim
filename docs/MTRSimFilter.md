@@ -8,9 +8,21 @@ MTRSim (Generate)
 
 This **Filter** runs a plurigaussian random field (PGRF) Micro-Texture Region (MTR) simulation to produce a fully synthetic crystallographic microstructure. Each voxel of the output **Image Geometry** is assigned to one of N microtexture components via correlated latent Gaussian fields and a winner-takes-all assignment rule; a crystallographic orientation is then sampled from that component's Orientation Distribution Function (ODF). The result is a synthetic microstructure with per-voxel MTR ids and Bunge Euler angles (and optional polar coloring), suitable for downstream texture analysis or as a training dataset.
 
-The algorithm reproduces the behavior of the MATLAB MTRSim research code (`matlab/simulateMTR.m`). Input ODFs are typically prepared by the **Read MTRSim ODF (HDF5)** or **Compute ODF From Euler Angles** filters; the bin layout and axis conventions defined by those filters are used directly by this filter.
+![MTRSim inputs and the synthetic microstructure it generates](Images/mtrsim_overview.png)
+
+*From per-component volume fractions, spatial correlation lengths (θ), and per-component ODFs (left), MTRSim generates a spatially-correlated, IPF-colored polycrystal cross-section (right). HCP α-titanium is shown.*
+
+The algorithm reproduces the behavior of the MATLAB MTRSim research code (`matlab/simulate_MTRs.m`). Input ODFs are typically prepared by the **Read MTRSim ODF (HDF5)** or **Compute ODF From Euler Angles** filters; the bin layout and axis conventions defined by those filters are used directly by this filter.
+
+![An orientation distribution function over Bunge Euler space](Images/mtrsim_odf_euler_space.png)
+
+*An Orientation Distribution Function (ODF) over Bunge Euler space. One ODF per MTR component defines the crystallographic texture from which each voxel's orientation is drawn.*
 
 ### Algorithm Overview
+
+![How MTRSim works](Images/mtrsim_algorithm.png)
+
+*The MTRSim pipeline: correlated latent Gaussian fields partition the volume into MTR components, then a crystallographic orientation is sampled from each component's ODF.*
 
 The simulation proceeds in the following steps:
 
