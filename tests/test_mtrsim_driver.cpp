@@ -88,6 +88,11 @@ TEST_CASE("simulateMTR reproduces target volume fractions (statistical)", "[mtrs
   REQUIRE(static_cast<double>(counts[1]) / N == Approx(0.35).margin(0.05));
   REQUIRE(static_cast<double>(counts[2]) / N == Approx(0.35).margin(0.05));
 
+  REQUIRE(static_cast<int>(r.phi1.size()) == N);
+  REQUIRE(static_cast<int>(r.phi.size()) == N);
+  REQUIRE(static_cast<int>(r.phi2.size()) == N);
+
   for (double a : r.phi1) { REQUIRE(a >= 0.0); REQUIRE(a <= 2.0 * std::numbers::pi); }
   for (double a : r.phi) { REQUIRE(a >= 0.0); REQUIRE(a <= std::numbers::pi); }
+  for (double a : r.phi2) { REQUIRE(a >= 0.0); REQUIRE(a <= 2.0 * std::numbers::pi); }
 }

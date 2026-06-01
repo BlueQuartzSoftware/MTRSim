@@ -85,6 +85,10 @@ MTRSimResult simulateMTR(const SimulationParams& params,
   PGRFSimulation pgrf{rng};
   const PGRFResult pgrf_result = pgrf.run(params); // throws on bad dims
 
+  if (static_cast<int>(pgrf_result.mtrIndex.size()) != N) {
+    throw std::runtime_error("simulateMTR: PGRF result size does not match grid dimensions");
+  }
+
   // 2. Sample N orientations per component against the uniform reference.
   const ODFComponent uniformOdf = buildUniformODF(n1, nPHI, n2);
   const int numComponents = static_cast<int>(odfComponents.size());

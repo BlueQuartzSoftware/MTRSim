@@ -14,7 +14,6 @@
 
 #include <cmath>
 #include <fstream>
-#include <numbers>
 #include <random>
 #include <stdexcept>
 #include <string>
@@ -203,19 +202,20 @@ int main(int argc, char **argv) {
   spdlog::info("  dx={}  dy={}  dz={} [mm]", params.dx, params.dy, params.dz);
 
   // ── Build spatial coordinate matrix
-  // ────────────────────────────────────────── Ordering matches
-  // simulate_MTRs.m: z outer → x middle → y inner.
-  //   s(k) = [j*dx,  i*dy,  zix*dz]
-  //          j ∈ [1,nx],  i ∈ [1,ny],  zix ∈ [1,nz]
+  // ──────────────────────────────────────────
+  // Row order matches simulateMTR's SIMPLNX z,y,x output: z slowest, x fastest.
+  //   k = iz*(ny*nx) + iy*nx + ix
+  //   spatialCoords(k) = [(ix+1)*dx, (iy+1)*dy, (iz+1)*dz]
+  // 1-based coordinate values are preserved (matching the original convention).
   Eigen::MatrixXd spatialCoords(N, 3);
   {
-    int k = 0;
-    for (int zix = 1; zix <= nz; ++zix) {
-      for (int j = 1; j <= nx; ++j) {
-        for (int i = 1; i <= ny; ++i, ++k) {
-          spatialCoords(k, 0) = j * params.dx;
-          spatialCoords(k, 1) = i * params.dy;
-          spatialCoords(k, 2) = zix * params.dz;
+    for (int iz = 0; iz < nz; ++iz) {
+      for (int iy = 0; iy < ny; ++iy) {
+        for (int ix = 0; ix < nx; ++ix) {
+          const int k = iz * (ny * nx) + iy * nx + ix;
+          spatialCoords(k, 0) = (ix + 1) * params.dx;
+          spatialCoords(k, 1) = (iy + 1) * params.dy;
+          spatialCoords(k, 2) = (iz + 1) * params.dz;
         }
       }
     }
@@ -239,8 +239,14 @@ int main(int argc, char **argv) {
 
   // ── Run full MTR simulation (PGRF + ODF sampling + remap to z,y,x order)
   // ─────────────────────────────────────────────────────────────────────────
+  // The MATLAB ODF HDF5 layout is a fixed 5-degree Bunge-Euler grid:
+  // 72 (phi1) x 36 (PHI) x 72 (phi2) = 186624 bins.
+  constexpr int k_OdfBinsPhi1 = 72;
+  constexpr int k_OdfBinsPHI = 36;
+  constexpr int k_OdfBinsPhi2 = 72;
+
   spdlog::info("Running MTR simulation...");
-  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, 72, 36, 72);
+  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, k_OdfBinsPhi1, k_OdfBinsPHI, k_OdfBinsPhi2);
   spdlog::info("MTR simulation complete.");
 
   Eigen::VectorXd phi1Vec = Eigen::Map<Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(sim.phi1.size()));
@@ -275,7 +281,9 @@ int main(int argc, char **argv) {
     csv << std::fixed;
     csv.precision(6);
 
-    for (int i = 0; i < N; ++i) {
+    // Use sim dimensions to tie loop bounds to the actual result.
+    const int simN = sim.nx * sim.ny * sim.nz;
+    for (int i = 0; i < simN; ++i) {
       csv << spatialCoords(i, 0) << ',' << spatialCoords(i, 1) << ','
           << spatialCoords(i, 2) << ',' << phi1Vec[i] << ',' << phiVec[i] << ','
           << phi2Vec[i] << ',' << sim.mtrIndex[static_cast<std::size_t>(i)] << '\n';
