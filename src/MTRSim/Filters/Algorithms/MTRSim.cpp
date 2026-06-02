@@ -4,16 +4,51 @@
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 
 #include "LibMTRSim/IPFMapper.hpp"
+#include "LibMTRSim/ISimulationObserver.hpp"
 #include "LibMTRSim/MTRSimDriver.hpp"
 
 #include <Eigen/Dense>
 #include <fmt/format.h>
 
+#include <atomic>
+#include <cstdint>
 #include <exception>
 #include <random>
 #include <vector>
 
 using namespace nx::core;
+
+namespace
+{
+/**
+ * @brief Adapts mtrsim::ISimulationObserver to the simplnx filter message
+ * handler and cancel flag, so simulateMTR can report progress and be cancelled.
+ */
+class FilterObserver : public mtrsim::ISimulationObserver
+{
+public:
+  FilterObserver(const IFilter::MessageHandler& messageHandler, const std::atomic_bool& shouldCancel)
+  : m_MessageHandler(messageHandler)
+  , m_ShouldCancel(shouldCancel)
+  {
+  }
+
+  void updateProgress(int64_t done, int64_t total, const std::string& message) override
+  {
+    const int32 progress = (total > 0) ? static_cast<int32>(done * 100 / total) : 0;
+    m_MessageHandler(IFilter::Message::Type::Progress, message, progress);
+  }
+
+  [[nodiscard]] bool shouldCancel() const override
+  {
+    return m_ShouldCancel.load();
+  }
+
+private:
+  const IFilter::MessageHandler& m_MessageHandler;
+  const std::atomic_bool& m_ShouldCancel;
+};
+} // namespace
 
 // -----------------------------------------------------------------------------
 MTRSim::MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, MTRSimInputValues* inputValues)
@@ -75,16 +110,17 @@ Result<> MTRSim::operator()()
   // 4. Run simulation (SIMPLNX z,y,x order out).
   m_MessageHandler(IFilter::Message::Type::Info, "Running MTR simulation (this may take a while for large volumes)...");
   std::mt19937_64 rng(m_InputValues->seed);
+  FilterObserver observer{m_MessageHandler, m_ShouldCancel};
   mtrsim::MTRSimResult sim;
   try
   {
-    sim = mtrsim::simulateMTR(params, components, rng, n1, nPHI, n2);
+    sim = mtrsim::simulateMTR(params, components, rng, n1, nPHI, n2, &observer);
   } catch(const std::exception& e)
   {
     return MakeErrorResult(-13550, fmt::format("MTR simulation failed: {}", e.what()));
   }
 
-  if(m_ShouldCancel)
+  if(m_ShouldCancel || sim.cancelled)
   {
     return {};
   }
