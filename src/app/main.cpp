@@ -1,6 +1,7 @@
 // MTRsim simulation driver — CLI entry point.
 // Orchestrates PGRF simulation, ODF loading, orientation sampling, and output.
 
+#include "ConfigIO.hpp"
 #include "IPFMapper.hpp"
 #include "MTRSimDriver.hpp"
 #include "ODFSampler.hpp"
@@ -142,45 +143,31 @@ int main(int argc, char** argv)
 
   if(!configPath.empty())
   {
-    std::ifstream f(configPath);
-    if(!f.is_open())
-    {
-      spdlog::error("Cannot open config file: {}", configPath);
-      return 1;
-    }
-
     try
     {
-      const nlohmann::json j = nlohmann::json::parse(f);
-      if(j.contains("xLen"))
-        params.xLen = j["xLen"].get<double>();
-      if(j.contains("yLen"))
-        params.yLen = j["yLen"].get<double>();
-      if(j.contains("zLen"))
-        params.zLen = j["zLen"].get<double>();
-      if(j.contains("dx"))
-        params.dx = j["dx"].get<double>();
-      if(j.contains("dy"))
-        params.dy = j["dy"].get<double>();
-      if(j.contains("dz"))
-        params.dz = j["dz"].get<double>();
-      if(j.contains("volumeFractions"))
-        params.volumeFractions = j["volumeFractions"].get<std::vector<double>>();
-      if(j.contains("thetaList"))
-        params.thetaList = j["thetaList"].get<std::vector<std::vector<double>>>();
-      if(j.contains("nuggetVariance"))
-        params.nuggetVariance = j["nuggetVariance"].get<std::vector<double>>();
-      if(j.contains("odfInputPath"))
-        params.odfInputPath = j["odfInputPath"].get<std::string>();
-      // JSON seed only applies when CLI --seed was not explicitly provided
-      // (seed == 0)
-      if(j.contains("seed") && params.seed == 0)
+      mtrsim::SimulationParams cfg = mtrsim::parseConfigJson(configPath);
+      cfg.outputDir = params.outputDir;   // keep CLI-provided output dir
+      if(seed != 0)
       {
-        params.seed = j["seed"].get<uint64_t>();
+        cfg.seed = seed; // CLI --seed (non-zero) overrides JSON seed
       }
-    } catch(const nlohmann::json::exception& e)
+      // parseConfigJson does not read odfInputPath; read it separately so
+      // the JSON value overrides the SimulationParams default when present.
+      {
+        std::ifstream f(configPath);
+        if(f.is_open())
+        {
+          const nlohmann::json j = nlohmann::json::parse(f);
+          if(j.contains("odfInputPath"))
+          {
+            cfg.odfInputPath = j["odfInputPath"].get<std::string>();
+          }
+        }
+      }
+      params = cfg;
+    } catch(const std::exception& e)
     {
-      spdlog::error("JSON parse error: {}", e.what());
+      spdlog::error("{}", e.what());
       return 1;
     }
   }
