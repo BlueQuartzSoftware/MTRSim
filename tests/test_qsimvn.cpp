@@ -13,7 +13,8 @@ using namespace mtrsim;
 // QSimVN tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_CASE("QSimVN: univariate N(0,1) CDF matches std::erfc", "[qsimvn]") {
+TEST_CASE("QSimVN: univariate N(0,1) CDF matches std::erfc", "[qsimvn]")
+{
   // P(Z <= z) for Z ~ N(0,1) with r=[1], a=-inf, b=z
   std::mt19937_64 rng(42);
   QSimVN qsimvn(rng);
@@ -39,8 +40,8 @@ TEST_CASE("QSimVN: univariate N(0,1) CDF matches std::erfc", "[qsimvn]") {
   CHECK(p2 == Approx(0.025).margin(e2 + 5e-4));
 }
 
-TEST_CASE("QSimVN: bivariate independent N(0,I) quadrant probability ≈ 0.25",
-          "[qsimvn]") {
+TEST_CASE("QSimVN: bivariate independent N(0,I) quadrant probability ≈ 0.25", "[qsimvn]")
+{
   // P(Z1 <= 0, Z2 <= 0) = 0.25 for Z ~ N(0,I_2)
   std::mt19937_64 rng(123);
   QSimVN qsimvn(rng);
@@ -54,8 +55,8 @@ TEST_CASE("QSimVN: bivariate independent N(0,I) quadrant probability ≈ 0.25",
   CHECK(p == Approx(0.25).margin(e + 1e-4));
 }
 
-TEST_CASE("QSimVN: bivariate correlated N(0,R) matches known probability",
-          "[qsimvn]") {
+TEST_CASE("QSimVN: bivariate correlated N(0,R) matches known probability", "[qsimvn]")
+{
   // Genz example from qsimvn.m header:
   //   r = [4 3 2 1; 3 5 -1 1; 2 -1 4 2; 1 1 2 5]
   //   a = -inf*[1 1 1 1]', b = [1 2 3 4]'
@@ -68,10 +69,7 @@ TEST_CASE("QSimVN: bivariate correlated N(0,R) matches known probability",
   r << 4, 3, 2, 1, 3, 5, -1, 1, 2, -1, 4, 2, 1, 1, 2, 5;
 
   Eigen::VectorXd a(4), b(4);
-  a << -std::numeric_limits<double>::infinity(),
-      -std::numeric_limits<double>::infinity(),
-      -std::numeric_limits<double>::infinity(),
-      -std::numeric_limits<double>::infinity();
+  a << -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity();
   b << 1.0, 2.0, 3.0, 4.0;
 
   auto [p, e] = qsimvn.compute(5000, r, a, b);
@@ -81,7 +79,8 @@ TEST_CASE("QSimVN: bivariate correlated N(0,R) matches known probability",
   CHECK(e < 0.05); // error estimate within 5%
 }
 
-TEST_CASE("QSimVN: symmetric interval gives correct probability", "[qsimvn]") {
+TEST_CASE("QSimVN: symmetric interval gives correct probability", "[qsimvn]")
+{
   // P(-1 <= Z <= 1) = 2*Phi(1) - 1 ≈ 0.6827  for Z ~ N(0,1)
   std::mt19937_64 rng(999);
   QSimVN qsimvn(rng);
@@ -101,8 +100,8 @@ TEST_CASE("QSimVN: symmetric interval gives correct probability", "[qsimvn]") {
 // AssignmentRule tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_CASE("AssignmentRule::selectThresholds: 3-component fractions sum to 1",
-          "[assignmentrule]") {
+TEST_CASE("AssignmentRule::selectThresholds: 3-component fractions sum to 1", "[assignmentrule]")
+{
   // Standard MTRsim usage: 3 components with P = {0.30, 0.35, 0.35}
   std::mt19937_64 rng(42);
   AssignmentRule ar(rng);
@@ -122,14 +121,12 @@ TEST_CASE("AssignmentRule::selectThresholds: 3-component fractions sum to 1",
   // Component 1: max_thresholds(1,1) should be a finite quantile
   CHECK(std::isfinite(thresholds.maxThresholds(1, 1)));
   // Component 2 (last): max_thresholds(2,*) = +inf
-  CHECK(thresholds.maxThresholds(2, 0) ==
-        std::numeric_limits<double>::infinity());
-  CHECK(thresholds.maxThresholds(2, 1) ==
-        std::numeric_limits<double>::infinity());
+  CHECK(thresholds.maxThresholds(2, 0) == std::numeric_limits<double>::infinity());
+  CHECK(thresholds.maxThresholds(2, 1) == std::numeric_limits<double>::infinity());
 }
 
-TEST_CASE("AssignmentRule::evaluate: 2 Gaussians, simple box assignment",
-          "[assignmentrule]") {
+TEST_CASE("AssignmentRule::evaluate: 2 Gaussians, simple box assignment", "[assignmentrule]")
+{
   // With 3 components and 2 Gaussians, manually construct thresholds and verify
   // evaluate. Component 1: z1 < 0,   z2 in (-inf, +inf) → region where z1 < 0
   // counts for comp 1 This is a simplified hand-crafted threshold set for
@@ -171,9 +168,8 @@ TEST_CASE("AssignmentRule::evaluate: 2 Gaussians, simple box assignment",
   CHECK(assignments(3) == 1);
 }
 
-TEST_CASE(
-    "AssignmentRule: end-to-end volume fractions are approximately recovered",
-    "[assignmentrule][slow]") {
+TEST_CASE("AssignmentRule: end-to-end volume fractions are approximately recovered", "[assignmentrule][slow]")
+{
   // Verify that selectThresholds + evaluate reproduces the requested fractions.
   // Draw many samples from N(0, I_2) and check empirical fractions.
   const std::vector<double> P = {0.30, 0.35, 0.35};
@@ -189,8 +185,10 @@ TEST_CASE(
   const int nSamples = 50000;
   std::normal_distribution<double> normal(0.0, 1.0);
   Eigen::MatrixXd z(nSamples, numGaussians);
-  for (int i = 0; i < nSamples; ++i) {
-    for (int g = 0; g < numGaussians; ++g) {
+  for(int i = 0; i < nSamples; ++i)
+  {
+    for(int g = 0; g < numGaussians; ++g)
+    {
       z(i, g) = normal(rng);
     }
   }
@@ -199,9 +197,11 @@ TEST_CASE(
 
   // Count each component
   Eigen::VectorXd empirical = Eigen::VectorXd::Zero(numComponents);
-  for (int i = 0; i < nSamples; ++i) {
+  for(int i = 0; i < nSamples; ++i)
+  {
     const int comp = assignments(i);
-    if (comp >= 1 && comp <= numComponents) {
+    if(comp >= 1 && comp <= numComponents)
+    {
       empirical(comp - 1) += 1.0;
     }
   }
@@ -209,7 +209,8 @@ TEST_CASE(
 
   // Check that empirical fractions are within 2% of targets
   const double tol = 0.02;
-  for (int j = 0; j < numComponents; ++j) {
+  for(int j = 0; j < numComponents; ++j)
+  {
     CHECK(empirical(j) == Approx(P[static_cast<std::size_t>(j)]).margin(tol));
   }
 }

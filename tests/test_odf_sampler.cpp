@@ -21,14 +21,15 @@ using namespace mtrsim;
 // ODFCalculator tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_CASE("ODFCalculator: output ODFComponent has correct sizes",
-          "[odfcalculator]") {
+TEST_CASE("ODFCalculator: output ODFComponent has correct sizes", "[odfcalculator]")
+{
   ODFCalculator calc;
 
   // Small set of random orientations
   const int N = 10;
   Eigen::VectorXd phi1(N), phi(N), phi2(N);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     phi1[i] = 0.1 * i;
     phi[i] = 0.05 * i;
     phi2[i] = 0.2 * i;
@@ -43,7 +44,8 @@ TEST_CASE("ODFCalculator: output ODFComponent has correct sizes",
   CHECK(odf.phi2Bins.size() == expected);
 }
 
-TEST_CASE("ODFCalculator: odfVal is non-negative", "[odfcalculator]") {
+TEST_CASE("ODFCalculator: odfVal is non-negative", "[odfcalculator]")
+{
   ODFCalculator calc;
 
   Eigen::VectorXd phi1(3), phi(3), phi2(3);
@@ -56,8 +58,8 @@ TEST_CASE("ODFCalculator: odfVal is non-negative", "[odfcalculator]") {
   CHECK((odf.odfVal.array() >= 0.0).all());
 }
 
-TEST_CASE("ODFCalculator: bin centres are within Euler-space range",
-          "[odfcalculator]") {
+TEST_CASE("ODFCalculator: bin centres are within Euler-space range", "[odfcalculator]")
+{
   ODFCalculator calc;
 
   Eigen::VectorXd phi1(2), phi(2), phi2(2);
@@ -78,8 +80,8 @@ TEST_CASE("ODFCalculator: bin centres are within Euler-space range",
   CHECK((odf.phi2Bins.array() <= twoPi).all());
 }
 
-TEST_CASE("ODFCalculator: sum of odfVal ≈ 1 for large grid",
-          "[odfcalculator]") {
+TEST_CASE("ODFCalculator: sum of odfVal ≈ 1 for large grid", "[odfcalculator]")
+{
   // The smoothing weights sum to 1.0 per orientation, so the total ODF mass
   // should equal 1.0 (matching MATLAB unnormalised output with count/N
   // scaling). Use a small number of orientations to keep the test fast.
@@ -88,7 +90,8 @@ TEST_CASE("ODFCalculator: sum of odfVal ≈ 1 for large grid",
   // 100 random-ish orientations distributed across Euler space
   const int N = 100;
   Eigen::VectorXd phi1(N), phi(N), phi2(N);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     phi1[i] = 2.0 * std::numbers::pi * (static_cast<double>(i) / N);
     phi[i] = std::numbers::pi * (static_cast<double>(i) / N);
     phi2[i] = 2.0 * std::numbers::pi * (static_cast<double>((i * 37) % N) / N);
@@ -105,21 +108,23 @@ TEST_CASE("ODFCalculator: sum of odfVal ≈ 1 for large grid",
 // ODFSampler tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace {
+namespace
+{
 // Build a trivial ODFComponent: uniform probability across nBins bins,
 // bin centres at (i+0.5)*binWidth in all three Euler directions.
-ODFComponent makeUniformODF(int nBins, double binWidth) {
+ODFComponent makeUniformODF(int nBins, double binWidth)
+{
   ODFComponent c;
   c.odfVal = Eigen::VectorXd::Ones(nBins) / static_cast<double>(nBins);
-  c.phi1Bins = Eigen::VectorXd::LinSpaced(nBins, 0.5 * binWidth,
-                                          (nBins - 0.5) * binWidth);
+  c.phi1Bins = Eigen::VectorXd::LinSpaced(nBins, 0.5 * binWidth, (nBins - 0.5) * binWidth);
   c.phiBins = c.phi1Bins;
   c.phi2Bins = c.phi1Bins;
   return c;
 }
 } // anonymous namespace
 
-TEST_CASE("ODFSampler::sampleN: output dimensions are N x 3", "[odfsampler]") {
+TEST_CASE("ODFSampler::sampleN: output dimensions are N x 3", "[odfsampler]")
+{
   std::mt19937_64 rng(42);
   ODFSampler sampler(rng);
 
@@ -133,8 +138,8 @@ TEST_CASE("ODFSampler::sampleN: output dimensions are N x 3", "[odfsampler]") {
   CHECK(result.cols() == 3);
 }
 
-TEST_CASE("ODFSampler::sampleN: same seed reproduces identical output",
-          "[odfsampler]") {
+TEST_CASE("ODFSampler::sampleN: same seed reproduces identical output", "[odfsampler]")
+{
   const int nBins = 50;
   const ODFComponent uODF = makeUniformODF(nBins, 0.04);
   const int N = 20;
@@ -156,7 +161,8 @@ TEST_CASE("ODFSampler::sampleN: same seed reproduces identical output",
 
 TEST_CASE("ODFSampler::sampleN: uniform ODF samples cover bin centres "
           "uniformly [slow]",
-          "[odfsampler][slow]") {
+          "[odfsampler][slow]")
+{
   // With a uniform ODF and a large draw, each bin should appear roughly
   // equally.
   std::mt19937_64 rng(12345);
@@ -171,7 +177,8 @@ TEST_CASE("ODFSampler::sampleN: uniform ODF samples cover bin centres "
 
   // Count how many samples fall in each bin by phi1
   Eigen::VectorXi counts = Eigen::VectorXi::Zero(nBins);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     int bin = static_cast<int>(std::floor(result(i, 0) / bw));
     bin = std::clamp(bin, 0, nBins - 1);
     counts[bin]++;
@@ -179,14 +186,14 @@ TEST_CASE("ODFSampler::sampleN: uniform ODF samples cover bin centres "
 
   // Each bin should receive ~N/nBins draws; allow ±30% relative tolerance
   const double expected = static_cast<double>(N) / nBins;
-  for (int b = 0; b < nBins; ++b) {
-    CHECK(static_cast<double>(counts[b]) ==
-          Approx(expected).margin(0.30 * expected));
+  for(int b = 0; b < nBins; ++b)
+  {
+    CHECK(static_cast<double>(counts[b]) == Approx(expected).margin(0.30 * expected));
   }
 }
 
-TEST_CASE("ODFSampler::sampleOne: returns a single valid orientation",
-          "[odfsampler]") {
+TEST_CASE("ODFSampler::sampleOne: returns a single valid orientation", "[odfsampler]")
+{
   std::mt19937_64 rng(99);
   ODFSampler sampler(rng);
 

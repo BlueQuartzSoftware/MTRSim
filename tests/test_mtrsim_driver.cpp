@@ -5,7 +5,8 @@
 #include <array>
 #include <numbers>
 
-TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]") {
+TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]")
+{
   const mtrsim::ODFComponent uni = mtrsim::buildUniformODF(72, 36, 72);
 
   REQUIRE(uni.odfVal.size() == 72 * 36 * 72);
@@ -21,13 +22,12 @@ TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]") {
   REQUIRE(uni.phi2Bins[0] == Approx(0.5 * 2.0 * std::numbers::pi / 72.0));
 }
 
-TEST_CASE("gridToODFComponent derives bin centres in radians and normalizes",
-          "[mtrsim_driver]") {
+TEST_CASE("gridToODFComponent derives bin centres in radians and normalizes", "[mtrsim_driver]")
+{
   const int n1 = 72, nPHI = 36, n2 = 72;
   std::vector<double> values(n1 * nPHI * n2, 2.0); // unnormalized constant
 
-  const mtrsim::ODFComponent c =
-      mtrsim::gridToODFComponent(values, n1, nPHI, n2, 5.0, 5.0, 5.0);
+  const mtrsim::ODFComponent c = mtrsim::gridToODFComponent(values, n1, nPHI, n2, 5.0, 5.0, 5.0);
 
   REQUIRE(c.odfVal.size() == n1 * nPHI * n2);
   REQUIRE(c.odfVal.sum() == Approx(1.0)); // normalized
@@ -38,12 +38,13 @@ TEST_CASE("gridToODFComponent derives bin centres in radians and normalizes",
   REQUIRE(c.phi2Bins[0] == Approx(2.5 * deg2rad));
 }
 
-TEST_CASE("remapSimToZYX moves y-fastest data to x-fastest layout",
-          "[mtrsim_driver]") {
+TEST_CASE("remapSimToZYX moves y-fastest data to x-fastest layout", "[mtrsim_driver]")
+{
   // 2x3x2 grid (nx=2, ny=3, nz=2). Fill sim-order vector with its own index.
   const int nx = 2, ny = 3, nz = 2;
   std::vector<int> in(nx * ny * nz);
-  for (int i = 0; i < nx * ny * nz; ++i) {
+  for(int i = 0; i < nx * ny * nz; ++i)
+  {
     in[i] = i;
   }
 
@@ -65,8 +66,8 @@ TEST_CASE("remapSimToZYX moves y-fastest data to x-fastest layout",
   REQUIRE(out.size() == in.size());
 }
 
-TEST_CASE("simulateMTR reproduces target volume fractions (statistical)",
-          "[mtrsim_driver][statistical]") {
+TEST_CASE("simulateMTR reproduces target volume fractions (statistical)", "[mtrsim_driver][statistical]")
+{
   mtrsim::SimulationParams params;
   params.xLen = 6.0;
   params.yLen = 6.0;
@@ -78,24 +79,23 @@ TEST_CASE("simulateMTR reproduces target volume fractions (statistical)",
   params.thetaList = {{0.10, 0.45, 0.10}, {0.08, 0.37, 0.08}};
   params.seed = 42;
 
-  std::vector<mtrsim::ODFComponent> comps = {
-      mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72),
-      mtrsim::buildUniformODF(72, 36, 72)};
+  std::vector<mtrsim::ODFComponent> comps = {mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72)};
 
   std::mt19937_64 rng(params.seed);
-  const mtrsim::MTRSimResult r =
-      mtrsim::simulateMTR(params, comps, rng, 72, 36, 72);
+  const mtrsim::MTRSimResult r = mtrsim::simulateMTR(params, comps, rng, 72, 36, 72);
 
   const int N = r.nx * r.ny * r.nz;
   REQUIRE(static_cast<int>(r.mtrIndex.size()) == N);
 
-  for (int v : r.mtrIndex) {
+  for(int v : r.mtrIndex)
+  {
     REQUIRE(v >= 1);
     REQUIRE(v <= 3);
   }
 
   std::array<int, 3> counts{0, 0, 0};
-  for (int v : r.mtrIndex) {
+  for(int v : r.mtrIndex)
+  {
     counts[static_cast<std::size_t>(v - 1)]++;
   }
   REQUIRE(static_cast<double>(counts[0]) / N == Approx(0.30).margin(0.05));
@@ -106,15 +106,18 @@ TEST_CASE("simulateMTR reproduces target volume fractions (statistical)",
   REQUIRE(static_cast<int>(r.phi.size()) == N);
   REQUIRE(static_cast<int>(r.phi2.size()) == N);
 
-  for (double a : r.phi1) {
+  for(double a : r.phi1)
+  {
     REQUIRE(a >= 0.0);
     REQUIRE(a <= 2.0 * std::numbers::pi);
   }
-  for (double a : r.phi) {
+  for(double a : r.phi)
+  {
     REQUIRE(a >= 0.0);
     REQUIRE(a <= std::numbers::pi);
   }
-  for (double a : r.phi2) {
+  for(double a : r.phi2)
+  {
     REQUIRE(a >= 0.0);
     REQUIRE(a <= 2.0 * std::numbers::pi);
   }

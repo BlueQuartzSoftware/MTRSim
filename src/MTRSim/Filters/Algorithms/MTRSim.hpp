@@ -10,9 +10,11 @@
 
 #include <vector>
 
-namespace nx::core {
+namespace nx::core
+{
 
-struct MTRSIM_EXPORT MTRSimInputValues {
+struct MTRSIM_EXPORT MTRSimInputValues
+{
   DataPath inputOdfGeometryPath;
   std::vector<DataPath> odfComponentPaths;
   std::vector<std::vector<double>> volumeFractions; // 1 row x N cols
@@ -35,27 +37,25 @@ struct MTRSIM_EXPORT MTRSimInputValues {
  * and its cell arrays are created by the filter's preflight; this algorithm
  * fills them.
  */
-class MTRSIM_EXPORT MTRSim {
+class MTRSIM_EXPORT MTRSim
+{
 public:
-  MTRSim(DataStructure &dataStructure,
-         const IFilter::MessageHandler &mesgHandler,
-         const std::atomic_bool &shouldCancel, MTRSimInputValues *inputValues);
+  MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, MTRSimInputValues* inputValues);
   ~MTRSim() noexcept;
 
-  MTRSim(const MTRSim &) = delete;
-  MTRSim(MTRSim &&) noexcept = delete;
-  MTRSim &operator=(const MTRSim &) = delete;
-  MTRSim &operator=(MTRSim &&) noexcept = delete;
+  MTRSim(const MTRSim&) = delete;
+  MTRSim(MTRSim&&) noexcept = delete;
+  MTRSim& operator=(const MTRSim&) = delete;
+  MTRSim& operator=(MTRSim&&) noexcept = delete;
 
   Result<> operator()();
 
 private:
-  Result<> applyPolarColoring(const mtrsim::MTRSimResult &sim,
-                              const DataPath &cellAttrMatPath);
-  DataStructure &m_DataStructure;
-  const MTRSimInputValues *m_InputValues = nullptr;
-  const std::atomic_bool &m_ShouldCancel;
-  const IFilter::MessageHandler &m_MessageHandler;
+  Result<> applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataPath& cellAttrMatPath);
+  DataStructure& m_DataStructure;
+  const MTRSimInputValues* m_InputValues = nullptr;
+  const std::atomic_bool& m_ShouldCancel;
+  const IFilter::MessageHandler& m_MessageHandler;
 };
 
 } // namespace nx::core

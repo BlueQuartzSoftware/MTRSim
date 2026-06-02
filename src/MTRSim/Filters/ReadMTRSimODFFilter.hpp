@@ -6,38 +6,37 @@
 #include "simplnx/Filter/FilterTraits.hpp"
 #include "simplnx/Filter/IFilter.hpp"
 
-namespace nx::core {
+namespace nx::core
+{
 /**
  * @class ReadMTRSimODFFilter
  * @brief Reads a MATLAB-format MTRSim ODF HDF5 file into an ImageGeom with
  * one Float64 single-component cell-data array per ODF component.
  */
-class MTRSIM_EXPORT ReadMTRSimODFFilter : public IFilter {
+class MTRSIM_EXPORT ReadMTRSimODFFilter : public IFilter
+{
 public:
   ReadMTRSimODFFilter() = default;
   ~ReadMTRSimODFFilter() noexcept override = default;
 
-  ReadMTRSimODFFilter(const ReadMTRSimODFFilter &) = delete;
-  ReadMTRSimODFFilter(ReadMTRSimODFFilter &&) noexcept = delete;
+  ReadMTRSimODFFilter(const ReadMTRSimODFFilter&) = delete;
+  ReadMTRSimODFFilter(ReadMTRSimODFFilter&&) noexcept = delete;
 
-  ReadMTRSimODFFilter &operator=(const ReadMTRSimODFFilter &) = delete;
-  ReadMTRSimODFFilter &operator=(ReadMTRSimODFFilter &&) noexcept = delete;
+  ReadMTRSimODFFilter& operator=(const ReadMTRSimODFFilter&) = delete;
+  ReadMTRSimODFFilter& operator=(ReadMTRSimODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static inline constexpr StringLiteral k_InputFile_Key = "input_file";
-  static inline constexpr StringLiteral k_Hdf5PathPrefix_Key =
-      "hdf5_path_prefix";
-  static inline constexpr StringLiteral k_OutputImageGeometry_Key =
-      "output_image_geometry_path";
-  static inline constexpr StringLiteral k_CellAttrMatName_Key =
-      "cell_attribute_matrix_name";
+  static constexpr StringLiteral k_InputFile_Key = "input_file";
+  static constexpr StringLiteral k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
+  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
    * @param json
    * @return Result<Arguments>
    */
-  static Result<Arguments> FromSIMPLJson(const nlohmann::json &json);
+  static Result<Arguments> FromSIMPLJson(const nlohmann::json& json);
 
   /**
    * @brief Returns the name of the filter.
@@ -107,11 +106,8 @@ protected:
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */
-  PreflightResult
-  preflightImpl(const DataStructure &dataStructure, const Arguments &filterArgs,
-                const MessageHandler &messageHandler,
-                const std::atomic_bool &shouldCancel,
-                const ExecutionContext &executionContext) const override;
+  PreflightResult preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
+                                const ExecutionContext& executionContext) const override;
 
   /**
    * @brief Applies the filter's algorithm to the DataStructure with the given
@@ -129,14 +125,9 @@ protected:
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */
-  Result<> executeImpl(DataStructure &dataStructure,
-                       const Arguments &filterArgs,
-                       const PipelineFilter *pipelineNode,
-                       const MessageHandler &messageHandler,
-                       const std::atomic_bool &shouldCancel,
-                       const ExecutionContext &executionContext) const override;
+  Result<> executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
+                       const ExecutionContext& executionContext) const override;
 };
 } // namespace nx::core
 
-SIMPLNX_DEF_FILTER_TRAITS(nx::core, ReadMTRSimODFFilter,
-                          "2b1a4841-65d7-4315-9fe3-d66c88e5755c");
+SIMPLNX_DEF_FILTER_TRAITS(nx::core, ReadMTRSimODFFilter, "2b1a4841-65d7-4315-9fe3-d66c88e5755c");

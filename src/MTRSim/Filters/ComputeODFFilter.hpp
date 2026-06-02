@@ -6,7 +6,8 @@
 #include "simplnx/Filter/FilterTraits.hpp"
 #include "simplnx/Filter/IFilter.hpp"
 
-namespace nx::core {
+namespace nx::core
+{
 /**
  * @class ComputeODFFilter
  * @brief Builds an Orientation Distribution Function (ODF) from per-voxel EBSD
@@ -22,43 +23,39 @@ namespace nx::core {
  * this mode the bin size is derived from the existing geometry's (uniform)
  * spacing.
  */
-class MTRSIM_EXPORT ComputeODFFilter : public IFilter {
+class MTRSIM_EXPORT ComputeODFFilter : public IFilter
+{
 public:
   ComputeODFFilter() = default;
   ~ComputeODFFilter() noexcept override = default;
 
-  ComputeODFFilter(const ComputeODFFilter &) = delete;
-  ComputeODFFilter(ComputeODFFilter &&) noexcept = delete;
+  ComputeODFFilter(const ComputeODFFilter&) = delete;
+  ComputeODFFilter(ComputeODFFilter&&) noexcept = delete;
 
-  ComputeODFFilter &operator=(const ComputeODFFilter &) = delete;
-  ComputeODFFilter &operator=(ComputeODFFilter &&) noexcept = delete;
+  ComputeODFFilter& operator=(const ComputeODFFilter&) = delete;
+  ComputeODFFilter& operator=(ComputeODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static inline constexpr StringLiteral k_ApplySmoothing_Key =
-      "apply_smoothing";
-  static inline constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
-  static inline constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
-  static inline constexpr StringLiteral k_Phases_Key = "phases_path";
-  static inline constexpr StringLiteral k_CrystalStructures_Key =
-      "crystal_structures_path";
-  static inline constexpr StringLiteral k_UseMask_Key = "use_mask";
-  static inline constexpr StringLiteral k_Mask_Key = "mask_path";
-  static inline constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
-  static inline constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
-  static inline constexpr StringLiteral k_OutputImageGeometry_Key =
-      "output_image_geometry_path";
-  static inline constexpr StringLiteral k_CellAttrMatName_Key =
-      "cell_attribute_matrix_name";
-  static inline constexpr StringLiteral k_ExistingOdfGeometry_Key =
-      "existing_odf_geometry_path";
-  static inline constexpr StringLiteral k_ComponentName_Key = "component_name";
+  static constexpr StringLiteral k_ApplySmoothing_Key = "apply_smoothing";
+  static constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
+  static constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
+  static constexpr StringLiteral k_Phases_Key = "phases_path";
+  static constexpr StringLiteral k_CrystalStructures_Key = "crystal_structures_path";
+  static constexpr StringLiteral k_UseMask_Key = "use_mask";
+  static constexpr StringLiteral k_Mask_Key = "mask_path";
+  static constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
+  static constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
+  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteral k_ExistingOdfGeometry_Key = "existing_odf_geometry_path";
+  static constexpr StringLiteral k_ComponentName_Key = "component_name";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
    * @param json
    * @return Result<Arguments>
    */
-  static Result<Arguments> FromSIMPLJson(const nlohmann::json &json);
+  static Result<Arguments> FromSIMPLJson(const nlohmann::json& json);
 
   /**
    * @brief Returns the name of the filter.
@@ -128,11 +125,8 @@ protected:
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */
-  PreflightResult
-  preflightImpl(const DataStructure &dataStructure, const Arguments &filterArgs,
-                const MessageHandler &messageHandler,
-                const std::atomic_bool &shouldCancel,
-                const ExecutionContext &executionContext) const override;
+  PreflightResult preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
+                                const ExecutionContext& executionContext) const override;
 
   /**
    * @brief Applies the filter's algorithm to the DataStructure with the given
@@ -150,14 +144,9 @@ protected:
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */
-  Result<> executeImpl(DataStructure &dataStructure,
-                       const Arguments &filterArgs,
-                       const PipelineFilter *pipelineNode,
-                       const MessageHandler &messageHandler,
-                       const std::atomic_bool &shouldCancel,
-                       const ExecutionContext &executionContext) const override;
+  Result<> executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
+                       const ExecutionContext& executionContext) const override;
 };
 } // namespace nx::core
 
-SIMPLNX_DEF_FILTER_TRAITS(nx::core, ComputeODFFilter,
-                          "4811df3f-a5ce-4b90-b8f0-16b9050f7a8d");
+SIMPLNX_DEF_FILTER_TRAITS(nx::core, ComputeODFFilter, "4811df3f-a5ce-4b90-b8f0-16b9050f7a8d");

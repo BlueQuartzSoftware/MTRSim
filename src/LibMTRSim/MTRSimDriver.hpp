@@ -11,7 +11,8 @@
 #include <random>
 #include <vector>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief Build a uniform reference ODF on an (n1 x nPHI x n2) Euler grid.
@@ -34,9 +35,7 @@ LIBMTRSIM_EXPORT ODFComponent buildUniformODF(int n1, int nPHI, int n2);
  * @param stepDeg1,stepDegPHI,stepDeg2  Bin sizes [degrees] (geometry spacing).
  * @return ODFComponent with bin centres [rad] and values normalized to sum 1.
  */
-LIBMTRSIM_EXPORT ODFComponent
-gridToODFComponent(const std::vector<double> &values, int n1, int nPHI, int n2,
-                   double stepDeg1, double stepDegPHI, double stepDeg2);
+LIBMTRSIM_EXPORT ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2);
 
 /**
  * @brief Remap a per-voxel vector from simulation order to SIMPLNX z,y,x order.
@@ -48,15 +47,17 @@ gridToODFComponent(const std::vector<double> &values, int n1, int nPHI, int n2,
  * @tparam T element type (int or double).
  */
 template <typename T>
-std::vector<T> remapSimToZYX(const std::vector<T> &in, int nx, int ny, int nz) {
+std::vector<T> remapSimToZYX(const std::vector<T>& in, int nx, int ny, int nz)
+{
   std::vector<T> out(in.size());
-  for (int iz = 0; iz < nz; ++iz) {
-    for (int iy = 0; iy < ny; ++iy) {
-      for (int ix = 0; ix < nx; ++ix) {
-        const std::size_t kSim = static_cast<std::size_t>(iz) * nx * ny +
-                                 static_cast<std::size_t>(ix) * ny + iy;
-        const std::size_t kNx = static_cast<std::size_t>(iz) * ny * nx +
-                                static_cast<std::size_t>(iy) * nx + ix;
+  for(int iz = 0; iz < nz; ++iz)
+  {
+    for(int iy = 0; iy < ny; ++iy)
+    {
+      for(int ix = 0; ix < nx; ++ix)
+      {
+        const std::size_t kSim = static_cast<std::size_t>(iz) * nx * ny + static_cast<std::size_t>(ix) * ny + iy;
+        const std::size_t kNx = static_cast<std::size_t>(iz) * ny * nx + static_cast<std::size_t>(iy) * nx + ix;
         out[kNx] = in[kSim];
       }
     }
@@ -67,7 +68,8 @@ std::vector<T> remapSimToZYX(const std::vector<T> &in, int nx, int ny, int nz) {
 /**
  * @brief Per-voxel simulation output in SIMPLNX z,y,x order.
  */
-struct LIBMTRSIM_EXPORT MTRSimResult {
+struct LIBMTRSIM_EXPORT MTRSimResult
+{
   int nx = 0;
   int ny = 0;
   int nz = 0;
@@ -89,9 +91,6 @@ struct LIBMTRSIM_EXPORT MTRSimResult {
  * @param rng            Seeded RNG (mt19937_64).
  * @param n1,nPHI,n2     Bin counts of the ODF grid (for the uniform reference).
  */
-LIBMTRSIM_EXPORT MTRSimResult
-simulateMTR(const SimulationParams &params,
-            const std::vector<ODFComponent> &odfComponents,
-            std::mt19937_64 &rng, int n1, int nPHI, int n2);
+LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2);
 
 } // namespace mtrsim

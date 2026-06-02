@@ -28,7 +28,8 @@
 namespace fs = std::filesystem;
 
 // ---------------------------------------------------------------------------
-struct VoxelRow {
+struct VoxelRow
+{
   double phi1;
   double PHI;
   double phi2;
@@ -36,10 +37,12 @@ struct VoxelRow {
 };
 
 // ---------------------------------------------------------------------------
-std::vector<VoxelRow> readCSV(const std::string &path) {
+std::vector<VoxelRow> readCSV(const std::string& path)
+{
   std::vector<VoxelRow> rows;
   std::ifstream in(path);
-  if (!in.is_open()) {
+  if(!in.is_open())
+  {
     std::cerr << "Error: cannot open " << path << "\n";
     std::exit(1);
   }
@@ -47,7 +50,8 @@ std::vector<VoxelRow> readCSV(const std::string &path) {
   std::string line;
   std::getline(in, line); // skip header
 
-  while (std::getline(in, line)) {
+  while(std::getline(in, line))
+  {
     // Schema: x,y,z,phi1,PHI,phi2,mtr_index
     std::istringstream ss(line);
     std::string tok;
@@ -71,13 +75,13 @@ std::vector<VoxelRow> readCSV(const std::string &path) {
 }
 
 // ---------------------------------------------------------------------------
-ebsdlib::FloatArrayType::Pointer
-toEulerArray(const std::vector<VoxelRow> &rows) {
+ebsdlib::FloatArrayType::Pointer toEulerArray(const std::vector<VoxelRow>& rows)
+{
   std::vector<size_t> cDims = {3};
-  auto eulers =
-      ebsdlib::FloatArrayType::CreateArray(rows.size(), cDims, "Eulers", true);
-  for (size_t i = 0; i < rows.size(); i++) {
-    float *ptr = eulers->getTuplePointer(i);
+  auto eulers = ebsdlib::FloatArrayType::CreateArray(rows.size(), cDims, "Eulers", true);
+  for(size_t i = 0; i < rows.size(); i++)
+  {
+    float* ptr = eulers->getTuplePointer(i);
     ptr[0] = static_cast<float>(rows[i].phi1);
     ptr[1] = static_cast<float>(rows[i].PHI);
     ptr[2] = static_cast<float>(rows[i].phi2);
@@ -86,19 +90,21 @@ toEulerArray(const std::vector<VoxelRow> &rows) {
 }
 
 // ---------------------------------------------------------------------------
-void writePNG(const ebsdlib::CompositePoleFigureResult &result,
-              const std::string &path) {
+void writePNG(const ebsdlib::CompositePoleFigureResult& result, const std::string& path)
+{
   // Convert RGBA to RGB for stb_image_write
   int w = result.width;
   int h = result.height;
   std::vector<uint8_t> rgb(w * h * 3);
-  const uint8_t *rgba = result.image->getPointer(0);
-  for (int i = 0; i < w * h; i++) {
+  const uint8_t* rgba = result.image->getPointer(0);
+  for(int i = 0; i < w * h; i++)
+  {
     rgb[i * 3 + 0] = rgba[i * 4 + 0];
     rgb[i * 3 + 1] = rgba[i * 4 + 1];
     rgb[i * 3 + 2] = rgba[i * 4 + 2];
   }
-  if (stbi_write_png(path.c_str(), w, h, 3, rgb.data(), w * 3) == 0) {
+  if(stbi_write_png(path.c_str(), w, h, 3, rgb.data(), w * 3) == 0)
+  {
     std::cerr << "Error: failed to write " << path << "\n";
     std::exit(1);
   }
@@ -106,9 +112,8 @@ void writePNG(const ebsdlib::CompositePoleFigureResult &result,
 }
 
 // ---------------------------------------------------------------------------
-void generatePoleFigure(const std::vector<VoxelRow> &rows,
-                        const std::string &title, const std::string &outPath,
-                        int imageDim) {
+void generatePoleFigure(const std::vector<VoxelRow>& rows, const std::string& title, const std::string& outPath, int imageDim)
+{
   auto eulers = toEulerArray(rows);
 
   ebsdlib::CompositePoleFigureConfiguration_t config;
@@ -126,15 +131,16 @@ void generatePoleFigure(const std::vector<VoxelRow> &rows,
   config.title = title;
 
   ebsdlib::PoleFigureCompositor compositor;
-  ebsdlib::CompositePoleFigureResult result =
-      compositor.generateCompositeImage(config);
+  ebsdlib::CompositePoleFigureResult result = compositor.generateCompositeImage(config);
 
   writePNG(result, outPath);
 }
 
 // ---------------------------------------------------------------------------
-int main(int argc, char *argv[]) {
-  if (argc < 3) {
+int main(int argc, char* argv[])
+{
+  if(argc < 3)
+  {
     std::cerr << "Usage: generate_pole_figures <csv_path> <output_dir> "
                  "[--label <prefix>] [--dim <pixels>]\n";
     return 1;
@@ -145,10 +151,14 @@ int main(int argc, char *argv[]) {
   std::string label = "cpp";
   int imageDim = 1024;
 
-  for (int i = 3; i < argc; i++) {
-    if (std::string(argv[i]) == "--label" && i + 1 < argc) {
+  for(int i = 3; i < argc; i++)
+  {
+    if(std::string(argv[i]) == "--label" && i + 1 < argc)
+    {
       label = argv[++i];
-    } else if (std::string(argv[i]) == "--dim" && i + 1 < argc) {
+    }
+    else if(std::string(argv[i]) == "--dim" && i + 1 < argc)
+    {
       imageDim = std::stoi(argv[++i]);
     }
   }
@@ -161,34 +171,33 @@ int main(int argc, char *argv[]) {
 
   // Find unique components
   int maxComp = 0;
-  for (const auto &r : allRows) {
-    if (r.mtrIndex > maxComp) {
+  for(const auto& r : allRows)
+  {
+    if(r.mtrIndex > maxComp)
+    {
       maxComp = r.mtrIndex;
     }
   }
 
   // Split by component
   std::vector<std::vector<VoxelRow>> byComponent(maxComp);
-  for (const auto &r : allRows) {
+  for(const auto& r : allRows)
+  {
     byComponent[r.mtrIndex - 1].push_back(r);
   }
 
   // Generate per-component pole figures
-  for (int c = 0; c < maxComp; c++) {
-    std::string title = "MTR Component " + std::to_string(c + 1) + " - ODF " +
-                        std::to_string(c + 1) +
-                        " (n=" + std::to_string(byComponent[c].size()) + ")";
-    std::string path = outDir + "/" + label + "_component_" +
-                       std::to_string(c + 1) + "_pf.png";
+  for(int c = 0; c < maxComp; c++)
+  {
+    std::string title = "MTR Component " + std::to_string(c + 1) + " - ODF " + std::to_string(c + 1) + " (n=" + std::to_string(byComponent[c].size()) + ")";
+    std::string path = outDir + "/" + label + "_component_" + std::to_string(c + 1) + "_pf.png";
     std::cout << "Generating pole figure: " << title << "\n";
     generatePoleFigure(byComponent[c], title, path, imageDim);
   }
 
   // Generate combined pole figure
   {
-    std::string title =
-        "All MTR Components Combined (n=" + std::to_string(allRows.size()) +
-        ")";
+    std::string title = "All MTR Components Combined (n=" + std::to_string(allRows.size()) + ")";
     std::string path = outDir + "/" + label + "_all_pf.png";
     std::cout << "Generating pole figure: " << title << "\n";
     generatePoleFigure(allRows, title, path, imageDim);

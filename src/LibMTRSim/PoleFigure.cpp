@@ -7,7 +7,8 @@
 #include <numbers>
 #include <stdexcept>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // fromODF — port of convert_ODF_to_PF.m (direct computation, no prebuilt
@@ -27,15 +28,15 @@ namespace mtrsim {
 //
 // The degSpacing parameter must match the spacing used to compute the ODF.
 
-PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
-                                   double degSpacing) {
+PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpacing)
+{
   const int nTotal = static_cast<int>(component.odfVal.size());
-  if (nTotal < 1) {
+  if(nTotal < 1)
+  {
     throw std::invalid_argument("PoleFigure::fromODF — empty ODFComponent");
   }
-  if (component.phi1Bins.size() != static_cast<Eigen::Index>(nTotal) ||
-      component.phiBins.size() != static_cast<Eigen::Index>(nTotal) ||
-      component.phi2Bins.size() != static_cast<Eigen::Index>(nTotal)) {
+  if(component.phi1Bins.size() != static_cast<Eigen::Index>(nTotal) || component.phiBins.size() != static_cast<Eigen::Index>(nTotal) || component.phi2Bins.size() != static_cast<Eigen::Index>(nTotal))
+  {
     throw std::invalid_argument("PoleFigure::fromODF — ODFComponent bin "
                                 "vectors have inconsistent sizes");
   }
@@ -50,8 +51,7 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
   const double halfDPHI = 0.5 * dPHI;
 
   // Prefactor from MATLAB: 4π² / (dphi1 * dphi2)
-  const double prefactor =
-      4.0 * std::numbers::pi * std::numbers::pi / (dphi1 * dphi2);
+  const double prefactor = 4.0 * std::numbers::pi * std::numbers::pi / (dphi1 * dphi2);
 
   // ── Accumulate (X, Y, weight) for all non-zero bins
   // ──────────────────────────
@@ -64,9 +64,11 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
 
   double totalWeight = 0.0;
 
-  for (int m = 0; m < nTotal; ++m) {
+  for(int m = 0; m < nTotal; ++m)
+  {
     const double v = component.odfVal[m];
-    if (v <= 0.0) {
+    if(v <= 0.0)
+    {
       continue;
     }
 
@@ -86,7 +88,8 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
     // ────────────────────────────── Singularity when h_z → −1 (PHI → π): skip
     // those bins.
     const double denom = 1.0 + h_z;
-    if (std::abs(denom) < 1.0e-8) {
+    if(std::abs(denom) < 1.0e-8)
+    {
       continue;
     }
     const double X = h_x / denom;
@@ -94,9 +97,9 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
 
     // ── Jacobian weight (MATLAB convert_ODF_to_PF.m formula) ─────────────────
     // |cos(PHI − dPHI/2) − cos(PHI + dPHI/2)| = 2·|sin(PHI)|·sin(dPHI/2)
-    const double cosDiff =
-        std::abs(std::cos(PHI_m - halfDPHI) - std::cos(PHI_m + halfDPHI));
-    if (cosDiff < 1.0e-12) {
+    const double cosDiff = std::abs(std::cos(PHI_m - halfDPHI) - std::cos(PHI_m + halfDPHI));
+    if(cosDiff < 1.0e-12)
+    {
       continue; // PHI ≈ 0 or π: vanishing angular area, skip
     }
     const double weight = v * prefactor / cosDiff;
@@ -109,8 +112,10 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent &component,
 
   // ── Normalise intensities
   // ─────────────────────────────────────────────────────
-  if (totalWeight > 0.0) {
-    for (double &w : wVec) {
+  if(totalWeight > 0.0)
+  {
+    for(double& w : wVec)
+    {
       w /= totalWeight;
     }
   }

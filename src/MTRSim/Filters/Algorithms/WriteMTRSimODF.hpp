@@ -9,9 +9,11 @@
 #include <filesystem>
 #include <vector>
 
-namespace nx::core {
+namespace nx::core
+{
 
-struct MTRSIM_EXPORT WriteMTRSimODFInputValues {
+struct MTRSIM_EXPORT WriteMTRSimODFInputValues
+{
   std::filesystem::path outputFile;
   std::string hdf5PathPrefix;
   DataPath inputImageGeometry;
@@ -26,26 +28,24 @@ struct MTRSIM_EXPORT WriteMTRSimODFInputValues {
  * convention back to the on-disk phi1-first axis order.
  */
 
-class MTRSIM_EXPORT WriteMTRSimODF {
+class MTRSIM_EXPORT WriteMTRSimODF
+{
 public:
-  WriteMTRSimODF(DataStructure &dataStructure,
-                 const IFilter::MessageHandler &mesgHandler,
-                 const std::atomic_bool &shouldCancel,
-                 WriteMTRSimODFInputValues *inputValues);
+  WriteMTRSimODF(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, WriteMTRSimODFInputValues* inputValues);
   ~WriteMTRSimODF() noexcept;
 
-  WriteMTRSimODF(const WriteMTRSimODF &) = delete;
-  WriteMTRSimODF(WriteMTRSimODF &&) noexcept = delete;
-  WriteMTRSimODF &operator=(const WriteMTRSimODF &) = delete;
-  WriteMTRSimODF &operator=(WriteMTRSimODF &&) noexcept = delete;
+  WriteMTRSimODF(const WriteMTRSimODF&) = delete;
+  WriteMTRSimODF(WriteMTRSimODF&&) noexcept = delete;
+  WriteMTRSimODF& operator=(const WriteMTRSimODF&) = delete;
+  WriteMTRSimODF& operator=(WriteMTRSimODF&&) noexcept = delete;
 
   Result<> operator()();
 
 private:
-  DataStructure &m_DataStructure;
-  const WriteMTRSimODFInputValues *m_InputValues = nullptr;
-  const std::atomic_bool &m_ShouldCancel;
-  const IFilter::MessageHandler &m_MessageHandler;
+  DataStructure& m_DataStructure;
+  const WriteMTRSimODFInputValues* m_InputValues = nullptr;
+  const std::atomic_bool& m_ShouldCancel;
+  const IFilter::MessageHandler& m_MessageHandler;
 };
 
 } // namespace nx::core

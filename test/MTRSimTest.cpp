@@ -31,7 +31,8 @@
 using namespace nx::core;
 using namespace nx::core::UnitTest;
 
-namespace {
+namespace
+{
 constexpr usize k_NPhi1 = 72;
 constexpr usize k_NPHI = 36;
 constexpr usize k_NPhi2 = 72;
@@ -42,73 +43,58 @@ const std::string k_CellAttrMatName = "Cell Data";
 // Builds an ODF ImageGeom (72x36x72, 5-degree spacing) with numComponents
 // Float64 single-component cell arrays named component_0.., returning their
 // DataPaths.
-std::vector<DataPath> BuildOdfDataStructure(DataStructure &dataStructure,
-                                            usize numComponents) {
-  ImageGeom *imageGeom =
-      ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
+std::vector<DataPath> BuildOdfDataStructure(DataStructure& dataStructure, usize numComponents)
+{
+  ImageGeom* imageGeom = ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
   imageGeom->setSpacing({5.0f, 5.0f, 5.0f});
   imageGeom->setOrigin({0.0f, 0.0f, 0.0f});
-  imageGeom->setDimensions(
-      {k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
+  imageGeom->setDimensions({k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
 
   // ZYX tuple shape (slowest to fastest)
   const ShapeType tupleShape = {k_NPhi1, k_NPHI, k_NPhi2};
 
-  AttributeMatrix *cellAM = AttributeMatrix::Create(
-      dataStructure, k_CellAttrMatName, tupleShape, imageGeom->getId());
+  AttributeMatrix* cellAM = AttributeMatrix::Create(dataStructure, k_CellAttrMatName, tupleShape, imageGeom->getId());
 
   std::vector<DataPath> compPaths;
-  const DataPath cellAttrMatPath =
-      k_OdfGeomPath.createChildPath(k_CellAttrMatName);
-  for (usize c = 0; c < numComponents; ++c) {
+  const DataPath cellAttrMatPath = k_OdfGeomPath.createChildPath(k_CellAttrMatName);
+  for(usize c = 0; c < numComponents; ++c)
+  {
     const std::string name = fmt::format("component_{}", c);
-    CreateTestDataArray<float64>(dataStructure, name, tupleShape, {1},
-                                 cellAM->getId());
+    CreateTestDataArray<float64>(dataStructure, name, tupleShape, {1}, cellAM->getId());
     compPaths.push_back(cellAttrMatPath.createChildPath(name));
   }
   return compPaths;
 }
 
 // Builds a valid argument set for the supplied component paths.
-Arguments MakeValidArgs(const std::vector<DataPath> &compPaths) {
+Arguments MakeValidArgs(const std::vector<DataPath>& compPaths)
+{
   Arguments args;
   args.insertOrAssign(MTRSimFilter::k_InputOdfGeometry_Key, k_OdfGeomPath);
   args.insertOrAssign(MTRSimFilter::k_OdfComponentArrays_Key, compPaths);
-  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key,
-                      DynamicTableParameter::ValueType{{0.30, 0.35, 0.35}});
-  args.insertOrAssign(
-      MTRSimFilter::k_ThetaList_Key,
-      DynamicTableParameter::ValueType{{0.1, 0.45, 0.1}, {0.08, 0.37, 0.08}});
-  args.insertOrAssign(MTRSimFilter::k_PhysicalSize_Key,
-                      std::vector<float32>{2.0f, 2.0f, 0.0f});
-  args.insertOrAssign(MTRSimFilter::k_PhysicalSpacing_Key,
-                      std::vector<float32>{0.02f, 0.02f, 0.02f});
+  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.30, 0.35, 0.35}});
+  args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45, 0.1}, {0.08, 0.37, 0.08}});
+  args.insertOrAssign(MTRSimFilter::k_PhysicalSize_Key, std::vector<float32>{2.0f, 2.0f, 0.0f});
+  args.insertOrAssign(MTRSimFilter::k_PhysicalSpacing_Key, std::vector<float32>{0.02f, 0.02f, 0.02f});
   args.insertOrAssign(MTRSimFilter::k_UseSeed_Key, true);
   args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
-  args.insertOrAssign(MTRSimFilter::k_SeedArrayName_Key,
-                      std::string("MTRSim SeedValue"));
+  args.insertOrAssign(MTRSimFilter::k_SeedArrayName_Key, std::string("MTRSim SeedValue"));
   args.insertOrAssign(MTRSimFilter::k_GeneratePolarColoring_Key, false);
-  args.insertOrAssign(MTRSimFilter::k_OutputGeometry_Key,
-                      DataPath({"MTR Microstructure"}));
-  args.insertOrAssign(MTRSimFilter::k_CellAttrMatName_Key,
-                      std::string("Cell Data"));
-  args.insertOrAssign(MTRSimFilter::k_MtrIdsArrayName_Key,
-                      std::string("MTRIds"));
-  args.insertOrAssign(MTRSimFilter::k_EulersArrayName_Key,
-                      std::string("Eulers"));
-  args.insertOrAssign(MTRSimFilter::k_PolarColorsArrayName_Key,
-                      std::string("Polar Colors"));
+  args.insertOrAssign(MTRSimFilter::k_OutputGeometry_Key, DataPath({"MTR Microstructure"}));
+  args.insertOrAssign(MTRSimFilter::k_CellAttrMatName_Key, std::string("Cell Data"));
+  args.insertOrAssign(MTRSimFilter::k_MtrIdsArrayName_Key, std::string("MTRIds"));
+  args.insertOrAssign(MTRSimFilter::k_EulersArrayName_Key, std::string("Eulers"));
+  args.insertOrAssign(MTRSimFilter::k_PolarColorsArrayName_Key, std::string("Polar Colors"));
   return args;
 }
 } // namespace
 
-TEST_CASE("MTRSim::MTRSimFilter: Valid preflight builds actions",
-          "[MTRSim][MTRSimFilter]") {
+TEST_CASE("MTRSim::MTRSimFilter: Valid preflight builds actions", "[MTRSim][MTRSimFilter]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
@@ -117,36 +103,33 @@ TEST_CASE("MTRSim::MTRSimFilter: Valid preflight builds actions",
   SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
 }
 
-TEST_CASE(
-    "MTRSim::MTRSimFilter: Rejects mismatched Volume Fraction column count",
-    "[MTRSim][MTRSimFilter][ErrorPath]") {
+TEST_CASE("MTRSim::MTRSimFilter: Rejects mismatched Volume Fraction column count", "[MTRSim][MTRSimFilter][ErrorPath]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
   // Only 2 volume-fraction columns for 3 components.
-  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key,
-                      DynamicTableParameter::ValueType{{0.5, 0.5}});
+  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.5, 0.5}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
 }
 
-TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays",
-          "[MTRSim][MTRSimFilter]") {
+TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[MTRSim][MTRSimFilter]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
   // Fill every component array with a uniform value so ODF sampling is
   // well-defined.
-  for (const auto &path : compPaths) {
-    auto &arr = dataStructure.getDataRefAs<Float64Array>(path);
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
     arr.fill(1.0);
   }
 
@@ -170,30 +153,31 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays",
   const usize expectedTuples = 100 * 100;
 
   // MTRIds: Int32, 1 component, 10000 tuples.
-  auto &mtrIds =
-      dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
+  auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
   REQUIRE(mtrIds.getNumberOfComponents() == 1);
   REQUIRE(mtrIds.getNumberOfTuples() == expectedTuples);
 
   // Eulers: Float32, 3 components, 10000 tuples.
-  auto &eulers = dataStructure.getDataRefAs<Float32Array>(
-      cellAm.createChildPath("Eulers"));
+  auto& eulers = dataStructure.getDataRefAs<Float32Array>(cellAm.createChildPath("Eulers"));
   REQUIRE(eulers.getNumberOfComponents() == 3);
   REQUIRE(eulers.getNumberOfTuples() == expectedTuples);
 
   // MTR ids in {1,2,3}; at least 2 distinct ids appear. Also accumulate
   // empirical volume fractions for a loose wiring check.
-  const auto &mtrStore = mtrIds.getDataStoreRef();
+  const auto& mtrStore = mtrIds.getDataStoreRef();
   std::array<usize, 4> counts = {0, 0, 0, 0};
-  for (usize i = 0; i < mtrStore.getSize(); ++i) {
+  for(usize i = 0; i < mtrStore.getSize(); ++i)
+  {
     const int32 id = mtrStore[i];
     REQUIRE(id >= 1);
     REQUIRE(id <= 3);
     counts[static_cast<usize>(id)]++;
   }
   usize distinct = 0;
-  for (usize id = 1; id <= 3; ++id) {
-    if (counts[id] > 0) {
+  for(usize id = 1; id <= 3; ++id)
+  {
+    if(counts[id] > 0)
+    {
       distinct++;
     }
   }
@@ -202,8 +186,9 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays",
   // Euler values finite and within Bunge bounds (interleaved 3/voxel).
   constexpr float twoPi = 2.0f * static_cast<float>(M_PI);
   constexpr float pi = static_cast<float>(M_PI);
-  const auto &eulerStore = eulers.getDataStoreRef();
-  for (usize t = 0; t < expectedTuples; ++t) {
+  const auto& eulerStore = eulers.getDataStoreRef();
+  for(usize t = 0; t < expectedTuples; ++t)
+  {
     const float phi1 = eulerStore[t * 3 + 0];
     const float Phi = eulerStore[t * 3 + 1];
     const float phi2 = eulerStore[t * 3 + 2];
@@ -219,52 +204,47 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays",
   }
 
   // Seed array records 42.
-  auto &seedArray =
-      dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
+  auto& seedArray = dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
   REQUIRE(seedArray[0] == 42);
 
   // Loose volume-fraction wiring check (NOT a statistics check; rigorous VF
   // validation lives in the LibMTRSim statistical test). A 100x100 correlated
   // field has real variance, so use a generous margin of 0.12.
   const std::array<double, 4> targets = {0.0, 0.30, 0.35, 0.35};
-  for (usize id = 1; id <= 3; ++id) {
-    const double empirical =
-        static_cast<double>(counts[id]) / static_cast<double>(expectedTuples);
+  for(usize id = 1; id <= 3; ++id)
+  {
+    const double empirical = static_cast<double>(counts[id]) / static_cast<double>(expectedTuples);
     REQUIRE(empirical == Approx(targets[id]).margin(0.12));
   }
 }
 
-TEST_CASE("MTRSim::MTRSimFilter: Rejects too few Theta List rows",
-          "[MTRSim][MTRSimFilter][ErrorPath]") {
+TEST_CASE("MTRSim::MTRSimFilter: Rejects too few Theta List rows", "[MTRSim][MTRSimFilter][ErrorPath]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
   // 3 components require >= 2 theta rows; supply only 1.
-  args.insertOrAssign(MTRSimFilter::k_ThetaList_Key,
-                      DynamicTableParameter::ValueType{{0.1, 0.45, 0.1}});
+  args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45, 0.1}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
 }
 
-TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0",
-          "[MTRSim][MTRSimFilter][ErrorPath]") {
+TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0", "[MTRSim][MTRSimFilter][ErrorPath]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
   // Columns sum to 0.6, not 1.0.
-  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key,
-                      DynamicTableParameter::ValueType{{0.2, 0.2, 0.2}});
+  args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.2, 0.2, 0.2}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
@@ -272,14 +252,15 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0",
 
 TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
           "Colors array",
-          "[MTRSim][MTRSimFilter]") {
+          "[MTRSim][MTRSimFilter]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
-  for (const auto &path : compPaths) {
-    auto &arr = dataStructure.getDataRefAs<Float64Array>(path);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
     arr.fill(1.0);
   }
 
@@ -295,16 +276,15 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
-  const DataPath cellAm =
-      DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
   constexpr usize expectedTuples = 100 * 100;
 
-  auto &rgb = dataStructure.getDataRefAs<UInt8Array>(
-      cellAm.createChildPath("Polar Colors"));
+  auto& rgb = dataStructure.getDataRefAs<UInt8Array>(cellAm.createChildPath("Polar Colors"));
   REQUIRE(rgb.getNumberOfComponents() == 3);
   REQUIRE(rgb.getNumberOfTuples() == expectedTuples);
   uint64 sum = 0;
-  for (usize i = 0; i < rgb.getSize(); ++i) {
+  for(usize i = 0; i < rgb.getSize(); ++i)
+  {
     sum += rgb[i];
   }
   REQUIRE(sum > 0);
@@ -312,14 +292,15 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
 
 TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring OFF omits Polar "
           "Colors array",
-          "[MTRSim][MTRSimFilter]") {
+          "[MTRSim][MTRSimFilter]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
-  for (const auto &path : compPaths) {
-    auto &arr = dataStructure.getDataRefAs<Float64Array>(path);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+  for(const auto& path : compPaths)
+  {
+    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
     arr.fill(1.0);
   }
 
@@ -335,29 +316,23 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring OFF omits Polar "
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
-  const DataPath cellAm =
-      DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
-  REQUIRE(dataStructure.getDataAs<UInt8Array>(
-              cellAm.createChildPath("Polar Colors")) == nullptr);
+  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  REQUIRE(dataStructure.getDataAs<UInt8Array>(cellAm.createChildPath("Polar Colors")) == nullptr);
 }
 
-TEST_CASE(
-    "MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count",
-    "[MTRSim][MTRSimFilter][ErrorPath]") {
+TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count", "[MTRSim][MTRSimFilter][ErrorPath]")
+{
   UnitTest::LoadPlugins();
 
   DataStructure dataStructure;
-  const std::vector<DataPath> compPaths =
-      BuildOdfDataStructure(dataStructure, 3);
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
 
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
   // 2 rows supplied (enough for 3 components: needs >= 2), but each row has
   // only 2 columns instead of 3 — must trigger the column-count check (-13005),
   // not the row-count check (-13004).
-  args.insertOrAssign(
-      MTRSimFilter::k_ThetaList_Key,
-      DynamicTableParameter::ValueType{{0.1, 0.45}, {0.08, 0.37}});
+  args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45}, {0.08, 0.37}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);

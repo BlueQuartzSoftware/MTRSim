@@ -5,10 +5,14 @@
 
 #include <stdexcept>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
-GPGenerator::GPGenerator(std::mt19937_64 &rng, CorrelationFn corrFn)
-    : m_Rng(rng), m_CorrFn(std::move(corrFn)) {}
+GPGenerator::GPGenerator(std::mt19937_64& rng, CorrelationFn corrFn)
+: m_Rng(rng)
+, m_CorrFn(std::move(corrFn))
+{
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // buildCovarianceMatrix
@@ -21,13 +25,15 @@ GPGenerator::GPGenerator(std::mt19937_64 &rng, CorrelationFn corrFn)
 // A small jitter (1e-6) is added to the diagonal to ensure positive
 // definiteness, matching MATLAB: Gamma = Gamma + 1e-6*eye(n).
 
-Eigen::MatrixXd GPGenerator::buildCovarianceMatrix(int n, double spacing,
-                                                   double theta) const {
+Eigen::MatrixXd GPGenerator::buildCovarianceMatrix(int n, double spacing, double theta) const
+{
   Eigen::MatrixXd gamma = Eigen::MatrixXd::Zero(n, n);
 
   // Fill upper triangle: gamma(i,j) = rho((j-i)*spacing, theta)  for j > i
-  for (int i = 0; i < n - 1; ++i) {
-    for (int j = i + 1; j < n; ++j) {
+  for(int i = 0; i < n - 1; ++i)
+  {
+    for(int j = i + 1; j < n; ++j)
+    {
       gamma(i, j) = m_CorrFn(static_cast<double>(j - i) * spacing, theta);
     }
   }
@@ -59,9 +65,8 @@ Eigen::MatrixXd GPGenerator::buildCovarianceMatrix(int n, double spacing,
 //   MATLAB:  W_1 * Rz          →  C++: W1 * llt_z.matrixU()
 //   MATLAB:  Ry' * W2k * Rx    →  C++: llt_y.matrixL() * W2k * llt_x.matrixU()
 
-Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz,
-                                      const std::array<double, 3> &theta,
-                                      int nx, int ny, int nz) {
+Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std::array<double, 3>& theta, int nx, int ny, int nz)
+{
   // ── Build per-direction covariance matrices ─────────────────────────────
   const Eigen::MatrixXd Gamma_x = buildCovarianceMatrix(nx, hx, theta[0]);
   const Eigen::MatrixXd Gamma_y = buildCovarianceMatrix(ny, hy, theta[1]);
@@ -72,8 +77,8 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz,
   Eigen::LLT<Eigen::MatrixXd> llt_y(Gamma_y);
   Eigen::LLT<Eigen::MatrixXd> llt_z(Gamma_z);
 
-  if (llt_x.info() != Eigen::Success || llt_y.info() != Eigen::Success ||
-      llt_z.info() != Eigen::Success) {
+  if(llt_x.info() != Eigen::Success || llt_y.info() != Eigen::Success || llt_z.info() != Eigen::Success)
+  {
     throw std::runtime_error("GPGenerator::generate — Cholesky failed; "
                              "covariance matrix is not positive definite");
   }
@@ -88,7 +93,8 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz,
   const int N = nx * ny * nz;
   std::normal_distribution<double> normal(0.0, 1.0);
   Eigen::VectorXd z(N);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     z(i) = normal(m_Rng);
   }
 
@@ -103,7 +109,8 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz,
   // x_k = Ry' * (W2k * Rx)                  — nx-covariance from right, ny from
   // left
   Eigen::VectorXd gp(N);
-  for (int k = 0; k < nz; ++k) {
+  for(int k = 0; k < nz; ++k)
+  {
     // W2k: ny × nx view into column k of u (column-major, contiguous in memory)
     Eigen::Map<const Eigen::MatrixXd> W2k(u.col(k).data(), ny, nx);
 
@@ -112,8 +119,7 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz,
 
     // Store into output with MATLAB column-major ordering for a ny×nx×nz array:
     //   gp[k*(ny*nx) + ix*ny + iy]  =  x_k(iy, ix)
-    Eigen::Map<Eigen::MatrixXd>(
-        gp.data() + static_cast<std::ptrdiff_t>(k) * (ny * nx), ny, nx) = x_k;
+    Eigen::Map<Eigen::MatrixXd>(gp.data() + static_cast<std::ptrdiff_t>(k) * (ny * nx), ny, nx) = x_k;
   }
 
   return gp;
