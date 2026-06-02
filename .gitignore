@@ -3,3 +3,4 @@ CLAUDE.md
 *.mat
 /docs/superpowers
 /Testing
+output/*.dream3d
