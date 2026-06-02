@@ -2,6 +2,7 @@
 
 #include "libmtrsim_export.h"
 
+#include "ISimulationObserver.hpp"
 #include "ODFSampler.hpp" // mtrsim::ODFComponent, mtrsim::EulerAngles
 #include "SimulationParams.hpp"
 
@@ -73,6 +74,7 @@ struct LIBMTRSIM_EXPORT MTRSimResult
   int nx = 0;
   int ny = 0;
   int nz = 0;
+  bool cancelled = false;        ///< true if the run was aborted via ISimulationObserver
   std::vector<int32_t> mtrIndex; ///< 1-based component id per voxel, length N
   std::vector<double> phi1;      ///< Euler phi1 [rad] per voxel, length N
   std::vector<double> phi;       ///< Euler PHI  [rad] per voxel, length N
@@ -91,6 +93,6 @@ struct LIBMTRSIM_EXPORT MTRSimResult
  * @param rng            Seeded RNG (mt19937_64).
  * @param n1,nPHI,n2     Bin counts of the ODF grid (for the uniform reference).
  */
-LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2);
+LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2, ISimulationObserver* observer = nullptr);
 
 } // namespace mtrsim

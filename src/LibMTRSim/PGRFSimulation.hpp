@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ISimulationObserver.hpp"
 #include "SimulationParams.hpp"
 #include "libmtrsim_export.h"
 #include <Eigen/Dense>
@@ -39,7 +40,7 @@ public:
    * @param params  Fully populated SimulationParams
    * @return        PGRFResult containing voxel assignments and latent fields
    */
-  PGRFResult run(const SimulationParams& params);
+  PGRFResult run(const SimulationParams& params, ISimulationObserver* observer = nullptr);
 
 private:
   std::mt19937_64& m_Rng;

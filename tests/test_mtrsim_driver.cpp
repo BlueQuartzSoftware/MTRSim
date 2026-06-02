@@ -1,9 +1,28 @@
+#include "ISimulationObserver.hpp"
 #include "MTRSimDriver.hpp"
 
 #include <catch2/catch.hpp>
 
 #include <array>
 #include <numbers>
+
+namespace
+{
+class CancelAfterObserver : public mtrsim::ISimulationObserver
+{
+public:
+  explicit CancelAfterObserver(int k)
+  : m_K(k)
+  {
+  }
+  void updateProgress(int64_t, int64_t, const std::string&) override { ++m_Count; }
+  bool shouldCancel() const override { return m_Count >= m_K; }
+
+private:
+  int m_K;
+  mutable int m_Count = 0;
+};
+} // namespace
 
 TEST_CASE("buildUniformODF produces correct bin centres", "[mtrsim_driver]")
 {
@@ -121,4 +140,42 @@ TEST_CASE("simulateMTR reproduces target volume fractions (statistical)", "[mtrs
     REQUIRE(a >= 0.0);
     REQUIRE(a <= 2.0 * std::numbers::pi);
   }
+}
+
+TEST_CASE("simulateMTR cancels early when observer requests it", "[mtrsim_driver]")
+{
+  mtrsim::SimulationParams params;
+  params.xLen = 6.0;
+  params.yLen = 6.0;
+  params.zLen = 0.0;
+  params.dx = 0.02;
+  params.dy = 0.02;
+  params.dz = 0.02;
+  params.volumeFractions = {0.30, 0.35, 0.35};
+  params.thetaList = {{0.10, 0.45, 0.10}, {0.08, 0.37, 0.08}};
+  params.seed = 42;
+  std::vector<mtrsim::ODFComponent> comps = {mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72)};
+  std::mt19937_64 rng(params.seed);
+  CancelAfterObserver obs(1); // cancel at the first progress checkpoint
+  const mtrsim::MTRSimResult r = mtrsim::simulateMTR(params, comps, rng, 72, 36, 72, &obs);
+  REQUIRE(r.cancelled);
+  REQUIRE(r.mtrIndex.empty());
+}
+
+TEST_CASE("simulateMTR with nullptr observer is unaffected", "[mtrsim_driver]")
+{
+  mtrsim::SimulationParams params;
+  params.xLen = 2.0;
+  params.yLen = 2.0;
+  params.zLen = 0.0;
+  params.dx = 0.02;
+  params.dy = 0.02;
+  params.dz = 0.02;
+  params.volumeFractions = {0.30, 0.35, 0.35};
+  params.thetaList = {{0.10, 0.45, 0.10}, {0.08, 0.37, 0.08}};
+  std::vector<mtrsim::ODFComponent> comps = {mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72), mtrsim::buildUniformODF(72, 36, 72)};
+  std::mt19937_64 rng(7);
+  const mtrsim::MTRSimResult r = mtrsim::simulateMTR(params, comps, rng, 72, 36, 72);
+  REQUIRE_FALSE(r.cancelled);
+  REQUIRE_FALSE(r.mtrIndex.empty());
 }

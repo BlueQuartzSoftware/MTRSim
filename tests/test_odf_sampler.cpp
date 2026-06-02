@@ -1,3 +1,5 @@
+#include "ISimulationObserver.hpp"
+#include "MTRSimDriver.hpp"
 #include "ODFCalculator.hpp"
 #include "ODFSampler.hpp"
 
@@ -207,4 +209,24 @@ TEST_CASE("ODFSampler::sampleOne: returns a single valid orientation", "[odfsamp
   CHECK(ea.phi1 >= -bw);
   CHECK(ea.phi >= -bw);
   CHECK(ea.phi2 >= -bw);
+}
+
+namespace
+{
+class ImmediateCancel : public mtrsim::ISimulationObserver
+{
+public:
+  void updateProgress(int64_t, int64_t, const std::string&) override {}
+  bool shouldCancel() const override { return true; }
+};
+} // namespace
+
+TEST_CASE("sampleN bails out promptly when observer cancels", "[odf_sampler]")
+{
+  mtrsim::ODFComponent uni = mtrsim::buildUniformODF(72, 36, 72);
+  std::mt19937_64 rng(1);
+  mtrsim::ODFSampler sampler{rng};
+  ImmediateCancel cancel;
+  Eigen::MatrixXd out = sampler.sampleN(100000, uni, uni, &cancel);
+  REQUIRE(out.rows() == 0);
 }

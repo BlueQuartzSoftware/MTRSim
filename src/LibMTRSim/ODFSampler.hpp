@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ISimulationObserver.hpp"
 #include "libmtrsim_export.h"
 #include <Eigen/Dense>
 #include <random>
@@ -50,7 +51,7 @@ public:
    * @param uniform   Uniform (reference) ODF component for bin coordinates
    * @return          Matrix of shape [N x 3]: columns are phi1, PHI, phi2 [rad]
    */
-  Eigen::MatrixXd sampleN(int n, const ODFComponent& component, const ODFComponent& uniform);
+  Eigen::MatrixXd sampleN(int n, const ODFComponent& component, const ODFComponent& uniform, ISimulationObserver* observer = nullptr);
 
   /**
    * @brief Draw a single orientation from the given component ODF.

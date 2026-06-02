@@ -182,7 +182,10 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<PGRFSimulation>(m, "PGRFSimulation", "Orchestrates GPGenerator + AssignmentRule to produce a PGRF simulation.")
       .def(py::init([](Rng& rng) { return new PGRFSimulation(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
-      .def("run", &PGRFSimulation::run, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
+      .def(
+          "run",
+          [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); },
+          "params"_a, "Run the PGRF simulation and return a PGRFResult.");
 
   // -------------------------------------------------------------------------
   // GPGenerator
@@ -220,9 +223,12 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<ODFSampler>(m, "ODFSampler", "Draws orientations from a discrete ODF by inverse-CDF sampling.")
       .def(py::init([](Rng& rng) { return new ODFSampler(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
-      .def("sample_n", &ODFSampler::sampleN, "n"_a, "component"_a, "uniform"_a,
-           "Draw n orientations; returns [N x 3] matrix (phi1, PHI, phi2) "
-           "[rad].")
+      .def(
+          "sample_n",
+          [](ODFSampler& self, int n, const ODFComponent& component, const ODFComponent& uniform) { return self.sampleN(n, component, uniform, nullptr); },
+          "n"_a, "component"_a, "uniform"_a,
+          "Draw n orientations; returns [N x 3] matrix (phi1, PHI, phi2) "
+          "[rad].")
       .def("sample_one", &ODFSampler::sampleOne, "component"_a, "uniform"_a, "Draw a single EulerAngles from the ODF.");
 
   // -------------------------------------------------------------------------

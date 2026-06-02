@@ -28,7 +28,7 @@ ODFSampler::ODFSampler(std::mt19937_64& rng)
 // The bin width is inferred as uniform.phi1Bins[1] − uniform.phi1Bins[0],
 // matching MATLAB's bin_scaling_factor = degree_spacing/180*pi.
 
-Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const ODFComponent& uniform)
+Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const ODFComponent& uniform, ISimulationObserver* observer)
 {
   const int nBins = static_cast<int>(component.odfVal.size());
   if(nBins < 1)
@@ -50,11 +50,16 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
   }
 
   // ── Draw N uniform samples and map to bin indices ─────────────────────────
+  constexpr int kCheck = 4096;
   std::uniform_real_distribution<double> uDist(0.0, 1.0);
   std::vector<int> binIdx(static_cast<std::size_t>(n));
 
   for(int i = 0; i < n; ++i)
   {
+    if(observer != nullptr && (i % kCheck) == 0 && observer->shouldCancel())
+    {
+      return Eigen::MatrixXd(0, 3);
+    }
     const double u = uDist(m_Rng);
     // upper_bound finds the first position where cdf > u;
     // the bin index is one before that position.
@@ -76,6 +81,10 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
   Eigen::MatrixXd result(n, 3);
   for(int i = 0; i < n; ++i)
   {
+    if(observer != nullptr && (i % kCheck) == 0 && observer->shouldCancel())
+    {
+      return Eigen::MatrixXd(0, 3);
+    }
     const int b = binIdx[static_cast<std::size_t>(i)];
     result(i, 0) = uniform.phi1Bins[b] + jitter(m_Rng);
     result(i, 1) = uniform.phiBins[b] + jitter(m_Rng);

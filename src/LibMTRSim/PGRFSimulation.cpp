@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
@@ -35,7 +36,7 @@ PGRFSimulation::PGRFSimulation(std::mt19937_64& rng)
 //   boundary_conditions       = 'nonperiodic'
 //   mean_function_selected    = 'stationary'  (mu = 0 for all fields)
 
-PGRFResult PGRFSimulation::run(const SimulationParams& params)
+PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserver* observer)
 {
   // ── Grid dimensions ──────────────────────────────────────────────────────
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
@@ -75,6 +76,14 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params)
 
   for(int h = 0; h < numGaussians; ++h)
   {
+    if(observer != nullptr)
+    {
+      if(observer->shouldCancel())
+      {
+        return PGRFResult{}; // empty; caller checks observer->shouldCancel()
+      }
+      observer->updateProgress(h, numGaussians, fmt::format("Simulating latent Gaussian field {}/{}", h + 1, numGaussians));
+    }
     spdlog::info("PGRFSimulation: simulating latent Gaussian Y{} ...", h + 1);
 
     const auto& thetaRow = params.thetaList[static_cast<std::size_t>(h)];

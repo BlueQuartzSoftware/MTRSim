@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fmt/format.h>
 #include <numbers>
 #include <stdexcept>
 
@@ -74,7 +75,7 @@ ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int n
   return c;
 }
 
-MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2)
+MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2, ISimulationObserver* observer)
 {
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
   const int ny = static_cast<int>(std::round(params.yLen / params.dy));
@@ -86,9 +87,24 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
     throw std::invalid_argument("simulateMTR: odfComponents count must equal volumeFractions count");
   }
 
+  auto cancelled = [&]() { return observer != nullptr && observer->shouldCancel(); };
+  auto report = [&](int64_t done, int64_t total, const std::string& msg) {
+    if(observer != nullptr)
+    {
+      observer->updateProgress(done, total, msg);
+    }
+  };
+
   // 1. PGRF assignment (sim-ordered, 1-based component ids).
+  report(0, 100, "Running plurigaussian field simulation");
   PGRFSimulation pgrf{rng};
-  const PGRFResult pgrf_result = pgrf.run(params); // throws on bad dims
+  const PGRFResult pgrf_result = pgrf.run(params, observer); // throws on bad dims
+  if(cancelled())
+  {
+    MTRSimResult out;
+    out.cancelled = true;
+    return out;
+  }
 
   if(static_cast<int>(pgrf_result.mtrIndex.size()) != N)
   {
@@ -102,7 +118,14 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   ODFSampler sampler{rng};
   for(int j = 0; j < numComponents; ++j)
   {
-    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(N, odfComponents[static_cast<std::size_t>(j)], uniformOdf);
+    report(j, numComponents, fmt::format("Sampling orientations (component {}/{})", j + 1, numComponents));
+    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(N, odfComponents[static_cast<std::size_t>(j)], uniformOdf, observer);
+    if(cancelled())
+    {
+      MTRSimResult out;
+      out.cancelled = true;
+      return out;
+    }
   }
 
   // 3. Assign per-voxel orientation by component (sim order).
@@ -120,6 +143,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   }
 
   // 4. Remap to SIMPLNX z,y,x order.
+  report(100, 100, "Finalizing microstructure");
   MTRSimResult out;
   out.nx = nx;
   out.ny = ny;
