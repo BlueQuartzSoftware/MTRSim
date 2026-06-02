@@ -40,7 +40,7 @@ Eigen::MatrixXd GPGenerator::buildCovarianceMatrix(int n, double spacing, double
 
   // Symmetrize (adds lower triangle from upper) then set diagonal = 1 + jitter
   // MATLAB: Gamma = Gamma + Gamma' + eye(n) + 1e-6*eye(n)
-  gamma += gamma.transpose();
+  gamma += gamma.transpose().eval();
   gamma.diagonal().array() += 1.0 + 1e-6;
 
   return gamma;
