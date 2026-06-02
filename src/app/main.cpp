@@ -4,6 +4,7 @@
 #include "IPFMapper.hpp"
 #include "MTRSimDriver.hpp"
 #include "ODFSampler.hpp"
+#include "SimulationObservers.hpp"
 #include "SimulationParams.hpp"
 
 #include <CLI/CLI.hpp>
@@ -261,8 +262,15 @@ int main(int argc, char** argv)
   constexpr int k_OdfBinsPhi2 = 72;
 
   spdlog::info("Running MTR simulation...");
-  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, k_OdfBinsPhi1, k_OdfBinsPHI, k_OdfBinsPhi2);
+  mtrsim::ConsoleObserver observer;
+  mtrsim::MTRSimResult sim = mtrsim::simulateMTR(params, odfComponents, rng, k_OdfBinsPhi1, k_OdfBinsPHI, k_OdfBinsPhi2, &observer);
   spdlog::info("MTR simulation complete.");
+
+  if(sim.cancelled)
+  {
+    spdlog::warn("Simulation was cancelled; no output written.");
+    return 0;
+  }
 
   Eigen::VectorXd phi1Vec = Eigen::Map<Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(sim.phi1.size()));
   Eigen::VectorXd phiVec = Eigen::Map<Eigen::VectorXd>(sim.phi.data(), static_cast<Eigen::Index>(sim.phi.size()));
