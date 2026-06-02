@@ -99,7 +99,9 @@ std::filesystem::path WriteTempConfig(const std::string& jsonText, const std::st
 {
   const std::filesystem::path path = std::filesystem::temp_directory_path() / fmt::format("mtrsim_test_{}.json", tag);
   std::ofstream out(path);
+  REQUIRE(out.is_open());
   out << jsonText;
+  REQUIRE(out.good());
   out.close();
   return path;
 }

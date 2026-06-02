@@ -296,26 +296,44 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
   MTRSimInputValues inputValues;
   inputValues.inputOdfGeometryPath = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
   inputValues.odfComponentPaths = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
-  inputValues.volumeFractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
-  inputValues.thetaList = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
-  inputValues.physicalSize = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
-  inputValues.physicalSpacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
   inputValues.generatePolarColoring = filterArgs.value<bool>(k_GeneratePolarColoring_Key);
   inputValues.outputGeometryPath = filterArgs.value<DataPath>(k_OutputGeometry_Key);
   inputValues.cellAttrMatName = filterArgs.value<std::string>(k_CellAttrMatName_Key);
   inputValues.mtrIdsArrayName = filterArgs.value<std::string>(k_MtrIdsArrayName_Key);
   inputValues.eulersArrayName = filterArgs.value<std::string>(k_EulersArrayName_Key);
   inputValues.polarColorsArrayName = filterArgs.value<std::string>(k_PolarColorsArrayName_Key);
-  inputValues.useConfigFile = filterArgs.value<bool>(k_UseConfigFile_Key);
-  inputValues.configFilePath = filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key);
 
+  // Resolve ALL simulation parameters (volume fractions, theta, size, spacing, seed)
+  // from whichever source the user has selected — config file or manual fields.
+  // The config file is parsed at most ONCE here; the algorithm is config-agnostic.
+  const bool useConfig = filterArgs.value<bool>(k_UseConfigFile_Key);
   uint64 seed;
-  if(inputValues.useConfigFile)
+  if(useConfig)
   {
-    seed = mtrsim::parseConfigJson(inputValues.configFilePath).seed; // file validated in preflight
+    mtrsim::SimulationParams cfg;
+    try
+    {
+      cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
+    } catch(const std::exception& e)
+    {
+      return MakeErrorResult(-13521, fmt::format("MTRSim config file error: {}", e.what()));
+    }
+    inputValues.volumeFractions = {cfg.volumeFractions};
+    inputValues.thetaList = cfg.thetaList;
+    inputValues.physicalSize = {static_cast<float32>(cfg.xLen), static_cast<float32>(cfg.yLen), static_cast<float32>(cfg.zLen)};
+    inputValues.physicalSpacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
+    seed = cfg.seed;
+    if(seed == 0) // seed:0 (or absent) means "generate one"
+    {
+      seed = static_cast<uint64>(std::chrono::steady_clock::now().time_since_epoch().count());
+    }
   }
   else
   {
+    inputValues.volumeFractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
+    inputValues.thetaList = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
+    inputValues.physicalSize = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
+    inputValues.physicalSpacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
     seed = filterArgs.value<uint64>(k_SeedValue_Key);
     if(!filterArgs.value<bool>(k_UseSeed_Key))
     {

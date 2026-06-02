@@ -3,7 +3,6 @@
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 
-#include "LibMTRSim/ConfigIO.hpp"
 #include "LibMTRSim/IPFMapper.hpp"
 #include "LibMTRSim/ISimulationObserver.hpp"
 #include "LibMTRSim/MTRSimDriver.hpp"
@@ -90,32 +89,20 @@ Result<> MTRSim::operator()()
     components.push_back(mtrsim::gridToODFComponent(values, n1, nPHI, n2, static_cast<double>(odfSpacing[2]), static_cast<double>(odfSpacing[1]), static_cast<double>(odfSpacing[0])));
   }
 
-  // 3. SimulationParams from either the MTRSim JSON config file or the manual filter inputs.
+  // 3. SimulationParams — always built from m_InputValues, which executeImpl has
+  // already populated from either the config file or the manual UI fields.
   mtrsim::SimulationParams params;
-  if(m_InputValues->useConfigFile)
-  {
-    // The file was already validated in preflight; this is a safety net for the execute path.
-    try
-    {
-      params = mtrsim::parseConfigJson(m_InputValues->configFilePath);
-    } catch(const std::exception& e)
-    {
-      return MakeErrorResult(-13520, fmt::format("MTRSim config file error: {}", e.what()));
-    }
-  }
-  else
-  {
-    params.xLen = m_InputValues->physicalSize[0];
-    params.yLen = m_InputValues->physicalSize[1];
-    params.zLen = m_InputValues->physicalSize[2];
-    params.dx = m_InputValues->physicalSpacing[0];
-    params.dy = m_InputValues->physicalSpacing[1];
-    params.dz = m_InputValues->physicalSpacing[2];
-    params.volumeFractions = m_InputValues->volumeFractions[0]; // 1 row
-    params.thetaList = m_InputValues->thetaList;
-  }
-  // The rng below is seeded from the filter-resolved seed (m_InputValues->seed) regardless of mode;
-  // SimulationParams::seed is not consulted by simulateMTR.
+  params.xLen = m_InputValues->physicalSize[0];
+  params.yLen = m_InputValues->physicalSize[1];
+  params.zLen = m_InputValues->physicalSize[2];
+  params.dx = m_InputValues->physicalSpacing[0];
+  params.dy = m_InputValues->physicalSpacing[1];
+  params.dz = m_InputValues->physicalSpacing[2];
+  params.volumeFractions = m_InputValues->volumeFractions[0]; // 1 row
+  params.thetaList = m_InputValues->thetaList;
+  params.seed = m_InputValues->seed;
+  // The rng below is seeded from m_InputValues->seed; SimulationParams::seed is
+  // not consulted by simulateMTR, but we populate it for completeness.
 
   if(m_ShouldCancel)
   {
