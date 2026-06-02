@@ -1,5 +1,6 @@
 add_executable(mtrsim_tests
   main.cpp
+  test_config_io.cpp
   test_placeholder.cpp
   test_qsimvn.cpp
   test_gp_generator.cpp

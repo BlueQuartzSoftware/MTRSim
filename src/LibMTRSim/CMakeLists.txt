@@ -1,5 +1,6 @@
 set(MTRSIM_HEADERS
   AssignmentRule.hpp
+  ConfigIO.hpp
   GPGenerator.hpp
   IPFMapper.hpp
   ISimulationObserver.hpp
@@ -17,6 +18,7 @@ set(MTRSIM_HEADERS
 
 set(MTRSIM_SOURCES
   AssignmentRule.cpp
+  ConfigIO.cpp
   GPGenerator.cpp
   IPFMapper.cpp
   MTRDataLoader.cpp

@@ -104,6 +104,7 @@ target_include_directories(simplnx PUBLIC )
 # ------------------------------------------------------------------------------
 set(PLUGIN_EXTRA_SOURCES
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.cpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ConfigIO.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/GPGenerator.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/IPFMapper.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRDataLoader.cpp
@@ -118,6 +119,7 @@ set(PLUGIN_EXTRA_SOURCES
 )
 set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ConfigIO.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/GPGenerator.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/IPFMapper.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ISimulationObserver.hpp
