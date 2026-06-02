@@ -80,7 +80,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     {
       if(observer->shouldCancel())
       {
-        return PGRFResult{}; // empty; caller checks observer->shouldCancel()
+        return PGRFResult{}; // cancelled; simulateMTR detects this via its cancelled() lambda
       }
       observer->updateProgress(h, numGaussians, fmt::format("Simulating latent Gaussian field {}/{}", h + 1, numGaussians));
     }
