@@ -216,8 +216,13 @@ namespace
 class ImmediateCancel : public mtrsim::ISimulationObserver
 {
 public:
-  void updateProgress(int64_t, int64_t, const std::string&) override {}
-  bool shouldCancel() const override { return true; }
+  void updateProgress(int64_t, int64_t, const std::string&) override
+  {
+  }
+  bool shouldCancel() const override
+  {
+    return true;
+  }
 };
 } // namespace
 

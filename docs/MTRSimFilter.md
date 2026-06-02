@@ -59,7 +59,7 @@ The **Filter** reports the following derived values before the user clicks Apply
 
 ### Performance
 
-The simulation runs in the execute phase. For large output grids (e.g., the default ~1900 × 635 grid) this may take a substantial amount of time. Progress is reported continuously throughout the simulation — covering plurigaussian field generation and per-component orientation sampling — so the progress bar advances incrementally rather than jumping from 0 % to 100 %. The filter also checks for cancellation continuously; if the user cancels mid-run, the simulation is aborted cleanly and **no output arrays are written**.
+The simulation runs in the execute phase. For large output grids (e.g., the default ~1900 × 635 grid) this may take a substantial amount of time. Progress is reported continuously throughout the simulation — covering plurigaussian field generation and per-component orientation sampling — so the progress bar advances incrementally rather than jumping from 0 % to 100 %. The filter also checks for cancellation continuously; if cancelled mid-run, the filter returns without populating the output arrays with simulation results (the arrays exist but remain unfilled).
 
 ## Outputs
 

@@ -6,7 +6,8 @@
 #include <fstream>
 #include <string>
 
-namespace {
+namespace
+{
 std::string writeTemp(const std::string& contents)
 {
   const std::string path = std::string(MTRSIM_TEST_DATA_DIR) + "/_tmp_config_io.json";

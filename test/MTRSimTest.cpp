@@ -8,7 +8,7 @@
  *   3. Volume Fraction values do not sum to 1.0 -> invalid.
  *   4. Happy-path args -> preflight VALID (builds geometry + array actions).
  *   5. Theta List rows with wrong column count (2 instead of 3) -> invalid
- * (-13005).
+ * (-13505).
  */
 
 #include <catch2/catch.hpp>
@@ -348,8 +348,8 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count
   MTRSimFilter filter;
   Arguments args = MakeValidArgs(compPaths);
   // 2 rows supplied (enough for 3 components: needs >= 2), but each row has
-  // only 2 columns instead of 3 — must trigger the column-count check (-13005),
-  // not the row-count check (-13004).
+  // only 2 columns instead of 3 — must trigger the column-count check (-13505),
+  // not the row-count check (-13504).
   args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45}, {0.08, 0.37}});
 
   auto preflightResult = filter.preflight(dataStructure, args);

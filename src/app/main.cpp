@@ -145,7 +145,7 @@ int main(int argc, char** argv)
     try
     {
       mtrsim::SimulationParams cfg = mtrsim::parseConfigJson(configPath);
-      cfg.outputDir = params.outputDir;   // keep CLI-provided output dir
+      cfg.outputDir = params.outputDir; // keep CLI-provided output dir
       if(seed != 0)
       {
         cfg.seed = seed; // CLI --seed (non-zero) overrides JSON seed

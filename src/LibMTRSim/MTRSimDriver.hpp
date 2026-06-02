@@ -93,6 +93,7 @@ struct LIBMTRSIM_EXPORT MTRSimResult
  * @param rng            Seeded RNG (mt19937_64).
  * @param n1,nPHI,n2     Bin counts of the ODF grid (for the uniform reference).
  */
-LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2, ISimulationObserver* observer = nullptr);
+LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2,
+                                          ISimulationObserver* observer = nullptr);
 
 } // namespace mtrsim

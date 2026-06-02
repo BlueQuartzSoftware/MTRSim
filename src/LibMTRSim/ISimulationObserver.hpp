@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <string>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief Observer interface for long-running MTR simulations.
@@ -14,7 +15,8 @@ namespace mtrsim {
  * cancellation from the thread running simulateMTR. They must be cheap and
  * must not throw.
  */
-class LIBMTRSIM_EXPORT ISimulationObserver {
+class LIBMTRSIM_EXPORT ISimulationObserver
+{
 public:
   ISimulationObserver() = default;
   virtual ~ISimulationObserver() = default;

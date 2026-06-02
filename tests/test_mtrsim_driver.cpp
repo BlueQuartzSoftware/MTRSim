@@ -15,8 +15,14 @@ public:
   : m_K(k)
   {
   }
-  void updateProgress(int64_t, int64_t, const std::string&) override { ++m_Count; }
-  bool shouldCancel() const override { return m_Count >= m_K; }
+  void updateProgress(int64_t, int64_t, const std::string&) override
+  {
+    ++m_Count;
+  }
+  bool shouldCancel() const override
+  {
+    return m_Count >= m_K;
+  }
 
 private:
   int m_K;

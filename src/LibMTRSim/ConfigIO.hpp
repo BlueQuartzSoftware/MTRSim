@@ -5,7 +5,8 @@
 
 #include <filesystem>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief Parse an MTRSim config JSON into a SimulationParams.

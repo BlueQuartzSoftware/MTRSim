@@ -5,7 +5,8 @@
 #include <fstream>
 #include <stdexcept>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 SimulationParams parseConfigJson(const std::filesystem::path& path)
 {
