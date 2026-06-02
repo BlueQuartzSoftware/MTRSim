@@ -18,6 +18,20 @@ The algorithm reproduces the behavior of the MATLAB MTRSim research code (`matla
 
 *An Orientation Distribution Function (ODF) over Bunge Euler space. One ODF per MTR component defines the crystallographic texture from which each voxel's orientation is drawn.*
 
+### Configuration Source
+
+By default, the simulation parameters (Volume Fraction, Theta List, Physical Size, Physical Spacing, and the seed group) are entered manually in the filter UI.
+
+Enabling **Load Simulation Parameters from Config File** hides those manual fields and instead reads all simulation parameters from a JSON file that follows the same schema used by the standalone MTRSim tool (see `configs/*.json` in the MTRSim repository). This is useful when you already have a validated config file from a prior MATLAB or standalone MTRSim run.
+
+When config-file mode is active:
+
+- The **MTRSim Config File (JSON)** path parameter becomes visible; the manual Simulation Parameters and seed fields are hidden.
+- The `odfInputPath` and `nuggetVariance` keys in the JSON are ignored; the ODF always comes from the **Input ODF Geometry** / **ODF Component Arrays** selection in the UI.
+- All output array names and paths (output geometry, cell attribute matrix, array names) always come from the UI regardless of mode.
+- If the config contains no `seed` key, or `seed: 0`, a time-based random seed is generated automatically — the same behavior as leaving **Use Seed for Random Generation** off in manual mode.
+- The **Units Note** below still applies: `xLen`/`yLen`/`zLen`/`dx`/`dy`/`dz` and the theta values in the JSON must all be in a consistent length unit.
+
 ### Algorithm Overview
 
 ![How MTRSim works](Images/mtrsim_algorithm.png)
@@ -45,7 +59,7 @@ The **Filter** reports the following derived values before the user clicks Apply
 
 ### Performance
 
-The simulation runs as a single monolithic step in the execute phase. For large output grids (e.g., the default ~1900 × 635 grid) this may take a substantial amount of time. Progress is reported at the start of the simulation and again upon completion; intermediate cancellation is checked only at the boundaries of major stages, not inside the inner loop. This is expected behavior.
+The simulation runs in the execute phase. For large output grids (e.g., the default ~1900 × 635 grid) this may take a substantial amount of time. Progress is reported continuously throughout the simulation — covering plurigaussian field generation and per-component orientation sampling — so the progress bar advances incrementally rather than jumping from 0 % to 100 %. The filter also checks for cancellation continuously; if the user cancels mid-run, the simulation is aborted cleanly and **no output arrays are written**.
 
 ## Outputs
 
@@ -76,6 +90,8 @@ A scalar `UInt64` array (default name `MTRSim SeedValue`) is created at the top 
 | `-13504` | (Preflight) The **Theta List** has fewer than (components − 1) rows. Each pair of adjacent components requires one latent Gaussian field with its own correlation lengths. |
 | `-13505` | (Preflight) A row in the **Theta List** does not have exactly 3 columns (`theta_x`, `theta_y`, `theta_z`). |
 | `-13506` | (Preflight) Physical Spacing X or Y is ≤ 0. Both must be strictly positive; the Z spacing is unused when Physical Size Z ≤ 0. |
+| `-13520` | (Preflight) The MTRSim config file is missing or invalid (cannot be opened / not valid JSON). Only reported when **Load Simulation Parameters from Config File** is ON. |
+| `-13521` | (Execute) The MTRSim config file could not be read at execute time (missing or invalid). Only reported when **Load Simulation Parameters from Config File** is ON. |
 | `-13550` | (Execute) The core MTR simulation threw an unexpected exception. The error message includes the underlying cause. |
 
 % Auto generated parameter table will be inserted here
