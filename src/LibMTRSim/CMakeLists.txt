@@ -2,6 +2,7 @@ set(MTRSIM_HEADERS
   AssignmentRule.hpp
   GPGenerator.hpp
   IPFMapper.hpp
+  ISimulationObserver.hpp
   MTRDataLoader.hpp
   MTRSimDriver.hpp
   ODFBuilder.hpp
@@ -11,6 +12,7 @@ set(MTRSIM_HEADERS
   PGRFSimulation.hpp
   PoleFigure.hpp
   QSimVN.hpp
+  SimulationObservers.hpp
 )
 
 set(MTRSIM_SOURCES

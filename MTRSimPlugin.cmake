@@ -120,6 +120,7 @@ set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/GPGenerator.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/IPFMapper.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ISimulationObserver.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRDataLoader.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ODFBuilder.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ODFCalculator.hpp
@@ -129,6 +130,7 @@ set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PoleFigure.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/QSimVN.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRSimDriver.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/SimulationObservers.hpp
 )
 
 target_sources(${PLUGIN_NAME} 

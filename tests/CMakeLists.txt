@@ -8,6 +8,7 @@ add_executable(mtrsim_tests
   test_mtrsim_driver.cpp
   test_ipf_mapper.cpp
   test_odf_builder.cpp
+  test_observer.cpp
 )
 
 target_include_directories(mtrsim_tests
