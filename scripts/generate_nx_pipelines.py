@@ -63,6 +63,8 @@ def build_pipeline(name, cfg, repo_root):
         "args": {
             "input_odf_geometry_path": _val(ODF_GEOM),
             "odf_component_arrays": _val(component_paths),
+            "use_config_file": _val(False),
+            "config_file_path": _val(""),
             "volume_fractions": _val([list(vf)]),
             "theta_list": _val([list(row) for row in cfg["thetaList"]]),
             "physical_size": _val([cfg["xLen"], cfg["yLen"], cfg["zLen"]]),
