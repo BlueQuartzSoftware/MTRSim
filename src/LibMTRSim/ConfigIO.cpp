@@ -36,6 +36,8 @@ SimulationParams parseConfigJson(const std::filesystem::path& path)
       params.thetaList = j["thetaList"].get<std::vector<std::vector<double>>>();
     if(j.contains("nuggetVariance"))
       params.nuggetVariance = j["nuggetVariance"].get<std::vector<double>>();
+    if(j.contains("odfInputPath"))
+      params.odfInputPath = j["odfInputPath"].get<std::string>();
     if(j.contains("seed"))
       params.seed = j["seed"].get<uint64_t>();
   } catch(const nlohmann::json::exception& e)

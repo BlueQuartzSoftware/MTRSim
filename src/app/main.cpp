@@ -11,7 +11,6 @@
 #include <CLI/CLI.hpp>
 #include <Eigen/Dense>
 #include <hdf5.h>
-#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
 #include <cmath>
@@ -150,19 +149,6 @@ int main(int argc, char** argv)
       if(seed != 0)
       {
         cfg.seed = seed; // CLI --seed (non-zero) overrides JSON seed
-      }
-      // parseConfigJson does not read odfInputPath; read it separately so
-      // the JSON value overrides the SimulationParams default when present.
-      {
-        std::ifstream f(configPath);
-        if(f.is_open())
-        {
-          const nlohmann::json j = nlohmann::json::parse(f);
-          if(j.contains("odfInputPath"))
-          {
-            cfg.odfInputPath = j["odfInputPath"].get<std::string>();
-          }
-        }
       }
       params = cfg;
     } catch(const std::exception& e)

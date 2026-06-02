@@ -17,7 +17,7 @@ std::string writeTemp(const std::string& contents)
 }
 } // namespace
 
-TEST_CASE("parseConfigJson reads known fields and ignores extras", "[config_io]")
+TEST_CASE("parseConfigJson reads known fields including odfInputPath", "[config_io]")
 {
   const std::string path = writeTemp(R"({
     "xLen": 38.1, "yLen": 12.7, "zLen": 0.0,
@@ -33,6 +33,7 @@ TEST_CASE("parseConfigJson reads known fields and ignores extras", "[config_io]"
   REQUIRE(p.volumeFractions[1] == Approx(0.35));
   REQUIRE(p.thetaList.size() == 2);
   REQUIRE(p.thetaList[0][1] == Approx(0.45));
+  REQUIRE(p.odfInputPath == "ignored.h5");
   REQUIRE(p.seed == 99);
   std::remove(path.c_str());
 }
