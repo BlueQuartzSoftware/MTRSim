@@ -28,7 +28,7 @@ public:
   static inline constexpr StringLiteral k_Hdf5PathPrefix_Key =
       "hdf5_path_prefix";
   static inline constexpr StringLiteral k_OutputImageGeometry_Key =
-      "output_image_geometry";
+      "output_image_geometry_path";
   static inline constexpr StringLiteral k_CellAttrMatName_Key =
       "cell_attribute_matrix_name";
 

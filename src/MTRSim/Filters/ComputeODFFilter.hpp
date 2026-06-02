@@ -37,20 +37,20 @@ public:
   static inline constexpr StringLiteral k_ApplySmoothing_Key =
       "apply_smoothing";
   static inline constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
-  static inline constexpr StringLiteral k_EulerAngles_Key = "euler_angles";
-  static inline constexpr StringLiteral k_Phases_Key = "phases";
+  static inline constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
+  static inline constexpr StringLiteral k_Phases_Key = "phases_path";
   static inline constexpr StringLiteral k_CrystalStructures_Key =
-      "crystal_structures";
+      "crystal_structures_path";
   static inline constexpr StringLiteral k_UseMask_Key = "use_mask";
-  static inline constexpr StringLiteral k_Mask_Key = "mask";
-  static inline constexpr StringLiteral k_OutputMode_Key = "output_mode";
-  static inline constexpr StringLiteral k_OutputUnits_Key = "output_units";
+  static inline constexpr StringLiteral k_Mask_Key = "mask_path";
+  static inline constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
+  static inline constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
   static inline constexpr StringLiteral k_OutputImageGeometry_Key =
-      "output_image_geometry";
+      "output_image_geometry_path";
   static inline constexpr StringLiteral k_CellAttrMatName_Key =
       "cell_attribute_matrix_name";
   static inline constexpr StringLiteral k_ExistingOdfGeometry_Key =
-      "existing_odf_geometry";
+      "existing_odf_geometry_path";
   static inline constexpr StringLiteral k_ComponentName_Key = "component_name";
 
   /**

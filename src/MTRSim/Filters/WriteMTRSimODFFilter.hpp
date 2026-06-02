@@ -31,7 +31,7 @@ public:
   static inline constexpr StringLiteral k_Hdf5PathPrefix_Key =
       "hdf5_path_prefix";
   static inline constexpr StringLiteral k_InputImageGeometry_Key =
-      "input_image_geometry";
+      "input_image_geometry_path";
   static inline constexpr StringLiteral k_ODFComponents_Key = "odf_components";
 
   /**

@@ -26,7 +26,7 @@ public:
 
   // Parameter Keys
   static inline constexpr StringLiteral k_InputOdfGeometry_Key =
-      "input_odf_geometry";
+      "input_odf_geometry_path";
   static inline constexpr StringLiteral k_OdfComponentArrays_Key =
       "odf_component_arrays";
   static inline constexpr StringLiteral k_VolumeFractions_Key =
@@ -41,7 +41,7 @@ public:
   static inline constexpr StringLiteral k_GeneratePolarColoring_Key =
       "generate_polar_coloring";
   static inline constexpr StringLiteral k_OutputGeometry_Key =
-      "output_geometry";
+      "output_geometry_path";
   static inline constexpr StringLiteral k_CellAttrMatName_Key =
       "cell_attribute_matrix_name";
   static inline constexpr StringLiteral k_MtrIdsArrayName_Key =
