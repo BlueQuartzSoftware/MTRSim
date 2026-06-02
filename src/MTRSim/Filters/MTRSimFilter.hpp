@@ -27,6 +27,8 @@ public:
   MTRSimFilter& operator=(MTRSimFilter&&) noexcept = delete;
 
   // Parameter Keys
+  static constexpr StringLiteral k_UseConfigFile_Key = "use_config_file";
+  static constexpr StringLiteral k_ConfigFilePath_Key = "config_file_path";
   static constexpr StringLiteral k_InputOdfGeometry_Key = "input_odf_geometry_path";
   static constexpr StringLiteral k_OdfComponentArrays_Key = "odf_component_arrays";
   static constexpr StringLiteral k_VolumeFractions_Key = "volume_fractions";

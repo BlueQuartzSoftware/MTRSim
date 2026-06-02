@@ -19,6 +19,7 @@
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/Parameters/DynamicTableParameter.hpp"
+#include "simplnx/Parameters/FileSystemPathParameter.hpp"
 #include "simplnx/Parameters/MultiArraySelectionParameter.hpp"
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 
@@ -26,6 +27,8 @@
 
 #include <array>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
 #include <vector>
 
 using namespace nx::core;
@@ -70,6 +73,8 @@ std::vector<DataPath> BuildOdfDataStructure(DataStructure& dataStructure, usize 
 Arguments MakeValidArgs(const std::vector<DataPath>& compPaths)
 {
   Arguments args;
+  args.insertOrAssign(MTRSimFilter::k_UseConfigFile_Key, false);
+  args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{});
   args.insertOrAssign(MTRSimFilter::k_InputOdfGeometry_Key, k_OdfGeomPath);
   args.insertOrAssign(MTRSimFilter::k_OdfComponentArrays_Key, compPaths);
   args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.30, 0.35, 0.35}});
@@ -86,6 +91,17 @@ Arguments MakeValidArgs(const std::vector<DataPath>& compPaths)
   args.insertOrAssign(MTRSimFilter::k_EulersArrayName_Key, std::string("Eulers"));
   args.insertOrAssign(MTRSimFilter::k_PolarColorsArrayName_Key, std::string("Polar Colors"));
   return args;
+}
+
+// Writes the given JSON text to a unique temp file under the system temp dir and
+// returns its path. Tests are responsible for removing it.
+std::filesystem::path WriteTempConfig(const std::string& jsonText, const std::string& tag)
+{
+  const std::filesystem::path path = std::filesystem::temp_directory_path() / fmt::format("mtrsim_test_{}.json", tag);
+  std::ofstream out(path);
+  out << jsonText;
+  out.close();
+  return path;
 }
 } // namespace
 
@@ -336,4 +352,90 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count
 
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Config-mode preflight VALID and grid size from config", "[MTRSim][MTRSimFilter][Config]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+
+  // 3 volume fractions, 2 theta rows, small size; round(1.0/0.02)*round(0.6/0.02) = 50*30 = 1500 tuples.
+  const std::string json = R"({
+    "xLen": 1.0, "yLen": 0.6, "zLen": 0.0,
+    "dx": 0.02, "dy": 0.02, "dz": 0.02,
+    "volumeFractions": [0.30, 0.35, 0.35],
+    "thetaList": [[0.10, 0.45, 0.10], [0.08, 0.37, 0.08]],
+    "seed": 42
+  })";
+  const std::filesystem::path configPath = WriteTempConfig(json, "valid");
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  args.insertOrAssign(MTRSimFilter::k_UseConfigFile_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{configPath});
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+
+  auto executeResult = filter.execute(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
+  REQUIRE(mtrIds.getNumberOfTuples() == 1500);
+
+  // Seed array records the config seed (42).
+  auto& seedArray = dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
+  REQUIRE(seedArray[0] == 42);
+
+  std::filesystem::remove(configPath);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Config-mode missing file rejects at preflight", "[MTRSim][MTRSimFilter][Config][ErrorPath]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+
+  const std::filesystem::path missing = std::filesystem::temp_directory_path() / "mtrsim_test_does_not_exist.json";
+  std::filesystem::remove(missing); // ensure absent
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  args.insertOrAssign(MTRSimFilter::k_UseConfigFile_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{missing});
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+}
+
+TEST_CASE("MTRSim::MTRSimFilter: Config-mode VF/component mismatch rejects at preflight", "[MTRSim][MTRSimFilter][Config][ErrorPath]")
+{
+  UnitTest::LoadPlugins();
+
+  DataStructure dataStructure;
+  // Select 3 ODF components but provide only 2 volume fractions in the config (fires -13502).
+  const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
+
+  const std::string json = R"({
+    "xLen": 1.0, "yLen": 0.6, "zLen": 0.0,
+    "dx": 0.02, "dy": 0.02, "dz": 0.02,
+    "volumeFractions": [0.5, 0.5],
+    "thetaList": [[0.10, 0.45, 0.10], [0.08, 0.37, 0.08]],
+    "seed": 42
+  })";
+  const std::filesystem::path configPath = WriteTempConfig(json, "vf_mismatch");
+
+  MTRSimFilter filter;
+  Arguments args = MakeValidArgs(compPaths);
+  args.insertOrAssign(MTRSimFilter::k_UseConfigFile_Key, true);
+  args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{configPath});
+
+  auto preflightResult = filter.preflight(dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+
+  std::filesystem::remove(configPath);
 }
