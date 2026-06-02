@@ -1,0 +1,163 @@
+{
+  "isDisabled": false,
+  "name": "MTRSim_image_high_res.d3dpipeline",
+  "pinnedParams": [],
+  "pipeline": [
+    {
+      "args": {
+        "input_file": {
+          "value": "/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/data/simulation_ODF.h5",
+          "version": 1
+        },
+        "hdf5_path_prefix": {
+          "value": "/ODF_best",
+          "version": 1
+        },
+        "output_image_geometry_path": {
+          "value": "ODF",
+          "version": 1
+        },
+        "cell_attribute_matrix_name": {
+          "value": "Cell Data",
+          "version": 1
+        },
+        "parameters_version": 1
+      },
+      "comments": "Load the 3-component MTRSim ODF into ImageGeom 'ODF'.",
+      "filter": {
+        "name": "nx::core::ReadMTRSimODFFilter",
+        "uuid": "2b1a4841-65d7-4315-9fe3-d66c88e5755c"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "input_odf_geometry_path": {
+          "value": "ODF",
+          "version": 1
+        },
+        "odf_component_arrays": {
+          "value": [
+            "ODF/Cell Data/component_0",
+            "ODF/Cell Data/component_1",
+            "ODF/Cell Data/component_2"
+          ],
+          "version": 1
+        },
+        "volume_fractions": {
+          "value": [
+            [
+              0.3,
+              0.35,
+              0.35
+            ]
+          ],
+          "version": 1
+        },
+        "theta_list": {
+          "value": [
+            [
+              0.1,
+              0.45,
+              0.1
+            ],
+            [
+              0.08,
+              0.37,
+              0.08
+            ]
+          ],
+          "version": 1
+        },
+        "physical_size": {
+          "value": [
+            38.1,
+            12.7,
+            0.0
+          ],
+          "version": 1
+        },
+        "physical_spacing": {
+          "value": [
+            0.01,
+            0.01,
+            0.01
+          ],
+          "version": 1
+        },
+        "use_seed": {
+          "value": true,
+          "version": 1
+        },
+        "seed_value": {
+          "value": 42,
+          "version": 1
+        },
+        "seed_array_name": {
+          "value": "MTRSim SeedValue",
+          "version": 1
+        },
+        "generate_polar_coloring": {
+          "value": true,
+          "version": 1
+        },
+        "output_geometry_path": {
+          "value": "MTR Microstructure",
+          "version": 1
+        },
+        "cell_attribute_matrix_name": {
+          "value": "Cell Data",
+          "version": 1
+        },
+        "mtr_ids_array_name": {
+          "value": "MTRIds",
+          "version": 1
+        },
+        "eulers_array_name": {
+          "value": "Eulers",
+          "version": 1
+        },
+        "polar_colors_array_name": {
+          "value": "Polar Colors",
+          "version": 1
+        },
+        "parameters_version": 1
+      },
+      "comments": "High resolution: same physical volume, 2x finer voxels. Slower \u2014 Cholesky matrices are 2x larger in each dimension.",
+      "filter": {
+        "name": "nx::core::MTRSimFilter",
+        "uuid": "f7f7a330-4bff-4a42-a573-09117a89a0a0"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "export_file_path": {
+          "value": "/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/output/MTRSim_image_high_res.dream3d",
+          "version": 1
+        },
+        "write_xdmf_file": {
+          "value": false,
+          "version": 1
+        },
+        "use_compression": {
+          "value": true,
+          "version": 1
+        },
+        "compression_level": {
+          "value": 5,
+          "version": 1
+        },
+        "parameters_version": 1
+      },
+      "comments": "Save the synthetic microstructure. Disable to only view in the GUI.",
+      "filter": {
+        "name": "nx::core::WriteDREAM3DFilter",
+        "uuid": "b3a95784-2ced-41ec-8d3d-0242ac130003"
+      },
+      "isDisabled": false
+    }
+  ],
+  "version": 1,
+  "workflowParams": []
+}
