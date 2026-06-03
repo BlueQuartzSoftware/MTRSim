@@ -29,6 +29,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <numbers>
 #include <vector>
 
 using namespace nx::core;
@@ -202,8 +203,8 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   REQUIRE(distinct >= 2);
 
   // Euler values finite and within Bunge bounds (interleaved 3/voxel).
-  constexpr float twoPi = 2.0f * static_cast<float>(M_PI);
-  constexpr float pi = static_cast<float>(M_PI);
+  constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
+
   const auto& eulerStore = eulers.getDataStoreRef();
   for(usize t = 0; t < expectedTuples; ++t)
   {
@@ -216,7 +217,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
     REQUIRE(phi1 >= 0.0f);
     REQUIRE(phi1 <= twoPi);
     REQUIRE(Phi >= 0.0f);
-    REQUIRE(Phi <= pi);
+    REQUIRE(Phi <= std::numbers::pi_v<float>);
     REQUIRE(phi2 >= 0.0f);
     REQUIRE(phi2 <= twoPi);
   }
