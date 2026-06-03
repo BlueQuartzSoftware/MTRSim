@@ -98,7 +98,7 @@ A scalar `UInt64` array (default name `MTRSim SeedValue`) is created at the top 
 
 ## Example Pipelines
 
-(Example pipelines will be added in a future release.)
+Example pipelines can be found in the Prebuilt Pipelines directory under the MTRSim directory. There are many examples covering a wide range of generated microtextures.
 
 ## License & Copyright
 
