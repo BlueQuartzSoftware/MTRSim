@@ -30,6 +30,12 @@ public:
   /// names it. `total <= 0` means "indeterminate".
   virtual void updateProgress(int64_t done, int64_t total, const std::string& message) = 0;
 
+  /// Emit an informational/diagnostic message (not progress). Default: no-op.
+  virtual void info(const std::string& message)
+  {
+    (void)message;
+  }
+
   /// Polled at checkpoints; returning true stops the simulation early.
   [[nodiscard]] virtual bool shouldCancel() const = 0;
 };

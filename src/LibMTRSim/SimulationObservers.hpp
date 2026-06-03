@@ -43,6 +43,11 @@ public:
       }
     }
   }
+  void info(const std::string& message) override
+  {
+    spdlog::info("{}", message);
+  }
+
   [[nodiscard]] bool shouldCancel() const override
   {
     return false;

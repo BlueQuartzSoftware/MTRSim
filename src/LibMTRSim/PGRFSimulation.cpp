@@ -9,7 +9,6 @@
 #include <algorithm>
 #include <cmath>
 #include <fmt/format.h>
-#include <spdlog/spdlog.h>
 #include <stdexcept>
 
 namespace mtrsim
@@ -55,12 +54,16 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     throw std::invalid_argument("PGRFSimulation: thetaList must have one row per latent Gaussian");
   }
 
-  spdlog::info("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} "
-               "latent fields",
-               nx, ny, nz, N, numComponents, numGaussians);
+  if(observer != nullptr)
+  {
+    observer->info(fmt::format("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} latent fields", nx, ny, nz, N, numComponents, numGaussians));
+  }
 
   // ── Select assignment-rule thresholds ────────────────────────────────────
-  spdlog::info("PGRFSimulation: selecting assignment rule thresholds...");
+  if(observer != nullptr)
+  {
+    observer->info("PGRFSimulation: selecting assignment rule thresholds...");
+  }
   AssignmentRule ar(m_Rng);
   const AssignmentRuleThresholds thresholds = ar.selectThresholds(params.volumeFractions);
 
@@ -84,7 +87,6 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
       }
       observer->updateProgress(h, numGaussians, fmt::format("Simulating latent Gaussian field {}/{}", h + 1, numGaussians));
     }
-    spdlog::info("PGRFSimulation: simulating latent Gaussian Y{} ...", h + 1);
 
     const auto& thetaRow = params.thetaList[static_cast<std::size_t>(h)];
     if(thetaRow.size() < 3)
@@ -98,14 +100,20 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
   }
 
   // ── Apply assignment rule ─────────────────────────────────────────────────
-  spdlog::info("PGRFSimulation: applying assignment rule...");
+  if(observer != nullptr)
+  {
+    observer->info("PGRFSimulation: applying assignment rule...");
+  }
   const Eigen::VectorXi mtrIndex = ar.evaluate(zAll, thresholds);
 
   // Log empirical volume fractions for verification
   for(int j = 1; j <= numComponents; ++j)
   {
     const int count = (mtrIndex.array() == j).count();
-    spdlog::info("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(N), params.volumeFractions[static_cast<std::size_t>(j - 1)]);
+    if(observer != nullptr)
+    {
+      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(N), params.volumeFractions[static_cast<std::size_t>(j - 1)]));
+    }
   }
 
   return PGRFResult{mtrIndex, zAll};

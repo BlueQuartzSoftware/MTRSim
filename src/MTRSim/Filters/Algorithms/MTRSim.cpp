@@ -39,6 +39,11 @@ public:
     m_MessageHandler(IFilter::Message::Type::Progress, message, progress);
   }
 
+  void info(const std::string& message) override
+  {
+    m_MessageHandler(IFilter::Message::Type::Info, message);
+  }
+
   [[nodiscard]] bool shouldCancel() const override
   {
     return m_ShouldCancel.load();

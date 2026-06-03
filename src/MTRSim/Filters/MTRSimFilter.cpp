@@ -70,15 +70,6 @@ Parameters MTRSimFilter::parameters() const
 {
   Parameters params;
 
-  params.insertSeparator(Parameters::Separator{"Input ODF"});
-  params.insert(std::make_unique<GeometrySelectionParameter>(k_InputOdfGeometry_Key, "Input ODF Geometry", "Image Geometry holding the ODF (from the Read/Compute ODF filters).", DataPath{},
-                                                             GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
-  params.insert(std::make_unique<MultiArraySelectionParameter>(k_OdfComponentArrays_Key, "ODF Component Arrays",
-                                                               "Ordered list of per-component ODF cell arrays. Order maps to Volume "
-                                                               "Fraction columns.",
-                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypes{IArray::ArrayType::DataArray},
-                                                               GetAllNumericTypes(), MultiArraySelectionParameter::AllowedComponentShapes{{1}}));
-
   params.insertSeparator(Parameters::Separator{"Configuration Source"});
   params.insertLinkableParameter(std::make_unique<BoolParameter>(k_UseConfigFile_Key, "Load Simulation Parameters from Config File",
                                                                  "When ON, read volume fractions, theta list, physical size/spacing, and seed from an MTRSim JSON config "
@@ -116,20 +107,31 @@ Parameters MTRSimFilter::parameters() const
   params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSpacing_Key, "Physical Spacing (microns)", "Voxel spacing X,Y,Z.", std::vector<float32>{0.02f, 0.02f, 0.02f},
                                                          std::vector<std::string>{"X", "Y", "Z"}));
 
+  params.insertSeparator(Parameters::Separator{"Input ODF"});
+  params.insert(std::make_unique<GeometrySelectionParameter>(k_InputOdfGeometry_Key, "Input ODF Geometry", "Image Geometry holding the ODF (from the Read/Compute ODF filters).", DataPath{},
+                                                             GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
+  params.insert(std::make_unique<MultiArraySelectionParameter>(k_OdfComponentArrays_Key, "ODF Component Arrays",
+                                                               "Ordered list of per-component ODF cell arrays. Order maps to Volume "
+                                                               "Fraction columns.",
+                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypes{IArray::ArrayType::DataArray},
+                                                               GetAllNumericTypes(), MultiArraySelectionParameter::AllowedComponentShapes{{1}}));
+
   params.insertSeparator(Parameters::Separator{"Random Number Seed Parameters"});
   params.insertLinkableParameter(std::make_unique<BoolParameter>(k_UseSeed_Key, "Use Seed for Random Generation", "When true the user can supply a fixed seed.", false));
   params.insert(std::make_unique<NumberParameter<uint64>>(k_SeedValue_Key, "Seed Value", "The seed fed into the random generator.", std::mt19937::default_seed));
   params.insert(std::make_unique<DataObjectNameParameter>(k_SeedArrayName_Key, "Stored Seed Value Array Name", "Top-level array recording the seed used.", "MTRSim SeedValue"));
 
   params.insertSeparator(Parameters::Separator{"Output Data Object(s)"});
-  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_GeneratePolarColoring_Key, "Generate Polar Coloring",
-                                                                 "Create a 3-component UInt8 RGB array using the MATLAB polar color "
-                                                                 "mapping.",
-                                                                 false));
+
   params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputGeometry_Key, "Output Image Geometry", "Path of the new microstructure Image Geometry.", DataPath({"MTR Microstructure"})));
   params.insert(std::make_unique<DataObjectNameParameter>(k_CellAttrMatName_Key, "Cell Attribute Matrix Name", "Name of the created cell AttributeMatrix.", "Cell Data"));
   params.insert(std::make_unique<DataObjectNameParameter>(k_MtrIdsArrayName_Key, "MTR Ids Array Name", "Int32 per-voxel MTR component id (1-based).", "MTRIds"));
   params.insert(std::make_unique<DataObjectNameParameter>(k_EulersArrayName_Key, "Euler Angles Array Name", "Float32 3-component Bunge Euler angles [rad].", "Eulers"));
+
+  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_GeneratePolarColoring_Key, "Generate Polar Coloring",
+                                                                 "Create a 3-component UInt8 RGB array using the MATLAB polar color "
+                                                                 "mapping.",
+                                                                 false));
   params.insert(std::make_unique<DataObjectNameParameter>(k_PolarColorsArrayName_Key, "Polar Colors Array Name", "UInt8 3-component RGB polar coloring.", "Polar Colors"));
 
   params.linkParameters(k_UseSeed_Key, k_SeedValue_Key, true);
