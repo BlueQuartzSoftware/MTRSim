@@ -4,7 +4,6 @@ cmake_policy(SET CMP0057 NEW) # ``IN_LIST will be interpreted as an operator whe
 cmake_policy(SET CMP0074 NEW) # ``find_package()`` uses ``<PackageName>_ROOT`` variables.
 cmake_policy(SET CMP0077 NEW) # ``option()`` honors normal variables.
 cmake_policy(SET CMP0080 NEW) # ``BundleUtilities`` cannot be included at configure time.
-cmake_policy(SET CMP0167 NEW) # Suppress FindBoost deprecation warning (retained for EbsdLib compatibility)
 
 # The ``FindPythonInterp`` and ``FindPythonLibs`` modules are removed.
 if(CMAKE_VERSION VERSION_GREATER "3.27.0")
@@ -14,6 +13,10 @@ endif()
 # resolves symlinks before collapsing ../ components.
 if(CMAKE_VERSION VERSION_GREATER "3.28.0")
   cmake_policy(SET CMP0152 NEW)
+endif()
+
+if(CMAKE_VERSION VERSION_GREATER "3.29.0")
+  cmake_policy(SET CMP0167 NEW) # Suppress FindBoost deprecation warning (retained for EbsdLib compatibility)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/Utility.cmake)

@@ -18,11 +18,12 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT ODFBuildParams
 {
-  int32_t nphi1;      ///< Number of bins along phi1 (slowest-varying, Z in ImageGeom).
-  int32_t nPHI;       ///< Number of bins along PHI  (middle,           Y).
-  int32_t nphi2;      ///< Number of bins along phi2 (fastest-varying,  X).
-  double binSizeDeg;  ///< Uniform bin size in degrees (all three axes).
-  bool smoothing;     ///< When true, distribute each tuple over 27 bins (tri-linear smoothing).
+  int32_t nphi1;     ///< Number of bins along phi1 (slowest-varying, Z in ImageGeom).
+  int32_t nPHI;      ///< Number of bins along PHI  (middle,           Y).
+  int32_t nphi2;     ///< Number of bins along phi2 (fastest-varying,  X).
+  double binSizeDeg; ///< Uniform bin size in degrees (all three axes).
+  bool smoothing;    ///< When true, distribute each tuple over 27 bins (tri-linear
+                     ///< smoothing).
 };
 
 /**

@@ -22,7 +22,7 @@
           "version": 1
         },
         "input_file": {
-          "value": "/Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk95-Rel-EbsdLib/Bin/Data/T12-MAI-2010/fw-ar-IF1-avtr12-corr.ctf",
+          "value": "Data/T12-MAI-2010/fw-ar-IF1-avtr12-corr.ctf",
           "version": 1
         },
         "output_image_geometry_path": {
@@ -287,7 +287,7 @@
           "version": 1
         },
         "output_path": {
-          "value": "/Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-Release/Bin/12_PoleFigures",
+          "value": "Data/Output/12_PoleFigures",
           "version": 1
         },
         "parameters_version": 2,
@@ -337,36 +337,36 @@
           "value": "Component 1",
           "version": 1
         },
-        "crystal_structures": {
+        "crystal_structures_path": {
           "value": "ImageGeom/Cell Ensemble Data/CrystalStructures",
           "version": 1
         },
-        "euler_angles": {
+        "euler_angles_path": {
           "value": "ImageGeom/Cell Data/EulerAngles",
           "version": 1
         },
-        "existing_odf_geometry": {
+        "existing_odf_geometry_path": {
           "value": "",
           "version": 1
         },
-        "mask": {
+        "mask_path": {
           "value": "ImageGeom/Cell Data/Mask",
           "version": 1
         },
-        "output_image_geometry": {
+        "output_image_geometry_path": {
           "value": "ODF",
           "version": 1
         },
-        "output_mode": {
+        "output_mode_index": {
           "value": 0,
           "version": 1
         },
-        "output_units": {
+        "output_units_index": {
           "value": 1,
           "version": 1
         },
         "parameters_version": 3,
-        "phases": {
+        "phases_path": {
           "value": "ImageGeom/Cell Data/Phases",
           "version": 1
         },
@@ -507,7 +507,7 @@
     {
       "args": {
         "file_name": {
-          "value": "/Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk95-Rel-EbsdLib/Bin/Data/Output/T12-MAI-2010/fw-ar-IF1-avtr12-corr_ODF.png",
+          "value": "Data/Output/T12-MAI-2010/fw-ar-IF1-avtr12-corr_ODF.png",
           "version": 1
         },
         "image_array_path": {

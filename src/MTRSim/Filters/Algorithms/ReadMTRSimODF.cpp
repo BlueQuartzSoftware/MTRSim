@@ -57,7 +57,9 @@ Result<> ReadMTRSimODF::operator()()
     const auto& srcValues = components[c].values;
     if(store.getSize() != srcValues.size())
     {
-      return MakeErrorResult(-12012, fmt::format("Component {} size mismatch: array has {} tuples but file provided {} values", c, store.getSize(), srcValues.size()));
+      return MakeErrorResult(-12012, fmt::format("Component {} size mismatch: array has {} tuples "
+                                                 "but file provided {} values",
+                                                 c, store.getSize(), srcValues.size()));
     }
 
     m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Copying component_{} ({} values)", c, srcValues.size()));

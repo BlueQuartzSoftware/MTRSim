@@ -4,14 +4,16 @@
 #include <Eigen/Dense>
 #include <string>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief EBSD scan data loaded from CSV files.
  *
  * Matches the variables read by load_MTR_data.m.
  */
-struct LIBMTRSIM_EXPORT EBSDData {
+struct LIBMTRSIM_EXPORT EBSDData
+{
   Eigen::MatrixXd spatialCoords; ///< [N x 2] (X, Y) positions [mm]
   Eigen::MatrixXd eulerAngles;   ///< [N x 3] (phi1, PHI, phi2) [rad]
   Eigen::VectorXi parentIds;     ///< MTR parent grain IDs, length N
@@ -28,7 +30,8 @@ struct LIBMTRSIM_EXPORT EBSDData {
  *   - ParentIds.csv     (N rows × 1 col, integer grain IDs)
  *   - BoolMTR.csv       (N rows × 1 col, 0 or 1)
  */
-class LIBMTRSIM_EXPORT MTRDataLoader {
+class LIBMTRSIM_EXPORT MTRDataLoader
+{
 public:
   MTRDataLoader() = default;
 
@@ -38,7 +41,7 @@ public:
    * @param directoryPath  Path to the directory containing the CSV files
    * @return               Populated EBSDData struct
    */
-  EBSDData load(const std::string &directoryPath);
+  EBSDData load(const std::string& directoryPath);
 };
 
 } // namespace mtrsim

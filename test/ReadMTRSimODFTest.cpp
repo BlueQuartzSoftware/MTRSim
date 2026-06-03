@@ -1,13 +1,14 @@
 /**
- * Unit tests for ReadMTRSimODFFilter (Milestone AJ, Task 3 + Task 2 path-prefix cross-cut).
+ * Unit tests for ReadMTRSimODFFilter (Milestone AJ, Task 3 + Task 2 path-prefix
+ * cross-cut).
  *
  * Covers:
  *   1. Happy path on the canonical /ODF_best exemplar, with assertions on the
- *      new PreflightUpdatedValues ("HDF5 Path Prefix" label) and explicit prefix
- *      arg.
+ *      new PreflightUpdatedValues ("HDF5 Path Prefix" label) and explicit
+ * prefix arg.
  *   2. Error path: non-existent file -> preflight returns invalid.
- *   3. Blank ODF fixture (prefix "/blank_ODF"): execute succeeds, one zero-valued
- *      Float64 component array is created.
+ *   3. Blank ODF fixture (prefix "/blank_ODF"): execute succeeds, one
+ * zero-valued Float64 component array is created.
  *   4. Uniform ODF fixture (prefix "/uniform_ODF"): execute succeeds, component
  *      sums to ~1.0 and every value is strictly positive (the fixture is a
  *      normalised-over-FZ ODF, NOT a per-cell uniform distribution — see repo
@@ -72,10 +73,10 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
 
-  // PreflightUpdatedValues: must surface the prefix label so the UI can preview it.
+  // PreflightUpdatedValues: must surface the prefix label so the UI can preview
+  // it.
   REQUIRE(!preflightResult.outputValues.empty());
-  const bool foundPrefixLabel = std::any_of(preflightResult.outputValues.begin(), preflightResult.outputValues.end(),
-                                            [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
+  const bool foundPrefixLabel = std::any_of(preflightResult.outputValues.begin(), preflightResult.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
   REQUIRE(foundPrefixLabel);
 
   // Execute
@@ -96,8 +97,9 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
   REQUIRE(std::fabs(spacing[1] - k_ExpectedSpacingDeg) < 1e-6f);
   REQUIRE(std::fabs(spacing[2] - k_ExpectedSpacingDeg) < 1e-6f);
 
-  // Verify each per-component Float64 array exists with the expected tuple count
-  // and that component_0's values sum to ~1.0 (normalized ODF, within the 1% MATLAB tolerance).
+  // Verify each per-component Float64 array exists with the expected tuple
+  // count and that component_0's values sum to ~1.0 (normalized ODF, within the
+  // 1% MATLAB tolerance).
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
   for(int32 c = 0; c < k_ExpectedNumComponents; ++c)
   {

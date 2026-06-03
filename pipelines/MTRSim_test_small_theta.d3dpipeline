@@ -1,0 +1,299 @@
+{
+  "isDisabled": false,
+  "name": "MTRSim_test_small_theta.d3dpipeline",
+  "pinnedParams": [],
+  "pipeline": [
+    {
+      "args": {
+        "cell_attribute_matrix_name": {
+          "value": "Cell Data",
+          "version": 1
+        },
+        "hdf5_path_prefix": {
+          "value": "/ODF_best",
+          "version": 1
+        },
+        "input_file": {
+          "value": "data/MTRSim/simulation_ODF.h5",
+          "version": 1
+        },
+        "output_image_geometry_path": {
+          "value": "ODF",
+          "version": 1
+        },
+        "parameters_version": 1
+      },
+      "comments": "Load the 3-component MTRSim ODF into ImageGeom 'ODF'.",
+      "filter": {
+        "name": "nx::core::ReadMTRSimODFFilter",
+        "uuid": "2b1a4841-65d7-4315-9fe3-d66c88e5755c"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "cell_attribute_matrix_name": {
+          "value": "Cell Data",
+          "version": 1
+        },
+        "config_file_path": {
+          "value": "",
+          "version": 1
+        },
+        "eulers_array_name": {
+          "value": "Eulers",
+          "version": 1
+        },
+        "generate_polar_coloring": {
+          "value": true,
+          "version": 1
+        },
+        "input_odf_geometry_path": {
+          "value": "ODF",
+          "version": 1
+        },
+        "mtr_ids_array_name": {
+          "value": "MTRIds",
+          "version": 1
+        },
+        "odf_component_arrays": {
+          "value": [
+            "ODF/Cell Data/component_0",
+            "ODF/Cell Data/component_1",
+            "ODF/Cell Data/component_2"
+          ],
+          "version": 1
+        },
+        "output_geometry_path": {
+          "value": "MTR Microstructure",
+          "version": 1
+        },
+        "parameters_version": 1,
+        "physical_size": {
+          "value": [
+            40.0,
+            20.0,
+            0.0
+          ],
+          "version": 1
+        },
+        "physical_spacing": {
+          "value": [
+            0.019999999552965164,
+            0.019999999552965164,
+            0.019999999552965164
+          ],
+          "version": 1
+        },
+        "polar_colors_array_name": {
+          "value": "Polar Colors",
+          "version": 1
+        },
+        "seed_array_name": {
+          "value": "MTRSim SeedValue",
+          "version": 1
+        },
+        "seed_value": {
+          "value": 42,
+          "version": 1
+        },
+        "theta_list": {
+          "value": [
+            [
+              0.001,
+              0.001,
+              0.001
+            ],
+            [
+              0.001,
+              0.001,
+              0.001
+            ]
+          ],
+          "version": 1
+        },
+        "use_config_file": {
+          "value": false,
+          "version": 1
+        },
+        "use_seed": {
+          "value": true,
+          "version": 1
+        },
+        "volume_fractions": {
+          "value": [
+            [
+              0.3,
+              0.35,
+              0.35
+            ]
+          ],
+          "version": 1
+        }
+      },
+      "comments": "Very small theta — correlation length much smaller than voxel spacing. Approaches white noise (uncorrelated field).",
+      "filter": {
+        "name": "nx::core::MTRSimFilter",
+        "uuid": "f7f7a330-4bff-4a42-a573-09117a89a0a0"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "component_count": {
+          "value": 1,
+          "version": 1
+        },
+        "data_format": {
+          "value": "",
+          "version": 1
+        },
+        "initialization_value_str": {
+          "value": "1",
+          "version": 1
+        },
+        "numeric_type_index": {
+          "value": 4,
+          "version": 1
+        },
+        "output_array_path": {
+          "value": "MTR Microstructure/Cell Data/Phases",
+          "version": 1
+        },
+        "parameters_version": 1,
+        "set_tuple_dimensions": {
+          "value": false,
+          "version": 1
+        },
+        "tuple_dimensions": {
+          "value": [
+            [
+              0.0
+            ]
+          ],
+          "version": 1
+        }
+      },
+      "comments": "",
+      "filter": {
+        "name": "nx::core::CreateDataArrayFilter",
+        "uuid": "67041f9b-bdc6-4122-acc6-c9fe9280e90d"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "cell_ensemble_attribute_matrix_path": {
+          "value": "MTR Microstructure/Phase Data",
+          "version": 1
+        },
+        "crystal_structures_array_name": {
+          "value": "CrystalStructures",
+          "version": 1
+        },
+        "ensemble": {
+          "value": [
+            [
+              "Hexagonal-High 6/mmm",
+              "Primary",
+              "Titanium"
+            ]
+          ],
+          "version": 1
+        },
+        "parameters_version": 1,
+        "phase_names_array_name": {
+          "value": "PhaseNames",
+          "version": 1
+        },
+        "phase_types_array_name": {
+          "value": "PhaseTypes",
+          "version": 1
+        }
+      },
+      "comments": "",
+      "filter": {
+        "name": "nx::core::CreateEnsembleInfoFilter",
+        "uuid": "8ce3d70c-49fe-4812-a1eb-7ce4c962a59d"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "cell_euler_angles_array_path": {
+          "value": "MTR Microstructure/Cell Data/Eulers",
+          "version": 1
+        },
+        "cell_ipf_colors_array_name": {
+          "value": "IPFColors",
+          "version": 1
+        },
+        "cell_phases_array_path": {
+          "value": "MTR Microstructure/Cell Data/Phases",
+          "version": 1
+        },
+        "color_key_index": {
+          "value": 0,
+          "version": 1
+        },
+        "crystal_structures_array_path": {
+          "value": "MTR Microstructure/Phase Data/CrystalStructures",
+          "version": 1
+        },
+        "mask_array_path": {
+          "value": "",
+          "version": 1
+        },
+        "parameters_version": 2,
+        "reference_dir": {
+          "value": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "version": 1
+        },
+        "use_mask": {
+          "value": false,
+          "version": 1
+        }
+      },
+      "comments": "",
+      "filter": {
+        "name": "nx::core::ComputeIPFColorsFilter",
+        "uuid": "64cb4f27-6e5e-4dd2-8a03-0c448cb8f5e6"
+      },
+      "isDisabled": false
+    },
+    {
+      "args": {
+        "compression_level": {
+          "value": 5,
+          "version": 1
+        },
+        "export_file_path": {
+          "value": "Data/Output/MTRSim/MTRSim_test_small_theta.dream3d",
+          "version": 1
+        },
+        "parameters_version": 2,
+        "use_compression": {
+          "value": true,
+          "version": 1
+        },
+        "write_xdmf_file": {
+          "value": false,
+          "version": 1
+        }
+      },
+      "comments": "",
+      "filter": {
+        "name": "nx::core::WriteDREAM3DFilter",
+        "uuid": "b3a95784-2ced-41ec-8d3d-0242ac130003"
+      },
+      "isDisabled": false
+    }
+  ],
+  "pipeline_uuid": "8c34ee29-187f-4ad5-a72e-4b7e994b1e79",
+  "version": 1,
+  "workflowParams": []
+}

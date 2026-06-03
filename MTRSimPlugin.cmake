@@ -31,6 +31,7 @@ set(${PLUGIN_NAME}_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 # MTRSim/src/MTRSim/Filters/ directory.
 set(FilterList
     ComputeODFFilter
+    MTRSimFilter
     ReadMTRSimODFFilter
     WriteMTRSimODFFilter
 )
@@ -44,6 +45,7 @@ set(ActionList
 # ------------------------------------------------------------------------------
 set(AlgorithmList
     ComputeODF
+    MTRSim
     ReadMTRSimODF
     WriteMTRSimODF
 )
@@ -102,6 +104,7 @@ target_include_directories(simplnx PUBLIC )
 # ------------------------------------------------------------------------------
 set(PLUGIN_EXTRA_SOURCES
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.cpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ConfigIO.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/GPGenerator.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/IPFMapper.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRDataLoader.cpp
@@ -112,11 +115,14 @@ set(PLUGIN_EXTRA_SOURCES
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PGRFSimulation.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PoleFigure.cpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/QSimVN.cpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRSimDriver.cpp
 )
 set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/AssignmentRule.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ConfigIO.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/GPGenerator.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/IPFMapper.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ISimulationObserver.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRDataLoader.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ODFBuilder.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/ODFCalculator.hpp
@@ -125,6 +131,8 @@ set(PLUGIN_EXTRA_HEADERS
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PGRFSimulation.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/PoleFigure.hpp
   ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/QSimVN.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/MTRSimDriver.hpp
+  ${${PLUGIN_NAME}_SOURCE_DIR}/src/LibMTRSim/SimulationObservers.hpp
 )
 
 target_sources(${PLUGIN_NAME} 
@@ -204,22 +212,14 @@ if(EXISTS "${DREAM3D_DATA_DIR}" AND SIMPLNX_DOWNLOAD_TEST_FILES)
   if(NOT EXISTS ${DREAM3D_DATA_DIR}/TestFiles/)
     file(MAKE_DIRECTORY "${DREAM3D_DATA_DIR}/TestFiles/")
   endif()
-  # download_test_data(DREAM3D_DATA_DIR ${DREAM3D_DATA_DIR}
-  #                  ARCHIVE_NAME T12-MAI-2010.tar.gz
-  #                  SHA512 e33f224d19ad774604aa28a3263a00221a3a5909040685a3d14b6cba78e36d174b045223c28b462ab3eaea0fbc1c9f0657b1bd791a947799b9f088b13d777568
-  #                  INSTALL
-  #                  )
-  # add_custom_target(Copy_${PLUGIN_NAME}_T12-MAI-2010 ALL
-  #                  COMMAND ${CMAKE_COMMAND} -E tar xzf "${DREAM3D_DATA_DIR}/TestFiles/T12-MAI-2010.tar.gz" 
-  #                  COMMAND ${CMAKE_COMMAND} -E copy_directory_if_different "${DREAM3D_DATA_DIR}/TestFiles/T12-MAI-2010" "${DATA_DEST_DIR}/T12-MAI-2010"
-  #                  COMMAND ${CMAKE_COMMAND} -E rm -rf "${DREAM3D_DATA_DIR}/TestFiles/T12-MAI-2010"
-  #                  WORKING_DIRECTORY "${DREAM3D_DATA_DIR}/TestFiles"
-  #                  COMMENT "Copying ${PLUGIN_NAME}/T12-MAI-2010 data into Binary Directory"
-  #                  DEPENDS Fetch_Remote_Data_Files  # Make sure all remote files are downloaded before trying this
-  #                  COMMAND_EXPAND_LISTS
-  #                  VERBATIM
-  #                )
-  # set_target_properties(Copy_${PLUGIN_NAME}_T12-MAI-2010 PROPERTIES FOLDER Plugins/${PLUGIN_NAME})
+
+  add_custom_target(Copy_${PLUGIN_NAME}_ODF ALL
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different "${${PLUGIN_NAME}_SOURCE_DIR}/data/simulation_ODF.h5" "${DATA_DEST_DIR}/MTRSim/simulation_ODF.h5"
+                   WORKING_DIRECTORY "${${PLUGIN_NAME}_SOURCE_DIR}"
+                   COMMENT "Copying ${PLUGIN_NAME}/Data into Binary Directory"
+                   COMMAND_EXPAND_LISTS
+                   VERBATIM
+                 )
 
 endif()
 
@@ -227,18 +227,18 @@ endif()
 # Create build folder copy rules and install rules for the 'data' folder
 # for this plugin
 # -----------------------------------------------------------------------
-add_custom_target(Copy_${PLUGIN_NAME}_Data ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_directory ${${PLUGIN_NAME}_SOURCE_DIR}/data ${DATA_DEST_DIR}/${PLUGIN_NAME}
-  COMMENT "Copying ${PLUGIN_NAME} data into Binary Directory"
-  COMMAND_EXPAND_LISTS
-  VERBATIM
-)
-set_target_properties(Copy_${PLUGIN_NAME}_Data PROPERTIES FOLDER Plugins/${PLUGIN_NAME})
+# add_custom_target(Copy_${PLUGIN_NAME}_Data ALL
+#   COMMAND ${CMAKE_COMMAND} -E copy_directory ${${PLUGIN_NAME}_SOURCE_DIR}/data ${DATA_DEST_DIR}/${PLUGIN_NAME}
+#   COMMENT "Copying ${PLUGIN_NAME} data into Binary Directory"
+#   COMMAND_EXPAND_LISTS
+#   VERBATIM
+# )
+# set_target_properties(Copy_${PLUGIN_NAME}_Data PROPERTIES FOLDER Plugins/${PLUGIN_NAME})
 
 option(${PLUGIN_NAME}_INSTALL_DATA_FILES "Enables install of ${PLUGIN_NAME} data files" ON)
 
 set(Installed_Data_Files
-
+  "${${PLUGIN_NAME}_SOURCE_DIR}/data/simulation_ODF.h5"
 )
 
 if(${PLUGIN_NAME}_INSTALL_DATA_FILES)

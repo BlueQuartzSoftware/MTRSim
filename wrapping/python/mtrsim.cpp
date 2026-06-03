@@ -29,29 +29,32 @@ using namespace mtrsim;
 // Classes that take std::mt19937_64& store a reference to m_Engine; the
 // py::keep_alive<1,2> call policy ensures the Rng Python object outlives them.
 // ---------------------------------------------------------------------------
-class Rng {
+class Rng
+{
 public:
   explicit Rng(uint64_t seed = 0)
-      : m_Engine(seed == 0 ? std::random_device{}() : seed) {}
+  : m_Engine(seed == 0 ? std::random_device{}() : seed)
+  {
+  }
 
-  std::mt19937_64 &engine() { return m_Engine; }
+  std::mt19937_64& engine()
+  {
+    return m_Engine;
+  }
 
 private:
   std::mt19937_64 m_Engine;
 };
 
 // ---------------------------------------------------------------------------
-PYBIND11_MODULE(mtrsim, m) {
+PYBIND11_MODULE(mtrsim, m)
+{
   m.doc() = "MTRSim Python bindings — Microtexture Region Simulator";
 
   // -------------------------------------------------------------------------
   // Rng
   // -------------------------------------------------------------------------
-  py::class_<Rng>(
-      m, "Rng",
-      "Owns a Mersenne-Twister 64 RNG. Pass to all stochastic constructors.")
-      .def(py::init<uint64_t>(), "seed"_a = 0,
-           "Construct RNG; seed=0 uses std::random_device");
+  py::class_<Rng>(m, "Rng", "Owns a Mersenne-Twister 64 RNG. Pass to all stochastic constructors.").def(py::init<uint64_t>(), "seed"_a = 0, "Construct RNG; seed=0 uses std::random_device");
 
   // -------------------------------------------------------------------------
   // CrystalSystem enum (defined in IPFMapper.hpp — used by IPFMapper to
@@ -69,70 +72,47 @@ PYBIND11_MODULE(mtrsim, m) {
   // -------------------------------------------------------------------------
   // SimulationParams
   // -------------------------------------------------------------------------
-  py::class_<SimulationParams>(
-      m, "SimulationParams",
-      "All parameters that drive a single MTR simulation run.")
+  py::class_<SimulationParams>(m, "SimulationParams", "All parameters that drive a single MTR simulation run.")
       .def(py::init<>())
-      .def_readwrite("x_len", &SimulationParams::xLen,
-                     "Volume extent in X [mm]")
-      .def_readwrite("y_len", &SimulationParams::yLen,
-                     "Volume extent in Y [mm]")
-      .def_readwrite("z_len", &SimulationParams::zLen,
-                     "Volume extent in Z [mm] (0 = 2-D slice)")
+      .def_readwrite("x_len", &SimulationParams::xLen, "Volume extent in X [mm]")
+      .def_readwrite("y_len", &SimulationParams::yLen, "Volume extent in Y [mm]")
+      .def_readwrite("z_len", &SimulationParams::zLen, "Volume extent in Z [mm] (0 = 2-D slice)")
       .def_readwrite("dx", &SimulationParams::dx, "Voxel spacing in X [mm]")
       .def_readwrite("dy", &SimulationParams::dy, "Voxel spacing in Y [mm]")
       .def_readwrite("dz", &SimulationParams::dz, "Voxel spacing in Z [mm]")
-      .def_readwrite("volume_fractions", &SimulationParams::volumeFractions,
-                     "Target volume fraction per MTR component (must sum to 1)")
-      .def_readwrite("theta_list", &SimulationParams::thetaList,
-                     "Correlation lengths [num_gaussians x 3] (x,y,z)")
-      .def_readwrite("nugget_variance", &SimulationParams::nuggetVariance,
-                     "Nugget variance per component")
-      .def_readwrite("odf_input_path", &SimulationParams::odfInputPath,
-                     "Path to simulation_ODF.h5")
-      .def_readwrite("output_dir", &SimulationParams::outputDir,
-                     "Directory for output files")
-      .def_readwrite("seed", &SimulationParams::seed,
-                     "Random seed (0 = use std::random_device)");
+      .def_readwrite("volume_fractions", &SimulationParams::volumeFractions, "Target volume fraction per MTR component (must sum to 1)")
+      .def_readwrite("theta_list", &SimulationParams::thetaList, "Correlation lengths [num_gaussians x 3] (x,y,z)")
+      .def_readwrite("nugget_variance", &SimulationParams::nuggetVariance, "Nugget variance per component")
+      .def_readwrite("odf_input_path", &SimulationParams::odfInputPath, "Path to simulation_ODF.h5")
+      .def_readwrite("output_dir", &SimulationParams::outputDir, "Directory for output files")
+      .def_readwrite("seed", &SimulationParams::seed, "Random seed (0 = use std::random_device)");
 
   // -------------------------------------------------------------------------
   // PGRFResult
   // -------------------------------------------------------------------------
   py::class_<PGRFResult>(m, "PGRFResult", "Output of the PGRF simulation.")
       .def(py::init<>())
-      .def_readwrite(
-          "mtr_index", &PGRFResult::mtrIndex,
-          "1-based component assignment per voxel, length N (VectorXi)")
-      .def_readwrite("latent_fields", &PGRFResult::latentFields,
-                     "Latent GP values, shape [N x numGaussians] (MatrixXd)");
+      .def_readwrite("mtr_index", &PGRFResult::mtrIndex, "1-based component assignment per voxel, length N (VectorXi)")
+      .def_readwrite("latent_fields", &PGRFResult::latentFields, "Latent GP values, shape [N x numGaussians] (MatrixXd)");
 
   // -------------------------------------------------------------------------
   // AssignmentRuleThresholds
   // -------------------------------------------------------------------------
-  py::class_<AssignmentRuleThresholds>(
-      m, "AssignmentRuleThresholds",
-      "Threshold matrices produced by AssignmentRule.select_thresholds().")
+  py::class_<AssignmentRuleThresholds>(m, "AssignmentRuleThresholds", "Threshold matrices produced by AssignmentRule.select_thresholds().")
       .def(py::init<>())
       .def_readwrite("num_gaussians", &AssignmentRuleThresholds::numGaussians)
-      .def_readwrite("min_thresholds", &AssignmentRuleThresholds::minThresholds,
-                     "Shape [numComponents x numGaussians]")
-      .def_readwrite("max_thresholds", &AssignmentRuleThresholds::maxThresholds,
-                     "Shape [numComponents x numGaussians]");
+      .def_readwrite("min_thresholds", &AssignmentRuleThresholds::minThresholds, "Shape [numComponents x numGaussians]")
+      .def_readwrite("max_thresholds", &AssignmentRuleThresholds::maxThresholds, "Shape [numComponents x numGaussians]");
 
   // -------------------------------------------------------------------------
   // ODFComponent
   // -------------------------------------------------------------------------
-  py::class_<ODFComponent>(m, "ODFComponent",
-                           "Discrete ODF histogram for one MTR component.")
+  py::class_<ODFComponent>(m, "ODFComponent", "Discrete ODF histogram for one MTR component.")
       .def(py::init<>())
-      .def_readwrite("odf_val", &ODFComponent::odfVal,
-                     "Probability mass per bin (N_bins,)")
-      .def_readwrite("phi1_bins", &ODFComponent::phi1Bins,
-                     "phi1 bin centres [rad]")
-      .def_readwrite("phi_bins", &ODFComponent::phiBins,
-                     "PHI bin centres [rad]")
-      .def_readwrite("phi2_bins", &ODFComponent::phi2Bins,
-                     "phi2 bin centres [rad]");
+      .def_readwrite("odf_val", &ODFComponent::odfVal, "Probability mass per bin (N_bins,)")
+      .def_readwrite("phi1_bins", &ODFComponent::phi1Bins, "phi1 bin centres [rad]")
+      .def_readwrite("phi_bins", &ODFComponent::phiBins, "PHI bin centres [rad]")
+      .def_readwrite("phi2_bins", &ODFComponent::phi2Bins, "phi2 bin centres [rad]");
 
   // -------------------------------------------------------------------------
   // EulerAngles
@@ -142,11 +122,7 @@ PYBIND11_MODULE(mtrsim, m) {
       .def_readwrite("phi1", &EulerAngles::phi1)
       .def_readwrite("phi", &EulerAngles::phi)
       .def_readwrite("phi2", &EulerAngles::phi2)
-      .def("__repr__", [](const EulerAngles &e) {
-        return "EulerAngles(phi1=" + std::to_string(e.phi1) +
-               ", phi=" + std::to_string(e.phi) +
-               ", phi2=" + std::to_string(e.phi2) + ")";
-      });
+      .def("__repr__", [](const EulerAngles& e) { return "EulerAngles(phi1=" + std::to_string(e.phi1) + ", phi=" + std::to_string(e.phi) + ", phi2=" + std::to_string(e.phi2) + ")"; });
 
   // -------------------------------------------------------------------------
   // RGBColor
@@ -156,22 +132,16 @@ PYBIND11_MODULE(mtrsim, m) {
       .def_readwrite("r", &RGBColor::r)
       .def_readwrite("g", &RGBColor::g)
       .def_readwrite("b", &RGBColor::b)
-      .def("__repr__", [](const RGBColor &c) {
-        return "RGBColor(r=" + std::to_string(c.r) +
-               ", g=" + std::to_string(c.g) + ", b=" + std::to_string(c.b) +
-               ")";
-      });
+      .def("__repr__", [](const RGBColor& c) { return "RGBColor(r=" + std::to_string(c.r) + ", g=" + std::to_string(c.g) + ", b=" + std::to_string(c.b) + ")"; });
 
   // -------------------------------------------------------------------------
   // PoleFigureData
   // -------------------------------------------------------------------------
-  py::class_<PoleFigureData>(m, "PoleFigureData",
-                             "Stereographic pole figure data.")
+  py::class_<PoleFigureData>(m, "PoleFigureData", "Stereographic pole figure data.")
       .def(py::init<>())
       .def_readwrite("x", &PoleFigureData::x, "Stereographic X coordinates")
       .def_readwrite("y", &PoleFigureData::y, "Stereographic Y coordinates")
-      .def_readwrite("intensity", &PoleFigureData::intensity,
-                     "Normalised intensity per bin");
+      .def_readwrite("intensity", &PoleFigureData::intensity, "Normalised intensity per bin");
 
   // -------------------------------------------------------------------------
   // EBSDData
@@ -180,29 +150,28 @@ PYBIND11_MODULE(mtrsim, m) {
   // -------------------------------------------------------------------------
   py::class_<EBSDData>(m, "EBSDData", "EBSD scan data loaded from CSV files.")
       .def(py::init<>())
-      .def_readwrite("spatial_coords", &EBSDData::spatialCoords,
-                     "[N x 2] (X,Y) positions [mm]")
-      .def_readwrite("euler_angles", &EBSDData::eulerAngles,
-                     "[N x 3] (phi1,PHI,phi2) [rad]")
-      .def_readwrite("parent_ids", &EBSDData::parentIds,
-                     "MTR parent grain IDs, length N")
+      .def_readwrite("spatial_coords", &EBSDData::spatialCoords, "[N x 2] (X,Y) positions [mm]")
+      .def_readwrite("euler_angles", &EBSDData::eulerAngles, "[N x 3] (phi1,PHI,phi2) [rad]")
+      .def_readwrite("parent_ids", &EBSDData::parentIds, "MTR parent grain IDs, length N")
       .def_property(
           "is_mtr",
           // getter: Eigen::VectorX<bool> → numpy uint8
-          [](const EBSDData &self) -> py::array_t<uint8_t> {
+          [](const EBSDData& self) -> py::array_t<uint8_t> {
             const auto n = self.isMTR.size();
             py::array_t<uint8_t> result(n);
             auto buf = result.mutable_unchecked<1>();
-            for (Eigen::Index i = 0; i < n; ++i) {
+            for(Eigen::Index i = 0; i < n; ++i)
+            {
               buf(i) = self.isMTR(i) ? uint8_t{1} : uint8_t{0};
             }
             return result;
           },
           // setter: numpy uint8 → Eigen::VectorX<bool>
-          [](EBSDData &self, py::array_t<uint8_t> arr) {
+          [](EBSDData& self, py::array_t<uint8_t> arr) {
             auto buf = arr.unchecked<1>();
             self.isMTR.resize(buf.shape(0));
-            for (py::ssize_t i = 0; i < buf.shape(0); ++i) {
+            for(py::ssize_t i = 0; i < buf.shape(0); ++i)
+            {
               self.isMTR(i) = (buf(i) != 0);
             }
           },
@@ -211,44 +180,30 @@ PYBIND11_MODULE(mtrsim, m) {
   // -------------------------------------------------------------------------
   // PGRFSimulation
   // -------------------------------------------------------------------------
-  py::class_<PGRFSimulation>(
-      m, "PGRFSimulation",
-      "Orchestrates GPGenerator + AssignmentRule to produce a PGRF simulation.")
-      .def(py::init([](Rng &rng) { return new PGRFSimulation(rng.engine()); }),
-           "rng"_a, py::keep_alive<1, 2>())
-      .def("run", &PGRFSimulation::run, "params"_a,
-           "Run the PGRF simulation and return a PGRFResult.");
+  py::class_<PGRFSimulation>(m, "PGRFSimulation", "Orchestrates GPGenerator + AssignmentRule to produce a PGRF simulation.")
+      .def(py::init([](Rng& rng) { return new PGRFSimulation(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
+      .def(
+          "run", [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); }, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
 
   // -------------------------------------------------------------------------
   // GPGenerator
   // -------------------------------------------------------------------------
-  py::class_<GPGenerator>(
-      m, "GPGenerator",
-      "Generates a separable GP field via the Kronecker-Cholesky method.")
-      .def(py::init([](Rng &rng, GPGenerator::CorrelationFn corrFn) {
-             return new GPGenerator(rng.engine(), corrFn);
-           }),
-           "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
+  py::class_<GPGenerator>(m, "GPGenerator", "Generates a separable GP field via the Kronecker-Cholesky method.")
+      .def(py::init([](Rng& rng, GPGenerator::CorrelationFn corrFn) { return new GPGenerator(rng.engine(), corrFn); }), "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
            "corr_fn(lag, theta) -> float: user-supplied correlation function")
-      .def("generate", &GPGenerator::generate, "hx"_a, "hy"_a, "hz"_a,
-           "theta"_a, "nx"_a, "ny"_a, "nz"_a,
+      .def("generate", &GPGenerator::generate, "hx"_a, "hy"_a, "hz"_a, "theta"_a, "nx"_a, "ny"_a, "nz"_a,
            "Draw one GP realisation on an nx*ny*nz grid. Returns flattened "
            "VectorXd of length nx*ny*nz.");
 
   // -------------------------------------------------------------------------
   // AssignmentRule
   // -------------------------------------------------------------------------
-  py::class_<AssignmentRule>(
-      m, "AssignmentRule",
-      "Selects and evaluates the plurigaussian assignment rule.")
-      .def(py::init([](Rng &rng) { return new AssignmentRule(rng.engine()); }),
-           "rng"_a, py::keep_alive<1, 2>())
-      .def("select_thresholds", &AssignmentRule::selectThresholds,
-           "volume_fractions"_a,
+  py::class_<AssignmentRule>(m, "AssignmentRule", "Selects and evaluates the plurigaussian assignment rule.")
+      .def(py::init([](Rng& rng) { return new AssignmentRule(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
+      .def("select_thresholds", &AssignmentRule::selectThresholds, "volume_fractions"_a,
            "Determine Gaussian thresholds yielding the requested volume "
            "fractions.")
-      .def("evaluate", &AssignmentRule::evaluate, "z"_a, "thresholds"_a,
-           "Classify each voxel; returns 1-based component indices, length N.");
+      .def("evaluate", &AssignmentRule::evaluate, "z"_a, "thresholds"_a, "Classify each voxel; returns 1-based component indices, length N.");
 
   // -------------------------------------------------------------------------
   // QSimVN
@@ -256,8 +211,7 @@ PYBIND11_MODULE(mtrsim, m) {
   py::class_<QSimVN>(m, "QSimVN",
                      "Quasi-Monte Carlo estimator for the multivariate normal "
                      "CDF (Genz 1992).")
-      .def(py::init([](Rng &rng) { return new QSimVN(rng.engine()); }), "rng"_a,
-           py::keep_alive<1, 2>())
+      .def(py::init([](Rng& rng) { return new QSimVN(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
       .def("compute", &QSimVN::compute, "m"_a, "r"_a, "a"_a, "b"_a,
            "Estimate P(a <= X <= b) for X ~ N(0, R). Returns (probability, "
            "error).");
@@ -265,26 +219,21 @@ PYBIND11_MODULE(mtrsim, m) {
   // -------------------------------------------------------------------------
   // ODFSampler
   // -------------------------------------------------------------------------
-  py::class_<ODFSampler>(
-      m, "ODFSampler",
-      "Draws orientations from a discrete ODF by inverse-CDF sampling.")
-      .def(py::init([](Rng &rng) { return new ODFSampler(rng.engine()); }),
-           "rng"_a, py::keep_alive<1, 2>())
-      .def("sample_n", &ODFSampler::sampleN, "n"_a, "component"_a, "uniform"_a,
-           "Draw n orientations; returns [N x 3] matrix (phi1, PHI, phi2) "
-           "[rad].")
-      .def("sample_one", &ODFSampler::sampleOne, "component"_a, "uniform"_a,
-           "Draw a single EulerAngles from the ODF.");
+  py::class_<ODFSampler>(m, "ODFSampler", "Draws orientations from a discrete ODF by inverse-CDF sampling.")
+      .def(py::init([](Rng& rng) { return new ODFSampler(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
+      .def(
+          "sample_n", [](ODFSampler& self, int n, const ODFComponent& component, const ODFComponent& uniform) { return self.sampleN(n, component, uniform, nullptr); }, "n"_a, "component"_a,
+          "uniform"_a,
+          "Draw n orientations; returns [N x 3] matrix (phi1, PHI, phi2) "
+          "[rad].")
+      .def("sample_one", &ODFSampler::sampleOne, "component"_a, "uniform"_a, "Draw a single EulerAngles from the ODF.");
 
   // -------------------------------------------------------------------------
   // ODFCalculator
   // -------------------------------------------------------------------------
-  py::class_<ODFCalculator>(
-      m, "ODFCalculator",
-      "Computes a discrete ODF histogram from Euler angles.")
+  py::class_<ODFCalculator>(m, "ODFCalculator", "Computes a discrete ODF histogram from Euler angles.")
       .def(py::init<>())
-      .def("compute", &ODFCalculator::compute, "phi1"_a, "phi"_a, "phi2"_a,
-           "deg_spacing"_a = 5.0,
+      .def("compute", &ODFCalculator::compute, "phi1"_a, "phi"_a, "phi2"_a, "deg_spacing"_a = 5.0,
            "Compute ODFComponent from orientation arrays [rad]. deg_spacing "
            "controls bin width.");
 
@@ -300,10 +249,8 @@ PYBIND11_MODULE(mtrsim, m) {
   // IPFColorScheme enum
   // -------------------------------------------------------------------------
   py::enum_<IPFColorScheme>(m, "IPFColorScheme")
-      .value("EbsdLib", IPFColorScheme::EbsdLib,
-             "Standard EbsdLib/TSL IPF colouring")
-      .value("MatLab", IPFColorScheme::MatLab,
-             "Original MATLAB port colouring (Sparkman 2017)")
+      .value("EbsdLib", IPFColorScheme::EbsdLib, "Standard EbsdLib/TSL IPF colouring")
+      .value("MatLab", IPFColorScheme::MatLab, "Original MATLAB port colouring (Sparkman 2017)")
       .export_values();
 
   // -------------------------------------------------------------------------
@@ -311,56 +258,38 @@ PYBIND11_MODULE(mtrsim, m) {
   // eulerToColors has std::array<double,3> and IPFColorScheme default args
   // which pybind11 cannot express natively, so wrap in a lambda.
   // -------------------------------------------------------------------------
-  py::class_<IPFMapper>(m, "IPFMapper",
-                        "Builds an IPF colour map from Euler angles.")
+  py::class_<IPFMapper>(m, "IPFMapper", "Builds an IPF colour map from Euler angles.")
       .def(py::init<CrystalSystem>(), "system"_a = CrystalSystem::HCP)
       .def(
           "euler_to_colors",
-          [](const IPFMapper &self, const Eigen::VectorXd &phi1,
-             const Eigen::VectorXd &phi, const Eigen::VectorXd &phi2,
-             std::array<double, 3> refDir, IPFColorScheme scheme) {
+          [](const IPFMapper& self, const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir, IPFColorScheme scheme) {
             return self.eulerToColors(phi1, phi, phi2, refDir, scheme);
           },
-          "phi1"_a, "phi"_a, "phi2"_a,
-          "ref_dir"_a = std::array<double, 3>{0.0, 0.0, 1.0},
-          "scheme"_a = IPFColorScheme::EbsdLib,
+          "phi1"_a, "phi"_a, "phi2"_a, "ref_dir"_a = std::array<double, 3>{0.0, 0.0, 1.0}, "scheme"_a = IPFColorScheme::EbsdLib,
           "Convert Euler angles to a list of RGBColor; ref_dir defaults to Z = "
           "[0,0,1].")
       .def(
           "write_png",
-          [](const IPFMapper &self, const Eigen::MatrixXd &spatialCoords,
-             const Eigen::VectorXd &phi1, const Eigen::VectorXd &phi,
-             const Eigen::VectorXd &phi2, const std::string &outputPath,
-             IPFColorScheme scheme) {
-            self.writePNG(spatialCoords, phi1, phi, phi2, outputPath, scheme);
-          },
-          "spatial_coords"_a, "phi1"_a, "phi"_a, "phi2"_a, "output_path"_a,
-          "scheme"_a = IPFColorScheme::EbsdLib,
-          "Render and save an IPF map PNG.")
-      .def("write_ipf_triangle_legend_matlab",
-           &IPFMapper::writeIPFTriangleLegendMatLab, "image_dim"_a,
-           "output_path"_a,
+          [](const IPFMapper& self, const Eigen::MatrixXd& spatialCoords, const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, const std::string& outputPath,
+             IPFColorScheme scheme) { self.writePNG(spatialCoords, phi1, phi, phi2, outputPath, scheme); },
+          "spatial_coords"_a, "phi1"_a, "phi"_a, "phi2"_a, "output_path"_a, "scheme"_a = IPFColorScheme::EbsdLib, "Render and save an IPF map PNG.")
+      .def("write_ipf_triangle_legend_matlab", &IPFMapper::writeIPFTriangleLegendMatLab, "image_dim"_a, "output_path"_a,
            "Render the HCP IPF triangle legend using the MATLAB polar colour "
            "mapping and write it as PNG.");
 
   // -------------------------------------------------------------------------
   // PoleFigure
   // -------------------------------------------------------------------------
-  py::class_<PoleFigure>(
-      m, "PoleFigure",
-      "Converts a discrete ODF to stereographic pole figure data.")
+  py::class_<PoleFigure>(m, "PoleFigure", "Converts a discrete ODF to stereographic pole figure data.")
       .def(py::init<>())
-      .def("from_odf", &PoleFigure::fromODF, "component"_a,
-           "deg_spacing"_a = 5.0,
+      .def("from_odf", &PoleFigure::fromODF, "component"_a, "deg_spacing"_a = 5.0,
            "Returns PoleFigureData with stereographic (x, y) and intensity "
            "arrays.");
 
   // -------------------------------------------------------------------------
   // MTRDataLoader
   // -------------------------------------------------------------------------
-  py::class_<MTRDataLoader>(
-      m, "MTRDataLoader",
-      "Loads experimental EBSD data from a directory of CSV files.")
+  py::class_<MTRDataLoader>(m, "MTRDataLoader", "Loads experimental EBSD data from a directory of CSV files.")
       .def(py::init<>())
       .def("load", &MTRDataLoader::load, "directory_path"_a,
            "Load EulerAngles.csv, X/Y_Position.csv, ParentIds.csv, "

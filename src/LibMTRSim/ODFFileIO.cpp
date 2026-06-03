@@ -491,8 +491,8 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
   return out;
 }
 
-void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2,
-                  const std::vector<ODFFileComponent>& components, const std::string& pathPrefix)
+void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2, const std::vector<ODFFileComponent>& components,
+                  const std::string& pathPrefix)
 {
   if(components.empty())
   {

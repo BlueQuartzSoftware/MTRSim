@@ -1,0 +1,81 @@
+name: macos
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+  push:
+    branches:
+      - develop
+      - master
+
+jobs:
+  build:
+    env:
+      VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-14
+          - macos-15
+        include:
+          - os: macos-14
+            preset: ci-macos-arm64
+          - os: macos-15
+            preset: ci-macos-arm64
+    runs-on: ${{matrix.os}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Checkout simplnx
+        run: |
+            git clone -b develop https://www.github.com/bluequartzsoftware/simplnx ${{github.workspace}}/../../simplnx
+      - name: Checkout vcpkg
+        run: |
+            git clone https://www.github.com/microsoft/vcpkg && cd vcpkg && ./bootstrap-vcpkg.sh
+            VCPKG_INSTALLATION_ROOT=${{github.workspace}}/vcpkg
+            echo "$VCPKG_INSTALLATION_ROOT" >> $GITHUB_PATH
+            echo "VCPKG_INSTALLATION_ROOT=$VCPKG_INSTALLATION_ROOT" >> "$GITHUB_ENV"
+        if: matrix.os == 'macos-14'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx myst-parser sphinx-markdown-tables sphinx_rtd_theme numpy
+      - name: Add C++ Problem Matcher
+        uses: ammaraskar/gcc-problem-matcher@0.2.0
+      - name: Install Dependencies - 2
+        run: |
+          brew install ninja mono
+      - name: Install Sphinx
+        run: |
+          sudo pip3 install sphinx myst-parser sphinx-markdown-tables sphinx_rtd_theme numpy
+      - name: Setup NuGet Credentials
+        shell: bash
+        run: |
+          mono `vcpkg fetch nuget | tail -n 1` \
+          sources add \
+          -source "https://nuget.pkg.github.com/BlueQuartzSoftware/index.json" \
+          -storepasswordincleartext \
+          -name "GitHub" \
+          -username "BlueQuartzSoftware" \
+          -password "${{secrets.GITHUB_TOKEN}}"
+          mono `vcpkg fetch nuget | tail -n 1` \
+          setapikey "${{secrets.GITHUB_TOKEN}}" \
+          -source "https://nuget.pkg.github.com/BlueQuartzSoftware/index.json"
+      - name: Configure
+        run: |
+          cmake --preset ${{matrix.preset}} -DSIMPLNX_EXTRA_PLUGINS="MTRSim" -DSIMPLNX_PLUGIN_ENABLE_MTRSim=ON -DSIMPLNX_MTRSim_SOURCE_DIR=${{github.workspace}} ${{github.workspace}}/../../simplnx
+      - name: Build
+        run: |
+          cmake --build ${{github.workspace}}/../../simplnx/build --config Release
+      - name: Test
+        run: |
+          ctest --output-on-failure --test-dir ${{github.workspace}}/../../simplnx/build --build-config Release

@@ -1,5 +1,6 @@
 /**
- * Unit tests for WriteMTRSimODFFilter (Milestone AJ, Task 4 + Task 2 path-prefix cross-cut).
+ * Unit tests for WriteMTRSimODFFilter (Milestone AJ, Task 4 + Task 2
+ * path-prefix cross-cut).
  *
  * Tests cover:
  *   1. Byte-exact round-trip through /ODF_best (back-compat). The prefix arg is
@@ -90,7 +91,8 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
 
-  // Determine the component paths that were created so we can pass them to the writer.
+  // Determine the component paths that were created so we can pass them to the
+  // writer.
   const auto origComponents = mtrsim::readODFComponents(inputFile);
   REQUIRE(origComponents.size() >= 1);
 
@@ -115,8 +117,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
 
     // Assert the prefix-preview updated value surfaced.
-    const bool foundPrefixLabel = std::any_of(writePreflight.outputValues.begin(), writePreflight.outputValues.end(),
-                                              [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
+    const bool foundPrefixLabel = std::any_of(writePreflight.outputValues.begin(), writePreflight.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
     REQUIRE(foundPrefixLabel);
 
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
@@ -140,7 +141,8 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
 {
   UnitTest::LoadPlugins();
 
-  // Asymmetric dimensions so an axis permutation cannot accidentally produce the correct answer.
+  // Asymmetric dimensions so an axis permutation cannot accidentally produce
+  // the correct answer.
   constexpr std::size_t k_NumPhi1 = 24; // slowest on disk -> Z in ImageGeom
   constexpr std::size_t k_NumPHI = 18;  //                   -> Y in ImageGeom
   constexpr std::size_t k_NumPhi2 = 72; // fastest on disk -> X in ImageGeom
@@ -165,7 +167,8 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
     SIMPLNX_RESULT_REQUIRE_VALID(geomResult);
   }
 
-  // Create the single Float64 component array with ZYX tuple shape {nPhi1, nPHI, nPhi2}.
+  // Create the single Float64 component array with ZYX tuple shape {nPhi1,
+  // nPHI, nPhi2}.
   {
     std::vector<usize> tupleShapeZYX = {k_NumPhi1, k_NumPHI, k_NumPhi2};
     CreateArrayAction arrayAction(DataType::float64, tupleShapeZYX, std::vector<usize>{1}, componentPath);
@@ -173,11 +176,13 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
     SIMPLNX_RESULT_REQUIRE_VALID(arrayResult);
   }
 
-  // Initialize to zero, then place a single sentinel at a known (iPhi1, iPHI, iPhi2).
+  // Initialize to zero, then place a single sentinel at a known (iPhi1, iPHI,
+  // iPhi2).
   constexpr std::size_t k_iPhi1 = 3;
   constexpr std::size_t k_iPHI = 5;
   constexpr std::size_t k_iPhi2 = 7;
-  // Row-major flat index with phi1 slowest, phi2 fastest: 3*18*72 + 5*72 + 7 = 4255.
+  // Row-major flat index with phi1 slowest, phi2 fastest: 3*18*72 + 5*72 + 7 =
+  // 4255.
   constexpr std::size_t k_SentinelIndex = k_iPhi1 * (k_NumPHI * k_NumPhi2) + k_iPHI * k_NumPhi2 + k_iPhi2;
   static_assert(k_SentinelIndex == 4255, "Recompute sentinel flat index before asserting on it.");
   constexpr double k_SentinelValue = 42.0;
@@ -262,8 +267,8 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: zero components rejects at preflight", 
 
 namespace
 {
-// Helper: read fixture with a given prefix, write it out with a distinct prefix,
-// read back and verify byte-exact equality of the component values.
+// Helper: read fixture with a given prefix, write it out with a distinct
+// prefix, read back and verify byte-exact equality of the component values.
 void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
 {
   UnitTest::LoadPlugins();

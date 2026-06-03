@@ -1,12 +1,15 @@
 add_executable(mtrsim_tests
   main.cpp
+  test_config_io.cpp
   test_placeholder.cpp
   test_qsimvn.cpp
   test_gp_generator.cpp
   test_odf_file_io.cpp
   test_odf_sampler.cpp
+  test_mtrsim_driver.cpp
   test_ipf_mapper.cpp
   test_odf_builder.cpp
+  test_observer.cpp
 )
 
 target_include_directories(mtrsim_tests

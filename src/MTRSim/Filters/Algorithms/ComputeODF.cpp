@@ -2,9 +2,9 @@
 
 #include "simplnx/Common/Range.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
+#include "simplnx/Utilities/MaskCompareUtilities.hpp"
 #include "simplnx/Utilities/MessageHelper.hpp"
 #include "simplnx/Utilities/ParallelDataAlgorithm.hpp"
-#include "simplnx/Utilities/MaskCompareUtilities.hpp"
 
 #include "LibMTRSim/ODFBuilder.hpp"
 
@@ -32,14 +32,14 @@ using namespace nx::core;
 namespace
 {
 
-// Worker functor invoked by ParallelDataAlgorithm. Each invocation owns a private
-// accumulator vector and a private contributing-voxel count. On destruction the
-// worker merges those private results into the shared master accumulator/count
-// under a mutex.
+// Worker functor invoked by ParallelDataAlgorithm. Each invocation owns a
+// private accumulator vector and a private contributing-voxel count. On
+// destruction the worker merges those private results into the shared master
+// accumulator/count under a mutex.
 //
 // This pattern avoids any concurrent writes to the master state and matches the
-// thread-safety guidance: per-thread (here, per-call) std::vector<double> is the
-// only mutable thing touched in the parallel section.
+// thread-safety guidance: per-thread (here, per-call) std::vector<double> is
+// the only mutable thing touched in the parallel section.
 //
 // All orientation math goes through EbsdLib's `Euler<double>`,
 // `OrientationMatrix<double>`, and `LaueOps` directly. Float32 EBSD inputs
@@ -94,7 +94,8 @@ public:
 
     for(std::size_t i = range.min(); i < range.max(); ++i)
     {
-      // Cancel check kept at outer voxel loop only — inner per-symmetry-variant work is short.
+      // Cancel check kept at outer voxel loop only — inner per-symmetry-variant
+      // work is short.
       if((i & 0x3FFu) == 0 && m_ShouldCancel)
       {
         return;
@@ -155,8 +156,9 @@ public:
         deposits = numOps;
       } catch(const std::exception&)
       {
-        // Accumulator-size mismatch (the only ODFBuilder::accumulate failure mode).
-        // Counted but skipped — the master merger surfaces a warning if any failures occurred.
+        // Accumulator-size mismatch (the only ODFBuilder::accumulate failure
+        // mode). Counted but skipped — the master merger surfaces a warning if
+        // any failures occurred.
         ++localFailures;
         progressMessenger.sendProgressMessage(1);
         continue;
@@ -214,9 +216,10 @@ Result<> ComputeODF::operator()()
   const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32Array>(m_InputValues->eulerAnglesPath);
   const auto& phases = m_DataStructure.getDataRefAs<Int32Array>(m_InputValues->phasesPath);
   const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(m_InputValues->crystalStructuresPath);
-  // We get the pointer to the Array instead of a reference because it might not have been set because
-  // the bool "use_mask" might have been false, but we do NOT want to try to get the array
-  // 'on demand' in the loop. That is a BAD idea as is it really slow to do that. (10x slower).
+  // We get the pointer to the Array instead of a reference because it might not
+  // have been set because the bool "use_mask" might have been false, but we do
+  // NOT want to try to get the array 'on demand' in the loop. That is a BAD
+  // idea as is it really slow to do that. (10x slower).
   std::unique_ptr<MaskCompareUtilities::MaskCompare> maskArray = nullptr;
   if(m_InputValues->useMask)
   {
@@ -225,9 +228,12 @@ Result<> ComputeODF::operator()()
       maskArray = MaskCompareUtilities::InstantiateMaskCompare(m_DataStructure, m_InputValues->maskPath);
     } catch(const std::out_of_range& exception)
     {
-      // This really should NOT be happening as the path was verified during preflight BUT we may be calling this from
-      // somewhere else that is NOT going through the normal nx::core::IFilter API of Preflight and Execute
-      std::string message = fmt::format("Mask Array DataPath does not exist or is not of the correct type (Bool | UInt8) {}", m_InputValues->maskPath.toString());
+      // This really should NOT be happening as the path was verified during
+      // preflight BUT we may be calling this from somewhere else that is NOT
+      // going through the normal nx::core::IFilter API of Preflight and Execute
+      std::string message = fmt::format("Mask Array DataPath does not exist or is not of the "
+                                        "correct type (Bool | UInt8) {}",
+                                        m_InputValues->maskPath.toString());
       return MakeErrorResult(-506, message);
     }
   }
@@ -239,17 +245,21 @@ Result<> ComputeODF::operator()()
   const std::size_t binCount = static_cast<std::size_t>(m_InputValues->nphi1) * static_cast<std::size_t>(m_InputValues->nPHI) * static_cast<std::size_t>(m_InputValues->nphi2);
   if(outStore.getSize() != binCount)
   {
-    return MakeErrorResult(-12210, fmt::format("Output ODF array size mismatch: have {} but algorithm expected {} (= nphi1 * nPHI * nphi2).", outStore.getSize(), binCount));
+    return MakeErrorResult(-12210, fmt::format("Output ODF array size mismatch: have {} but "
+                                               "algorithm expected {} (= nphi1 * nPHI * nphi2).",
+                                               outStore.getSize(), binCount));
   }
 
   const std::size_t numVoxels = eulerAngles.getNumberOfTuples();
 
   m_MessageHandler(IFilter::Message::Type::Info,
-                   fmt::format("Computing ODF over {} voxels into {} bins ({} x {} x {}); smoothing = {}.", numVoxels, binCount, m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2,
-                               m_InputValues->applySmoothing ? "enabled" : "disabled"));
+                   fmt::format("Computing ODF over {} voxels into {} bins ({} x {} x {}); "
+                               "smoothing = {}.",
+                               numVoxels, binCount, m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2, m_InputValues->applySmoothing ? "enabled" : "disabled"));
 
-  // Set up the message helper / progress messenger BEFORE the parallel section so the worker
-  // can stamp throttled per-voxel progress through its private ProgressMessenger.
+  // Set up the message helper / progress messenger BEFORE the parallel section
+  // so the worker can stamp throttled per-voxel progress through its private
+  // ProgressMessenger.
   MessageHelper messageHelper(m_MessageHandler);
   auto progressHelper = messageHelper.createProgressMessageHelper();
   progressHelper.setMaxProgresss(numVoxels);
@@ -272,24 +282,25 @@ Result<> ComputeODF::operator()()
 
   ParallelDataAlgorithm parallelAlgorithm;
   parallelAlgorithm.setRange(0, numVoxels);
-  parallelAlgorithm.execute(AccumulateWorker(eulerAngles, phases, crystalStructures, maskArray.get(), params, masterValues, masterContributingCount, masterTotalDeposits, masterFailureCount, mergeMutex,
-                                             m_ShouldCancel, progressHelper));
+  parallelAlgorithm.execute(AccumulateWorker(eulerAngles, phases, crystalStructures, maskArray.get(), params, masterValues, masterContributingCount, masterTotalDeposits, masterFailureCount,
+                                             mergeMutex, m_ShouldCancel, progressHelper));
 
   if(m_ShouldCancel)
   {
     return {};
   }
 
-  // Normalize by the total count of symmetric-equivalent orientation deposits (i.e. for each
-  // contributing voxel, the number of symmetric variants its phase produces). This matches the
-  // MATLAB calc_ODF.m convention (line 80: N = size(phi1_vec, 1) where phi1_vec is the
-  // post-symmetry-expansion orientation list). The contributing-voxel count is retained as a
-  // semantic guard for the "no voxels contributed" early-return path.
+  // Normalize by the total count of symmetric-equivalent orientation deposits
+  // (i.e. for each contributing voxel, the number of symmetric variants its
+  // phase produces). This matches the MATLAB calc_ODF.m convention (line 80: N
+  // = size(phi1_vec, 1) where phi1_vec is the post-symmetry-expansion
+  // orientation list). The contributing-voxel count is retained as a semantic
+  // guard for the "no voxels contributed" early-return path.
   if(masterContributingCount == 0)
   {
-    m_MessageHandler(IFilter::Message::Type::Warning,
-                     "No voxels contributed to the ODF (mask filtered everything out, or all phases were 0). "
-                     "Output ODF array left at all zeros to avoid divide-by-zero.");
+    m_MessageHandler(IFilter::Message::Type::Warning, "No voxels contributed to the ODF (mask filtered everything out, or "
+                                                      "all phases were 0). "
+                                                      "Output ODF array left at all zeros to avoid divide-by-zero.");
   }
   else
   {
@@ -317,8 +328,7 @@ Result<> ComputeODF::operator()()
       const double rowMul = scale / std::sin(phiCenter);
       for(int32_t i = 0; i < m_InputValues->nphi1; ++i)
       {
-        const std::size_t baseIdx = (static_cast<std::size_t>(i) * static_cast<std::size_t>(m_InputValues->nPHI) + static_cast<std::size_t>(j))
-                                    * static_cast<std::size_t>(m_InputValues->nphi2);
+        const std::size_t baseIdx = (static_cast<std::size_t>(i) * static_cast<std::size_t>(m_InputValues->nPHI) + static_cast<std::size_t>(j)) * static_cast<std::size_t>(m_InputValues->nphi2);
         for(int32_t k = 0; k < m_InputValues->nphi2; ++k)
         {
           masterValues[baseIdx + static_cast<std::size_t>(k)] *= rowMul;
@@ -332,17 +342,23 @@ Result<> ComputeODF::operator()()
     m_MessageHandler(IFilter::Message::Type::Info, "Output units: Count-Density (raw normalized histogram).");
   }
 
-  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("ODF accumulation complete: {} voxel(s) contributed; copying values to output array.", masterContributingCount));
+  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("ODF accumulation complete: {} voxel(s) "
+                                                             "contributed; copying values to output array.",
+                                                             masterContributingCount));
 
-  // Bulk copy into the output Float64 store via iterators (matches the T2 polish convention).
+  // Bulk copy into the output Float64 store via iterators (matches the T2
+  // polish convention).
   std::copy(masterValues.begin(), masterValues.end(), outStore.begin());
 
-  // Surface per-voxel expansion failures (unknown crystal-structure code, accumulator size mismatch)
-  // as a warning on the result so pipeline UIs can show them. The run itself succeeds — the failing
-  // voxels are simply excluded from the ODF.
+  // Surface per-voxel expansion failures (unknown crystal-structure code,
+  // accumulator size mismatch) as a warning on the result so pipeline UIs can
+  // show them. The run itself succeeds — the failing voxels are simply excluded
+  // from the ODF.
   if(masterFailureCount > 0)
   {
-    return MakeWarningVoidResult(-12213, fmt::format("Skipped {} voxel(s) due to expansion errors (e.g. unknown crystal-structure code); those voxels did not contribute to the ODF.",
+    return MakeWarningVoidResult(-12213, fmt::format("Skipped {} voxel(s) due to expansion errors (e.g. "
+                                                     "unknown crystal-structure code); those voxels did "
+                                                     "not contribute to the ODF.",
                                                      masterFailureCount));
   }
 

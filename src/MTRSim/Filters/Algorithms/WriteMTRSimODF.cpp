@@ -33,7 +33,8 @@ Result<> WriteMTRSimODF::operator()()
 
   const auto& geom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputImageGeometry);
 
-  // Reverse the (phi2=X, PHI=Y, phi1=Z) ImageGeom convention back to phi1-first on-disk order.
+  // Reverse the (phi2=X, PHI=Y, phi1=Z) ImageGeom convention back to phi1-first
+  // on-disk order.
   const std::array<int64_t, 3> dimsPhi1PHIPhi2 = {static_cast<int64_t>(geom.getNumZCells()), static_cast<int64_t>(geom.getNumYCells()), static_cast<int64_t>(geom.getNumXCells())};
 
   const auto spacingXYZ = geom.getSpacing();
