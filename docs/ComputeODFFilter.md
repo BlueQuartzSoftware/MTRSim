@@ -199,6 +199,10 @@ The UI shows the following before the user clicks Apply:
 
 (Example pipelines will be added in a future release.)
 
+## See Also
+
+To create a conventional constant-`phi2` montage, compute a phase-isolated full-grid **MUD** or **Count-Density** array and pass it to the [Write ODF Sections](WriteODFSectionsFilter.md) **Filter**. For multiphase input, use a phase-specific mask so that the selected ODF contains only the phase identified by the renderer's ensemble metadata.
+
 ## License & Copyright
 
 Please see the description file distributed with this plugin.
