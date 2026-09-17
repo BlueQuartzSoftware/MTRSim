@@ -297,5 +297,23 @@ Result<> WriteODFSectionsFilter::executeImpl(DataStructure& dataStructure, const
                                              const std::atomic_bool& shouldCancel, const ExecutionContext& executionContext) const
 {
   WriteODFSectionsInputValues inputValues;
+  inputValues.inputImageGeometryPath = filterArgs.value<DataPath>(k_InputImageGeometryPath_Key);
+  inputValues.odfArrayPath = filterArgs.value<DataPath>(k_ODFArrayPath_Key);
+  inputValues.inputUnits = filterArgs.value<ChoicesParameter::ValueType>(k_InputUnits_Key);
+  inputValues.crystalStructuresPath = filterArgs.value<DataPath>(k_CrystalStructuresPath_Key);
+  inputValues.materialNamesPath = filterArgs.value<DataPath>(k_MaterialNamesPath_Key);
+  inputValues.phaseIndex = filterArgs.value<int32>(k_PhaseIndex_Key);
+  inputValues.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
+  inputValues.numberOfSections = filterArgs.value<int32>(k_NumSections_Key);
+  inputValues.sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
+  inputValues.sectionWidth = filterArgs.value<int32>(k_SectionWidth_Key);
+  inputValues.colorTablePreset = filterArgs.value<CreateColorMapParameter::ValueType>(k_ColorTablePreset_Key);
+  inputValues.scaleMode = filterArgs.value<ChoicesParameter::ValueType>(k_ScaleMode_Key);
+  inputValues.manualMinimumMUD = filterArgs.value<float64>(k_ManualMinimum_Key);
+  inputValues.manualMaximumMUD = filterArgs.value<float64>(k_ManualMaximum_Key);
+  inputValues.writePng = filterArgs.value<bool>(k_WritePng_Key);
+  inputValues.outputPngPath = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputPngPath_Key);
+  inputValues.saveAsImageGeometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
+  inputValues.outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputImageGeometryPath_Key);
   return WriteODFSections(dataStructure, messageHandler, shouldCancel, &inputValues)();
 }

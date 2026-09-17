@@ -64,7 +64,9 @@ public:
 
   /**
    * @brief Renders the configured outputs.
-   * @return Success or a rendering error.
+   * @pre Preflight actions have created the optional RGB geometry.
+   * @return Success, cancellation, or a contextual rendering or file error.
+   * @note Cancellation can leave a partial RGB array. The PNG destination changes only after successful encoding and atomic commit.
    */
   Result<> operator()();
 
