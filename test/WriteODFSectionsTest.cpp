@@ -12,6 +12,7 @@
 #include "simplnx/DataStructure/AttributeMatrix.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/DataStore.hpp"
+#include "simplnx/DataStructure/EmptyDataStore.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Filter/Actions/CreateArrayAction.hpp"
@@ -160,6 +161,32 @@ DataStructure ReadPng(const std::filesystem::path& path)
   const auto result = filter.execute(data, args);
   SIMPLNX_RESULT_REQUIRE_VALID(result.result);
   return data;
+}
+
+DataStructure CreateDeferredMetadataDataStructure()
+{
+  auto data = CreateValidDataStructure();
+  REQUIRE(data.removeData(k_CrystalStructuresPath));
+  REQUIRE(data.removeData(k_MaterialNamesPath));
+  const CreateArrayAction action(DataType::uint32, {2}, {1}, k_CrystalStructuresPath);
+  const auto result = action.apply(data, IDataAction::Mode::Preflight);
+  SIMPLNX_RESULT_REQUIRE_VALID(result);
+  const auto* ensemble = data.getDataAs<AttributeMatrix>(k_CrystalStructuresPath.getParent());
+  REQUIRE(ensemble != nullptr);
+  REQUIRE(StringArray::CreateWithValues(data, k_MaterialNamesPath.getTargetName(), {2}, {"", ""}, ensemble->getId()) != nullptr);
+  return data;
+}
+
+WriteODFSectionsInputValues ExecutionInputValues()
+{
+  WriteODFSectionsInputValues values;
+  values.inputImageGeometryPath = k_OdfGeometryPath;
+  values.odfArrayPath = k_OdfArrayPath;
+  values.crystalStructuresPath = k_CrystalStructuresPath;
+  values.materialNamesPath = k_MaterialNamesPath;
+  values.sectionWidth = 128;
+  values.writePng = false;
+  return values;
 }
 } // namespace
 
@@ -771,4 +798,138 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Compute ODF produces six HCP sections
   REQUIRE(rgb->getNumberOfTuples() > 0);
   auto decoded = ReadPng(output.png);
   REQUIRE(decoded.getDataAs<ImageGeom>(DataPath({"Decoded"})) != nullptr);
+}
+
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata preflight uses a conservative layout", "[MTRSim][WriteODFSectionsFilter][Deferred]")
+{
+  auto data = CreateDeferredMetadataDataStructure();
+  auto* crystals = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
+  REQUIRE(crystals != nullptr);
+  REQUIRE(crystals->getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty);
+  SECTION("Empty in-memory store")
+  {
+  }
+  SECTION("Empty out-of-core store")
+  {
+    crystals->setDataStore(std::make_shared<EmptyDataStore<uint32>>(ShapeType{2}, ShapeType{1}, "deferred-test"));
+    REQUIRE(crystals->getIDataStoreRef().getStoreType() == IDataStore::StoreType::EmptyOutOfCore);
+  }
+  IFilter::PreflightResult preflight;
+  REQUIRE_NOTHROW(preflight = WriteODFSectionsFilter{}.preflight(data, ExecutionArguments()));
+  SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+  for(const auto& label : {"Selected Phase Metadata", "Laue Group", "Section Angles"})
+  {
+    REQUIRE(GetPreflightValue(preflight, label).find("Deferred") != std::string::npos);
+  }
+  REQUIRE(GetPreflightValue(preflight, "Composite Dimensions").find("conservative maximum") != std::string::npos);
+  REQUIRE(GetPreflightValue(preflight, "Input Units") == "MUD");
+  REQUIRE(GetPreflightValue(preflight, "Section Layout") == "3 columns x 2 rows");
+  REQUIRE(preflight.outputActions.value().actions.size() == 2);
+  const auto* geomAction = dynamic_cast<const CreateImageGeometryAction*>(preflight.outputActions.value().actions[0].get());
+  const auto* rgbAction = dynamic_cast<const CreateArrayAction*>(preflight.outputActions.value().actions[1].get());
+  REQUIRE(geomAction != nullptr);
+  REQUIRE(rgbAction != nullptr);
+  // Width 128, Triclinic panel height 64, and two panel rows give a 628 by 270 page.
+  REQUIRE(geomAction->dims() == CreateImageGeometryAction::DimensionType{628, 270, 1});
+  REQUIRE(rgbAction->dims() == ShapeType{1, 270, 628});
+}
+
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata execution shrinks the conservative geometry", "[MTRSim][WriteODFSectionsFilter][Deferred]")
+{
+  TemporaryOutput output;
+  auto data = CreateDeferredMetadataDataStructure();
+  FillOdf(data, 1.0);
+  IFilter::PreflightResult preflight;
+  REQUIRE_NOTHROW(preflight = WriteODFSectionsFilter{}.preflight(data, ExecutionArguments()));
+  SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+  const auto applied = preflight.outputActions.value().applyRegular(data, IDataAction::Mode::Execute);
+  SIMPLNX_RESULT_REQUIRE_VALID(applied);
+  const auto* geometry = data.getDataAs<ImageGeom>(k_OutputGeometryPath);
+  REQUIRE(geometry != nullptr);
+  REQUIRE(geometry->getDimensions() == SizeVec3{628, 270, 1});
+  auto* crystals = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
+  REQUIRE(crystals != nullptr);
+  crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::UnknownCrystalStructure));
+  (*crystals)[1] = ebsdlib::CrystalStructure::Hexagonal_High;
+  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(names != nullptr);
+  (*names)[1] = "Titanium (Alpha)";
+  auto values = ExecutionInputValues();
+  values.writePng = true;
+  values.outputPngPath = output.png;
+  const std::atomic_bool cancel = false;
+  const IFilter::MessageHandler handler;
+  const auto result = WriteODFSections(data, handler, cancel, &values)();
+  SIMPLNX_RESULT_REQUIRE_VALID(result);
+  REQUIRE(geometry->getDimensions() == SizeVec3{628, 206, 1});
+  REQUIRE(geometry->getCellData()->getShape() == ShapeType{1, 206, 628});
+  const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
+  REQUIRE(rgb != nullptr);
+  REQUIRE(rgb->getTupleShape() == ShapeType{1, 206, 628});
+  auto decoded = ReadPng(output.png);
+  const auto* decodedGeometry = decoded.getDataAs<ImageGeom>(DataPath({"Decoded"}));
+  const auto* rgba = decoded.getDataAs<UInt8Array>(DataPath({"Decoded", "Cells", "Pixels"}));
+  REQUIRE(decodedGeometry != nullptr);
+  REQUIRE(rgba != nullptr);
+  REQUIRE(decodedGeometry->getDimensions() == geometry->getDimensions());
+  bool matches = true;
+  for(usize tupleIdx = 0; tupleIdx < rgb->getNumberOfTuples(); ++tupleIdx)
+  {
+    for(usize compIdx = 0; compIdx < 3; ++compIdx)
+    {
+      matches &= (*rgb)[tupleIdx * 3 + compIdx] == (*rgba)[tupleIdx * 4 + compIdx];
+    }
+  }
+  REQUIRE(matches);
+}
+
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata execution rejects missing or invalid phase values", "[MTRSim][WriteODFSectionsFilter][Deferred]")
+{
+  auto data = CreateDeferredMetadataDataStructure();
+  FillOdf(data, 1.0);
+  auto values = ExecutionInputValues();
+  values.saveAsImageGeometry = false;
+  auto* crystals = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
+  REQUIRE(crystals != nullptr);
+  std::string expectedFragment;
+  SECTION("Still empty")
+  {
+    expectedFragment = "not available";
+  }
+  SECTION("Still empty out-of-core")
+  {
+    crystals->setDataStore(std::make_shared<EmptyDataStore<uint32>>(ShapeType{2}, ShapeType{1}, "deferred-test"));
+    expectedFragment = "not available";
+  }
+  SECTION("Unknown crystal structure after materialization")
+  {
+    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, uint32{999}));
+    expectedFragment = "999";
+  }
+  SECTION("Phase zero after materialization")
+  {
+    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    values.phaseIndex = 0;
+    expectedFragment = "Phase Index (0)";
+  }
+  SECTION("Phase outside materialized tuple range")
+  {
+    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    values.phaseIndex = 2;
+    expectedFragment = "Phase Index (2)";
+  }
+  SECTION("Materialized ensemble tuple counts differ")
+  {
+    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{3}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    expectedFragment = "contains 3 tuples";
+  }
+  const std::atomic_bool cancel = false;
+  const IFilter::MessageHandler handler;
+  Result<> result;
+  REQUIRE_NOTHROW(result = WriteODFSections(data, handler, cancel, &values)());
+  SIMPLNX_RESULT_REQUIRE_INVALID(result);
+  REQUIRE(result.errors().front().code <= -12300);
+  REQUIRE(result.errors().front().code > -12400);
+  REQUIRE(result.errors().front().message.find(k_CrystalStructuresPath.toString()) != std::string::npos);
+  REQUIRE(result.errors().front().message.find(expectedFragment) != std::string::npos);
 }

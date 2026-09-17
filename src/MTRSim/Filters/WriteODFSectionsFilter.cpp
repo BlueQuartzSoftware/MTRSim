@@ -9,6 +9,7 @@
 #include "simplnx/DataStructure/Geometry/IGeometry.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/IDataArray.hpp"
+#include "simplnx/DataStructure/IDataStore.hpp"
 #include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Filter/Actions/CreateArrayAction.hpp"
 #include "simplnx/Filter/Actions/CreateImageGeometryAction.hpp"
@@ -207,7 +208,10 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
                                                                ensembleTupleCount == 0 ? 0 : ensembleTupleCount - 1, crystalStructuresPath.toString(), materialNamesPath.toString()))};
   }
 
-  const uint32 crystalStructure = crystalStructures[static_cast<usize>(phaseIndex)];
+  const auto metadataStoreType = crystalStructures.getIDataStoreRef().getStoreType();
+  const bool deferredMetadata = metadataStoreType == IDataStore::StoreType::Empty || metadataStoreType == IDataStore::StoreType::EmptyOutOfCore;
+  // Upstream preflight actions provide tuple shapes but no phase values. Triclinic bounds give the largest page.
+  const uint32 crystalStructure = deferredMetadata ? ebsdlib::CrystalStructure::Triclinic : crystalStructures[static_cast<usize>(phaseIndex)];
   const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
   if(limits.phi1MaxDeg <= 0.0 || limits.phiMaxDeg <= 0.0 || limits.phi2MaxDeg <= 0.0)
   {
@@ -254,7 +258,10 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   config.manualMaximumMUD = manualMaximum;
   config.colorControlPoints = std::move(colorControls.value());
   config.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
-  config.materialName = (*materialNames)[static_cast<usize>(phaseIndex)];
+  if(!deferredMetadata)
+  {
+    config.materialName = (*materialNames)[static_cast<usize>(phaseIndex)];
+  }
   config.phaseNumber = phaseIndex;
 
   const auto layout = ebsdlib::ComputeODFSectionLayout(config);
@@ -263,7 +270,6 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
     return {MakeErrorResult<OutputActions>(
         -12315, fmt::format("ODF section layout is not representable for Section Width {}, Number of Sections {}, and Sections Per Row {}.", sectionWidth, sectionCount, sectionsPerRow))};
   }
-  const auto sectionAngles = ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
 
   Result<OutputActions> actions;
   if(saveAsImageGeometry)
@@ -277,18 +283,31 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   }
 
   const auto laueNames = ebsdlib::LaueOps::GetLaueNames();
+  const auto sectionAngles = deferredMetadata ? std::vector<double>{} : ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
   std::vector<PreflightValue> values;
-  values.push_back({"Section Angles", fmt::format("{} degrees", fmt::join(sectionAngles, ", "))});
+  values.push_back(
+      {"Section Angles", deferredMetadata ? std::string{"Deferred until execution; phase metadata is not available during preflight."} : fmt::format("{} degrees", fmt::join(sectionAngles, ", "))});
   values.push_back({"Phase", std::to_string(phaseIndex)});
-  values.push_back({"Material", (*materialNames)[static_cast<usize>(phaseIndex)]});
-  values.push_back({"Laue Class", laueNames[crystalStructure]});
+  if(deferredMetadata)
+  {
+    values.push_back({"Selected Phase Metadata", fmt::format("Deferred until execution for phase {} from '{}' and '{}'.", phaseIndex, crystalStructuresPath.toString(), materialNamesPath.toString())});
+    values.push_back({"Laue Group", "Deferred until execution; the Triclinic envelope is used only for maximum layout sizing."});
+  }
+  else
+  {
+    values.push_back({"Material", config.materialName});
+    values.push_back({"Laue Class", laueNames[crystalStructure]});
+  }
   values.push_back({"Input Units", inputUnits == 0 ? "MUD" : "Count-Density"});
   values.push_back({"Rendered Units", "MUD"});
   values.push_back({"Full Grid Dimensions (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", config.grid.dimensions[0], config.grid.dimensions[1], config.grid.dimensions[2])});
   values.push_back({"Full Grid Spacing (phi1, PHI, phi2)", fmt::format("{}, {}, {} degrees", config.grid.spacingDeg[0], config.grid.spacingDeg[1], config.grid.spacingDeg[2])});
-  values.push_back({"Euler Plot Limits", fmt::format("phi1 < {}, PHI < {}, phi2 < {} degrees", limits.phi1MaxDeg, limits.phiMaxDeg, limits.phi2MaxDeg)});
+  values.push_back({"Euler Plot Limits", deferredMetadata ? std::string{"Deferred until execution; maximum envelope is 360 x 180 x 360 degrees."} :
+                                                            fmt::format("phi1 < {}, PHI < {}, phi2 < {} degrees", limits.phi1MaxDeg, limits.phiMaxDeg, limits.phi2MaxDeg)});
   values.push_back({"Section Layout", fmt::format("{} columns x {} rows", layout.columns, layout.rows)});
-  values.push_back({"Composite Dimensions", fmt::format("{} x {} pixels", layout.pageWidth, layout.pageHeight)});
+  values.push_back({"Composite Dimensions", deferredMetadata ?
+                                                fmt::format("{} x {} pixels (conservative maximum estimate; exact dimensions are set during execution).", layout.pageWidth, layout.pageHeight) :
+                                                fmt::format("{} x {} pixels", layout.pageWidth, layout.pageHeight)});
   values.push_back({"Scale Mode", scaleMode == 0 ? std::string{"Automatic"} : fmt::format("Manual: [{}, {}] MUD", manualMinimum, manualMaximum)});
   return {std::move(actions), std::move(values)};
 }

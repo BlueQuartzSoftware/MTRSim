@@ -4,8 +4,10 @@
 #include "EbsdLib/Utilities/PngWriter.h"
 
 #include "simplnx/Common/AtomicFile.hpp"
+#include "simplnx/DataStructure/AttributeMatrix.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
+#include "simplnx/DataStructure/IDataStore.hpp"
 #include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Utilities/ColorTableUtilities.hpp"
 #include "simplnx/Utilities/FilterUtilities.hpp"
@@ -58,6 +60,33 @@ Result<> WriteODFSections::operator()()
   {
     return {};
   }
+  const auto& values = *m_InputValues;
+  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(values.crystalStructuresPath);
+  const auto& materialNames = m_DataStructure.getDataRefAs<StringArray>(values.materialNamesPath);
+  const usize ensembleTupleCount = crystalStructures.getNumberOfTuples();
+  if(ensembleTupleCount != materialNames.getNumberOfTuples())
+  {
+    return MakeErrorResult(-12306, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. The ensemble tuple counts must match.",
+                                               values.crystalStructuresPath.toString(), ensembleTupleCount, values.materialNamesPath.toString(), materialNames.getNumberOfTuples()));
+  }
+  if(values.phaseIndex <= 0 || static_cast<usize>(values.phaseIndex) >= ensembleTupleCount)
+  {
+    return MakeErrorResult(-12307, fmt::format("Phase Index ({}) must be in [1, {}] for Crystal Structures '{}' and Material Names '{}'.", values.phaseIndex,
+                                               ensembleTupleCount == 0 ? 0 : ensembleTupleCount - 1, values.crystalStructuresPath.toString(), values.materialNamesPath.toString()));
+  }
+  const auto metadataStoreType = crystalStructures.getIDataStoreRef().getStoreType();
+  if(metadataStoreType == IDataStore::StoreType::Empty || metadataStoreType == IDataStore::StoreType::EmptyOutOfCore)
+  {
+    return MakeErrorResult(-12323, fmt::format("Crystal Structures '{}' values for phase {} are not available during execution of ODF '{}'. Execute the upstream phase-data reader first.",
+                                               values.crystalStructuresPath.toString(), values.phaseIndex, values.odfArrayPath.toString()));
+  }
+  const uint32 crystalStructure = crystalStructures[static_cast<usize>(values.phaseIndex)];
+  const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
+  if(limits.phi1MaxDeg <= 0.0 || limits.phiMaxDeg <= 0.0 || limits.phi2MaxDeg <= 0.0)
+  {
+    return MakeErrorResult(-12308, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase index {}.", values.crystalStructuresPath.toString(), crystalStructure,
+                                               values.phaseIndex));
+  }
   // Synchronous phase messages let the handler request cancellation before the next stage starts.
   m_MessageHandler("Converting ODF values");
   if(m_ShouldCancel)
@@ -65,7 +94,6 @@ Result<> WriteODFSections::operator()()
     return {};
   }
 
-  const auto& values = *m_InputValues;
   const auto& inputArray = m_DataStructure.getDataRefAs<IDataArray>(values.odfArrayPath);
   auto ebsdValues = ebsdlib::DoubleArrayType::CreateArray(inputArray.getNumberOfTuples(), {1ULL}, values.odfArrayPath.toString(), true);
   ExecuteDataFunction(CopyODFToDouble{}, inputArray.getDataType(), inputArray, *ebsdValues, m_ShouldCancel);
@@ -81,8 +109,6 @@ Result<> WriteODFSections::operator()()
                                                controls.errors().front().message));
   }
   const auto& imageGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.inputImageGeometryPath);
-  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(values.crystalStructuresPath);
-  const auto& materialNames = m_DataStructure.getDataRefAs<StringArray>(values.materialNamesPath);
   const auto origin = imageGeom.getOrigin();
   const auto spacing = imageGeom.getSpacing();
   ebsdlib::ODFSectionConfiguration config;
@@ -92,7 +118,7 @@ Result<> WriteODFSections::operator()()
   config.grid.originDeg = {origin[2], origin[1], origin[0]};
   config.grid.spacingDeg = {spacing[2], spacing[1], spacing[0]};
   config.grid.units = values.inputUnits == 0 ? ebsdlib::ODFValueUnits::MUD : ebsdlib::ODFValueUnits::CountDensity;
-  config.grid.laueOpsIndex = crystalStructures[static_cast<usize>(values.phaseIndex)];
+  config.grid.laueOpsIndex = crystalStructure;
   config.sectionCount = static_cast<usize>(values.numberOfSections);
   config.sectionsPerRow = static_cast<usize>(values.sectionsPerRow);
   config.sectionWidth = values.sectionWidth;
@@ -133,6 +159,15 @@ Result<> WriteODFSections::operator()()
     if(m_ShouldCancel)
     {
       return {};
+    }
+    // Deferred preflight reserves the largest page. Actual phase data determines the final dimensions.
+    auto& outputGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.outputImageGeometryPath);
+    outputGeom.setDimensions({static_cast<usize>(result.width), static_cast<usize>(result.height), 1});
+    auto& cellData = outputGeom.getCellDataRef();
+    const ShapeType tupleShape = {1, static_cast<usize>(result.height), static_cast<usize>(result.width)};
+    if(cellData.getShape() != tupleShape)
+    {
+      cellData.resizeTuples(tupleShape);
     }
     const auto rgbPath = values.outputImageGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
     auto& outputRgb = m_DataStructure.getDataRefAs<UInt8Array>(rgbPath);
