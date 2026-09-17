@@ -9,6 +9,7 @@ set(${PLUGIN_NAME}UnitTest_SRCS
     ComputeODFTest.cpp
     MTRSimTest.cpp
     ReadMTRSimODFTest.cpp
+    WriteODFSectionsTest.cpp
     WriteMTRSimODFTest.cpp
 )
 

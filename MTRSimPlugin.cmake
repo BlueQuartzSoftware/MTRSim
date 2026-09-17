@@ -33,6 +33,7 @@ set(FilterList
     ComputeODFFilter
     MTRSimFilter
     ReadMTRSimODFFilter
+    WriteODFSectionsFilter
     WriteMTRSimODFFilter
 )
   
@@ -47,6 +48,7 @@ set(AlgorithmList
     ComputeODF
     MTRSim
     ReadMTRSimODF
+    WriteODFSections
     WriteMTRSimODF
 )
 
