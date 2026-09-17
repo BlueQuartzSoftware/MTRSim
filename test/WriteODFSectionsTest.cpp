@@ -24,6 +24,7 @@
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <functional>
@@ -115,7 +116,12 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Parameter Preflight exposes the stand
   const Parameters params = filter.parameters();
   REQUIRE(params.size() == 18);
   REQUIRE(dynamic_cast<const GeometrySelectionParameter*>(params.at(WriteODFSectionsFilter::k_InputImageGeometryPath_Key).get()) != nullptr);
-  REQUIRE(dynamic_cast<const ArraySelectionParameter*>(params.at(WriteODFSectionsFilter::k_ODFArrayPath_Key).get()) != nullptr);
+  const auto* odfArrayParameter = dynamic_cast<const ArraySelectionParameter*>(params.at(WriteODFSectionsFilter::k_ODFArrayPath_Key).get());
+  REQUIRE(odfArrayParameter != nullptr);
+  const ArraySelectionParameter::AllowedTypes expectedOdfTypes = {DataType::float32, DataType::float64};
+  const ArraySelectionParameter::AllowedComponentShapes expectedOdfComponentShapes = {{1}};
+  REQUIRE(odfArrayParameter->allowedTypes() == expectedOdfTypes);
+  REQUIRE(odfArrayParameter->requiredComponentShapes() == expectedOdfComponentShapes);
   REQUIRE(dynamic_cast<const ChoicesParameter*>(params.at(WriteODFSectionsFilter::k_InputUnits_Key).get()) != nullptr);
   REQUIRE(dynamic_cast<const ArraySelectionParameter*>(params.at(WriteODFSectionsFilter::k_CrystalStructuresPath_Key).get()) != nullptr);
   REQUIRE(dynamic_cast<const DataPathSelectionParameter*>(params.at(WriteODFSectionsFilter::k_MaterialNamesPath_Key).get()) != nullptr);
@@ -129,7 +135,11 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Parameter Preflight exposes the stand
   REQUIRE(dynamic_cast<const Float64Parameter*>(params.at(WriteODFSectionsFilter::k_ManualMinimum_Key).get()) != nullptr);
   REQUIRE(dynamic_cast<const Float64Parameter*>(params.at(WriteODFSectionsFilter::k_ManualMaximum_Key).get()) != nullptr);
   REQUIRE(dynamic_cast<const BoolParameter*>(params.at(WriteODFSectionsFilter::k_WritePng_Key).get()) != nullptr);
-  REQUIRE(dynamic_cast<const FileSystemPathParameter*>(params.at(WriteODFSectionsFilter::k_OutputPngPath_Key).get()) != nullptr);
+  const auto* outputPngParameter = dynamic_cast<const FileSystemPathParameter*>(params.at(WriteODFSectionsFilter::k_OutputPngPath_Key).get());
+  REQUIRE(outputPngParameter != nullptr);
+  REQUIRE(outputPngParameter->getAvailableExtensions() == FileSystemPathParameter::ExtensionsType{".png"});
+  REQUIRE(outputPngParameter->getPathType() == FileSystemPathParameter::PathType::OutputFile);
+  REQUIRE_FALSE(outputPngParameter->acceptAllExtensions());
   REQUIRE(dynamic_cast<const BoolParameter*>(params.at(WriteODFSectionsFilter::k_SaveAsImageGeometry_Key).get()) != nullptr);
   REQUIRE(dynamic_cast<const DataGroupCreationParameter*>(params.at(WriteODFSectionsFilter::k_OutputImageGeometryPath_Key).get()) != nullptr);
 
@@ -159,6 +169,12 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Valid Preflight creates the composite
   REQUIRE(GetPreflightValue(result, "Phase") == "1");
   REQUIRE(GetPreflightValue(result, "Material") == "Titanium (Alpha)");
   REQUIRE(GetPreflightValue(result, "Laue Class") == "Hexagonal 6/mmm (D6h)");
+  REQUIRE(GetPreflightValue(result, "Input Units") == "MUD");
+  REQUIRE(GetPreflightValue(result, "Rendered Units") == "MUD");
+  REQUIRE(GetPreflightValue(result, "Full Grid Dimensions (phi1 x PHI x phi2)") == "72 x 36 x 72");
+  REQUIRE(GetPreflightValue(result, "Full Grid Spacing (phi1, PHI, phi2)") == "5, 5, 5 degrees");
+  REQUIRE(GetPreflightValue(result, "Section Layout") == "3 columns x 2 rows");
+  REQUIRE(GetPreflightValue(result, "Scale Mode") == "Automatic");
 
   const auto& actions = result.outputActions.value().actions;
   REQUIRE(actions.size() == 2);
@@ -197,6 +213,61 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: PNG-only Preflight creates no DataStr
   REQUIRE(result.outputActions.value().actions.empty());
 }
 
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Preflight previews both unit and scale modes", "[MTRSim][WriteODFSectionsFilter][Preflight]")
+{
+  struct PreviewCase
+  {
+    ChoicesParameter::ValueType inputUnits = 0;
+    ChoicesParameter::ValueType scaleMode = 0;
+    std::string expectedInputUnits;
+    std::string expectedScaleMode;
+  };
+
+  const std::vector<PreviewCase> cases = {
+      {0, 0, "MUD", "Automatic"},
+      {1, 0, "Count-Density", "Automatic"},
+      {0, 1, "MUD", "Manual: [0.25, 2.5] MUD"},
+      {1, 1, "Count-Density", "Manual: [0.25, 2.5] MUD"},
+  };
+
+  for(const auto& testCase : cases)
+  {
+    DYNAMIC_SECTION("units " << testCase.expectedInputUnits << ", scale " << testCase.expectedScaleMode)
+    {
+      DataStructure dataStructure = CreateValidDataStructure();
+      Arguments args = CreateValidArguments();
+      args.insertOrAssign(WriteODFSectionsFilter::k_InputUnits_Key, testCase.inputUnits);
+      args.insertOrAssign(WriteODFSectionsFilter::k_ScaleMode_Key, testCase.scaleMode);
+      args.insertOrAssign(WriteODFSectionsFilter::k_ManualMinimum_Key, float64{0.25});
+      args.insertOrAssign(WriteODFSectionsFilter::k_ManualMaximum_Key, float64{2.5});
+
+      WriteODFSectionsFilter filter;
+      const auto result = filter.preflight(dataStructure, args);
+      SIMPLNX_RESULT_REQUIRE_VALID(result.outputActions);
+      REQUIRE(GetPreflightValue(result, "Input Units") == testCase.expectedInputUnits);
+      REQUIRE(GetPreflightValue(result, "Rendered Units") == "MUD");
+      REQUIRE(GetPreflightValue(result, "Scale Mode") == testCase.expectedScaleMode);
+    }
+  }
+}
+
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Extreme section count Preflight rejects layout without allocating angles", "[MTRSim][WriteODFSectionsFilter][Preflight][ErrorPath]")
+{
+  DataStructure dataStructure = CreateValidDataStructure();
+  Arguments args = CreateValidArguments();
+  args.insertOrAssign(WriteODFSectionsFilter::k_NumSections_Key, std::numeric_limits<int32>::max());
+  args.insertOrAssign(WriteODFSectionsFilter::k_SectionsPerRow_Key, int32{1});
+
+  WriteODFSectionsFilter filter;
+  const auto start = std::chrono::steady_clock::now();
+  const auto result = filter.preflight(dataStructure, args);
+  const auto elapsed = std::chrono::steady_clock::now() - start;
+  SIMPLNX_RESULT_REQUIRE_INVALID(result.outputActions);
+  REQUIRE(result.outputActions.errors()[0].code == -12315);
+  REQUIRE(result.outputActions.errors()[0].message.find(std::to_string(std::numeric_limits<int32>::max())) != std::string::npos);
+  REQUIRE(elapsed < std::chrono::seconds{1});
+}
+
 TEST_CASE("MTRSim::WriteODFSectionsFilter: Invalid Preflight reports actionable errors", "[MTRSim][WriteODFSectionsFilter][Preflight][ErrorPath]")
 {
   const std::vector<InvalidCase> cases = {
@@ -205,13 +276,13 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Invalid Preflight reports actionable 
          args.insertOrAssign(WriteODFSectionsFilter::k_WritePng_Key, false);
          args.insertOrAssign(WriteODFSectionsFilter::k_SaveAsImageGeometry_Key, false);
        }},
-      {"ODF type", -12301, DataPath({"ODF", "Cell Data", "Integer ODF"}).toString(),
+      {"ODF type", FilterParameter::Constants::k_Validate_AllowedType_Error, DataPath({"ODF", "Cell Data", "Integer ODF"}).toString(),
        [](DataStructure& dataStructure, Arguments& args) {
          const auto* cellData = dataStructure.getDataAs<AttributeMatrix>(DataPath({"ODF", "Cell Data"}));
          UInt32Array::CreateWithStore<DataStore<uint32>>(dataStructure, "Integer ODF", {k_NumPhi1, k_NumPhi, k_NumPhi2}, {1}, cellData->getId());
          args.insertOrAssign(WriteODFSectionsFilter::k_ODFArrayPath_Key, DataPath({"ODF", "Cell Data", "Integer ODF"}));
        }},
-      {"ODF component shape", -12301, DataPath({"ODF", "Cell Data", "Vector ODF"}).toString(),
+      {"ODF component shape", FilterParameter::Constants::k_Validate_TupleShapeValue, DataPath({"ODF", "Cell Data", "Vector ODF"}).toString(),
        [](DataStructure& dataStructure, Arguments& args) {
          const auto* cellData = dataStructure.getDataAs<AttributeMatrix>(DataPath({"ODF", "Cell Data"}));
          Float64Array::CreateWithStore<DataStore<float64>>(dataStructure, "Vector ODF", {k_NumPhi1, k_NumPhi, k_NumPhi2}, {2}, cellData->getId());
@@ -289,7 +360,7 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Invalid Preflight reports actionable 
          args.insertOrAssign(WriteODFSectionsFilter::k_ManualMinimum_Key, float64{2.0});
          args.insertOrAssign(WriteODFSectionsFilter::k_ManualMaximum_Key, float64{1.0});
        }},
-      {"non-PNG extension", -12314, ".jpg",
+      {"non-PNG extension", -3003, ".jpg",
        [](DataStructure&, Arguments& args) { args.insertOrAssign(WriteODFSectionsFilter::k_OutputPngPath_Key, FileSystemPathParameter::ValueType{"odf_sections.jpg"}); }},
   };
 

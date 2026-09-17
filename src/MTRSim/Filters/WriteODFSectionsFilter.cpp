@@ -72,8 +72,7 @@ Parameters WriteODFSectionsFilter::parameters() const
   params.insert(std::make_unique<GeometrySelectionParameter>(k_InputImageGeometryPath_Key, "ODF Image Geometry", "Image geometry that contains the full Bunge Euler grid.", DataPath{},
                                                              GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
   params.insert(std::make_unique<ArraySelectionParameter>(k_ODFArrayPath_Key, "ODF Array", "Scalar Float32 or Float64 ODF values on the selected geometry cell data.", DataPath{},
-                                                          ArraySelectionParameter::AllowedTypes{DataType::boolean, DataType::int8, DataType::uint8, DataType::int16, DataType::uint16, DataType::int32,
-                                                                                                DataType::uint32, DataType::int64, DataType::uint64, DataType::float32, DataType::float64}));
+                                                          ArraySelectionParameter::AllowedTypes{DataType::float32, DataType::float64}, ArraySelectionParameter::AllowedComponentShapes{{1}}));
   params.insert(std::make_unique<ChoicesParameter>(k_InputUnits_Key, "Input Units", "Units of the selected ODF values.", 0ULL, ChoicesParameter::Choices{"MUD", "Count-Density"}));
 
   params.insertSeparator(Parameters::Separator{"Phase Metadata"});
@@ -98,7 +97,7 @@ Parameters WriteODFSectionsFilter::parameters() const
   params.insertSeparator(Parameters::Separator{"Output"});
   params.insertLinkableParameter(std::make_unique<BoolParameter>(k_WritePng_Key, "Write PNG", "Writes the annotated montage to a PNG file.", true));
   params.insert(std::make_unique<FileSystemPathParameter>(k_OutputPngPath_Key, "Output PNG", "Output file for the annotated montage.", std::filesystem::path{},
-                                                          FileSystemPathParameter::ExtensionsType{}, FileSystemPathParameter::PathType::OutputFile));
+                                                          FileSystemPathParameter::ExtensionsType{".png"}, FileSystemPathParameter::PathType::OutputFile));
   params.linkParameters(k_WritePng_Key, k_OutputPngPath_Key, true);
   params.insertLinkableParameter(std::make_unique<BoolParameter>(k_SaveAsImageGeometry_Key, "Save as Image Geometry", "Creates an RGB Image Geometry for the montage.", true));
   params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputImageGeometryPath_Key, "Output Image Geometry", "Path for the RGB montage geometry.", DataPath({"ODF Sections"})));
@@ -121,6 +120,7 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
 {
   const auto imageGeometryPath = filterArgs.value<DataPath>(k_InputImageGeometryPath_Key);
   const auto odfArrayPath = filterArgs.value<DataPath>(k_ODFArrayPath_Key);
+  const auto inputUnits = filterArgs.value<ChoicesParameter::ValueType>(k_InputUnits_Key);
   const auto crystalStructuresPath = filterArgs.value<DataPath>(k_CrystalStructuresPath_Key);
   const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNamesPath_Key);
   const int32 phaseIndex = filterArgs.value<int32>(k_PhaseIndex_Key);
@@ -257,13 +257,13 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   config.materialName = (*materialNames)[static_cast<usize>(phaseIndex)];
   config.phaseNumber = phaseIndex;
 
-  const auto sectionAngles = ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
   const auto layout = ebsdlib::ComputeODFSectionLayout(config);
   if(layout.pageWidth <= 0 || layout.pageHeight <= 0)
   {
     return {MakeErrorResult<OutputActions>(
         -12315, fmt::format("ODF section layout is not representable for Section Width {}, Number of Sections {}, and Sections Per Row {}.", sectionWidth, sectionCount, sectionsPerRow))};
   }
+  const auto sectionAngles = ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
 
   Result<OutputActions> actions;
   if(saveAsImageGeometry)
@@ -282,8 +282,14 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   values.push_back({"Phase", std::to_string(phaseIndex)});
   values.push_back({"Material", (*materialNames)[static_cast<usize>(phaseIndex)]});
   values.push_back({"Laue Class", laueNames[crystalStructure]});
+  values.push_back({"Input Units", inputUnits == 0 ? "MUD" : "Count-Density"});
+  values.push_back({"Rendered Units", "MUD"});
+  values.push_back({"Full Grid Dimensions (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", config.grid.dimensions[0], config.grid.dimensions[1], config.grid.dimensions[2])});
+  values.push_back({"Full Grid Spacing (phi1, PHI, phi2)", fmt::format("{}, {}, {} degrees", config.grid.spacingDeg[0], config.grid.spacingDeg[1], config.grid.spacingDeg[2])});
   values.push_back({"Euler Plot Limits", fmt::format("phi1 < {}, PHI < {}, phi2 < {} degrees", limits.phi1MaxDeg, limits.phiMaxDeg, limits.phi2MaxDeg)});
+  values.push_back({"Section Layout", fmt::format("{} columns x {} rows", layout.columns, layout.rows)});
   values.push_back({"Composite Dimensions", fmt::format("{} x {} pixels", layout.pageWidth, layout.pageHeight)});
+  values.push_back({"Scale Mode", scaleMode == 0 ? std::string{"Automatic"} : fmt::format("Manual: [{}, {}] MUD", manualMinimum, manualMaximum)});
   return {std::move(actions), std::move(values)};
 }
 
