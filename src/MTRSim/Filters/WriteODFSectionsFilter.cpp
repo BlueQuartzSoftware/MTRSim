@@ -57,7 +57,7 @@ Uuid WriteODFSectionsFilter::uuid() const
 
 std::string WriteODFSectionsFilter::humanName() const
 {
-  return "Write ODF Sections";
+  return "Write ODF Section Image";
 }
 
 std::vector<std::string> WriteODFSectionsFilter::defaultTags() const
@@ -175,10 +175,11 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
         -12304, fmt::format("ODF Image Geometry '{}' spacing ({}, {}, {}) degrees must be finite, positive, and uniform.", imageGeometryPath.toString(), spacing[0], spacing[1], spacing[2]))};
   }
 
-  constexpr float64 k_DimensionTolerance = 1.0e-6;
-  const bool coversFullBungeCube = std::abs(static_cast<float64>(imageGeom.getNumXCells()) * spacing[0] - 360.0) <= k_DimensionTolerance &&
-                                   std::abs(static_cast<float64>(imageGeom.getNumYCells()) * spacing[1] - 180.0) <= k_DimensionTolerance &&
-                                   std::abs(static_cast<float64>(imageGeom.getNumZCells()) * spacing[2] - 360.0) <= k_DimensionTolerance;
+  constexpr float64 k_BinCountTolerance = 1.0e-6;
+  const bool coversFullBungeCube = imageGeom.getNumXCells() > 0 && imageGeom.getNumYCells() > 0 && imageGeom.getNumZCells() > 0 &&
+                                   std::abs(360.0 / spacing[0] - static_cast<float64>(imageGeom.getNumXCells())) <= k_BinCountTolerance &&
+                                   std::abs(180.0 / spacing[1] - static_cast<float64>(imageGeom.getNumYCells())) <= k_BinCountTolerance &&
+                                   std::abs(360.0 / spacing[2] - static_cast<float64>(imageGeom.getNumZCells())) <= k_BinCountTolerance;
   if(!coversFullBungeCube)
   {
     return {MakeErrorResult<OutputActions>(-12305, fmt::format("ODF Image Geometry '{}' dimensions ({}) with spacing ({}, {}, {}) degrees must cover the full 360 by 180 by 360 degree Bunge cube.",
@@ -246,6 +247,7 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   }
 
   ebsdlib::ODFSectionConfiguration config;
+  // Image geometry XYZ corresponds to phi2, PHI, phi1; the borrowed values retain phi2-fastest storage.
   config.grid.dimensions = {imageGeom.getNumZCells(), imageGeom.getNumYCells(), imageGeom.getNumXCells()};
   config.grid.originDeg = {origin[2], origin[1], origin[0]};
   config.grid.spacingDeg = {spacing[2], spacing[1], spacing[0]};

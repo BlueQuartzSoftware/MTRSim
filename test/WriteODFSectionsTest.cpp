@@ -194,6 +194,7 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Parameter Preflight exposes the stand
 {
   WriteODFSectionsFilter filter;
   REQUIRE(filter.uuid() == *Uuid::FromString("5ec65380-b1a8-4aff-8bcd-310b5067b236"));
+  REQUIRE(filter.humanName() == "Write ODF Section Image");
 
   const Parameters params = filter.parameters();
   REQUIRE(params.size() == 18);
@@ -238,6 +239,26 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Parameter Preflight exposes the stand
   REQUIRE(defaults.value<bool>(WriteODFSectionsFilter::k_WritePng_Key));
   REQUIRE(defaults.value<bool>(WriteODFSectionsFilter::k_SaveAsImageGeometry_Key));
   REQUIRE(defaults.value<DataPath>(WriteODFSectionsFilter::k_OutputImageGeometryPath_Key) == k_OutputGeometryPath);
+}
+
+TEST_CASE("MTRSim::WriteODFSectionsFilter: Float32 fractional spacing agrees with full grid validation", "[MTRSim][WriteODFSectionsFilter][Preflight]")
+{
+  const usize phiCount = GENERATE(usize{7}, usize{53});
+  const float32 spacing = static_cast<float32>(180.0 / static_cast<double>(phiCount));
+  auto data = CreateValidDataStructure();
+  auto* geometry = data.getDataAs<ImageGeom>(k_OdfGeometryPath);
+  REQUIRE(geometry != nullptr);
+  geometry->setDimensions({2 * phiCount, phiCount, 2 * phiCount});
+  geometry->setSpacing({spacing, spacing, spacing});
+  geometry->getCellData()->resizeTuples({2 * phiCount, phiCount, 2 * phiCount});
+  WriteODFSectionsFilter filter;
+  const auto valid = filter.preflight(data, ExecutionArguments());
+  SIMPLNX_RESULT_REQUIRE_VALID(valid.outputActions);
+  const float32 invalidSpacing = spacing * 1.000001F;
+  geometry->setSpacing({invalidSpacing, invalidSpacing, invalidSpacing});
+  const auto invalid = filter.preflight(data, ExecutionArguments());
+  REQUIRE(invalid.outputActions.invalid());
+  REQUIRE(invalid.outputActions.errors().front().code == -12305);
 }
 
 TEST_CASE("MTRSim::WriteODFSectionsFilter: Valid Preflight creates the composite image", "[MTRSim][WriteODFSectionsFilter][Preflight]")
@@ -742,6 +763,7 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Cancellation at each stage creates no
 
 TEST_CASE("MTRSim::WriteODFSectionsFilter: Compute ODF produces six HCP sections and a readable PNG", "[MTRSim][WriteODFSectionsFilter][Execution]")
 {
+  const float32 binSize = GENERATE(5.0F, static_cast<float32>(180.0 / 7.0));
   TemporaryOutput output;
   auto data = CreateValidDataStructure();
   auto* cells = AttributeMatrix::Create(data, "Input Cells", {8});
@@ -764,11 +786,13 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Compute ODF produces six HCP sections
   computeArgs.insertOrAssign(ComputeODFFilter::k_CrystalStructures_Key, k_CrystalStructuresPath);
   computeArgs.insertOrAssign(ComputeODFFilter::k_UseMask_Key, false);
   computeArgs.insertOrAssign(ComputeODFFilter::k_ApplySmoothing_Key, true);
-  computeArgs.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, float32{5.0F});
+  computeArgs.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, binSize);
   computeArgs.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, ChoicesParameter::ValueType{1});
   computeArgs.insertOrAssign(ComputeODFFilter::k_OutputImageGeometry_Key, DataPath({"Computed ODF"}));
   computeArgs.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::string{"Cells"});
   computeArgs.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::string{"MUD"});
+  const auto computePreflight = computeFilter.preflight(data, computeArgs);
+  SIMPLNX_RESULT_REQUIRE_VALID(computePreflight.outputActions);
   const auto computed = computeFilter.execute(data, computeArgs);
   SIMPLNX_RESULT_REQUIRE_VALID(computed.result);
   auto args = ExecutionArguments();

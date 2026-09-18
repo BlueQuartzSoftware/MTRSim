@@ -1,4 +1,4 @@
-# Write ODF Sections
+# Write ODF Section Image
 
 ## Group (Subgroup)
 
@@ -20,7 +20,7 @@ The input must be a zero-origin, uniformly spaced **Image Geometry** that covers
 | **Y** | `PHI` | 0 degrees to 180 degrees | Middle |
 | **Z** | `phi1` | 0 degrees to 360 degrees | Slowest-varying |
 
-The dimensions multiplied by the uniform spacing must equal `(360, 180, 360)` degrees in `(X, Y, Z)` order. A 5 degree grid therefore has dimensions `(72, 36, 72)`. Cropped fundamental-zone grids and transposed grids are not accepted. Cell values are interpreted at bin centers; for a 5 degree grid, the centers are 2.5, 7.5, 12.5 degrees, and so on.
+The required extents divided by the uniform spacing must agree with the positive grid dimensions within `1e-6` bins in `(X, Y, Z)` order. This tolerance accepts Float32 spacing roundoff under the same rule as Compute ODF From Euler Angles. A 5 degree grid therefore has dimensions `(72, 36, 72)`. Cropped fundamental-zone grids and transposed grids are not accepted. Cell values are interpreted at bin centers; for a 5 degree grid, the centers are 2.5, 7.5, 12.5 degrees, and so on. A grid with no cell centers below the selected plotting limits is rejected during execution.
 
 ## Input Units
 
@@ -32,7 +32,7 @@ MUD(i, j, k) = CountDensity(i, j, k)
              / (dphi1 * dPHI * dphi2 * sin(PHI_center(j)))
 ```
 
-The angular spacings in this formula are in radians. Because the full grid is cell-centered, `PHI_center(j)` never lies exactly on a Bunge pole. This is the same conversion used by the Compute ODF From Euler Angles **Filter**, so mathematically equivalent MUD and Count-Density arrays render identically.
+The angular spacings in this formula are in radians. Because the full grid is cell-centered, `PHI_center(j)` never lies exactly on a Bunge pole. This is the same conversion used by the Compute ODF From Euler Angles **Filter**. Equivalent MUD and Count-Density inputs produce matching section and color-bar pixels. The composites intentionally differ in the **Input Units** legend label.
 
 ## Phase Metadata
 
@@ -92,6 +92,8 @@ The **Section Width** controls each panel's horizontal pixel count. Panel height
 Preflight rejects an invalid ODF type or placement, a nonzero origin, nonuniform or nonpositive spacing, an incomplete full-Bunge extent, a mismatched ODF tuple count, mismatched ensemble metadata, an invalid phase index or crystal structure, fewer than two sections, an invalid row count, a section width below 128 pixels, an invalid color preset or manual scale, a non-`.png` output path, and configurations with both outputs disabled.
 
 Preflight reports the selected phase, material, Laue class, input and rendered units, full grid dimensions and spacing, Euler plotting limits, exact section angles, montage layout and dimensions, and scale mode.
+
+When an upstream filter has not yet supplied phase values during pure pipeline preflight, the phase, material, Laue class, plotting limits, and section angles are deferred. The output dimensions are a conservative maximum estimate. Execution validates the phase metadata and resizes the output geometry and RGB array to the actual dimensions.
 
 % Auto generated parameter table will be inserted here
 
