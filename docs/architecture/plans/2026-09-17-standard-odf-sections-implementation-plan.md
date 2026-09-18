@@ -1,12 +1,12 @@
-# Standard ODF Sections Implementation Plan
+# Combined ODF Computation and Presentation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a reusable EbsdLib renderer for conventional constant-phi2 ODF montages and expose it through MTRSim's `WriteODFSectionsFilter` with PNG and RGB Image Geometry outputs.
+**Goal:** Refactor MTRSim to one public `ComputeODFFilter` that computes a selected-phase quantitative ODF, persists its units, and optionally produces the standard annotated section montage.
 
-**Architecture:** EbsdLib owns grid validation, Count-Density-to-MUD conversion, Laue-class plotting limits, exact section interpolation, colorization, and RGBA composition. MTRSim owns SIMPLNX parameters, Data Structure validation/adaptation, color-preset resolution, optional RGB geometry creation, and atomic PNG output.
+**Architecture:** EbsdLib remains the reusable scientific renderer and receives targeted chrome improvements. MTRSim persists units as DataGroup/StringArray objects, extends `ComputeODFFilter` with phase selection and presentation parameters, invokes an internal presentation helper after numeric computation, and removes the unreleased standalone `WriteODFSectionsFilter`.
 
-**Tech Stack:** C++20, EbsdLib `EbsdDataArray`/`canvas_ity`, Catch2, SIMPLNX filter/action APIs, `CreateColorMapParameter`, `ColorTableUtilities`, `AtomicFile`, `PngWriter`, CMake/Ninja.
+**Tech Stack:** C++20, EbsdLib `EbsdDataArray`/`canvas_ity`, Catch2, SIMPLNX filter/action APIs, `CreateColorMapParameter`, `CreateDataGroupAction`, `CreateStringArrayAction`, `AtomicFile`, `PngWriter`, CMake/Ninja.
 
 **Spec:** `docs/architecture/2026-09-17-odf-section-presentation-design.md`
 
@@ -16,357 +16,86 @@
   - EbsdLib: `/Users/mjackson/Workspace7/EbsdLib`
   - MTRSim: `/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim`
   - DREAM3D-NX: `/Users/mjackson/Workspace7/DREAM3DNX`
-- Implement EbsdLib first on its `feature/odf_generation` branch; MTRSim consumes that public API through the local-EbsdLib DREAM3D-NX preset.
-- Preserve all unrelated untracked content in MTRSim, including `.superpowers/`, `docs/Images/mtrsim_generated_microstructure.png`, and `output/avatar_slides/`.
-- Do not modify simplnx OrientationAnalysis for v1.
-- Input grids must be full, zero-origin, uniformly spaced Bunge grids with `(X,Y,Z) = (phi2,PHI,phi1)`.
-- Support scalar Float32 and Float64 ODF arrays; render only MUD, converting Count-Density with the approved Jacobian.
-- Require Crystal Structures, Material Names, and a positive phase index.
-- Default to six exact phi2 sections, three sections per row, 512-pixel section width, and the SIMPLNX `Rainbow` color preset.
-- Support Automatic `[0, displayed maximum]` and Manual `[minimum, maximum]` MUD scaling.
-- Require PNG output, RGB Image Geometry output, or both.
-- Use error range `-7500` through `-7599` in EbsdLib result objects and `-12300` through `-12399` in the MTRSim filter/algorithm.
-- Before editing C++ in each repository, invoke `bluequartz-skills:clang-format`, `bluequartz-skills:cpp-code-documentation`, and `bluequartz-skills:cross-platform-cpp`; before MTRSim filter work also invoke `bluequartz-skills:filter-implementation`, `bluequartz-skills:error-messages`, and `bluequartz-skills:type-dispatch`.
-- Follow test-driven development: add a failing focused test, run it and observe the expected failure, implement the minimum behavior, then rerun it green.
+- Starting heads:
+  - EbsdLib `feature/odf_generation`: `c67e78c986acbc9addde7a94c2447861f18bdaa9`
+  - MTRSim `topic/create_mtr_sim_filter`: `75be1a43497cf9383417463690f720982a87a2d3`
+- Preserve all unrelated untracked MTRSim content: `.superpowers/`, `docs/Images/mtrsim_generated_microstructure.png`, and `output/avatar_slides/`.
+- Do not modify simplnx OrientationAnalysis.
+- `ComputeODFFilter` is the only public ODF computation/presentation filter after this plan.
+- Compute exactly one selected phase per execution; the optional mask further restricts that phase.
+- Preserve the full numeric ODF output in selected units and persist those units at `<ODF Geometry>/ODF Metadata/<Component Name> Units`.
+- Accepted unit strings are exactly `MUD` and `Count-Density`; there is no manual units override.
+- Presentation is optional and always rendered in MUD; Count-Density presentation is labeled `MUD (from Count-Density)`.
+- Default presentation: six sections, three per row, width 512, `Rainbow Blended White`, automatic MUD scaling.
+- Use `φ₂`, `φ₁`, `Φ`, and `°`; axis ticks are 10 degrees when pixel spacing is at least 24 pixels, otherwise 20 degrees, without unit suffixes on numeric labels.
+- Omit phase-dependent preflight updated values when ensemble values are unavailable; never emit `Deferred until execution`.
+- Keep quotient-based full-grid tolerance `1.0e-6` and phi2-fastest full-source indexing.
+- Before C++ edits invoke the applicable BlueQuartz clang-format, C++ documentation, cross-platform C++, filter-implementation, error-message, type-dispatch, and progress/cancellation skills; use superpowers:test-driven-development and systematic-debugging.
 - Format every touched C/C++ file with `/opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format --style="file:<repo-root>/.clang-format" --fallback-style=none -i`, then verify with `--dry-run --Werror`.
 - Run all CTest commands serially with `-j 1`.
-- Use signed-off BlueQuartz commit messages and never stage unrelated files.
+- Use signed-off BlueQuartz commit messages; do not push.
 
 ---
 
 ## File map
 
-### EbsdLib repository
+### EbsdLib
 
-- Create `Source/EbsdLib/Utilities/ODFSectionUtilities.h`: public grid/unit/result types and scientific preparation functions.
-- Create `Source/EbsdLib/Utilities/ODFSectionUtilities.cpp`: validation, Laue limits, MUD conversion, section-angle generation, and phi2 interpolation.
-- Create `Source/EbsdLib/Utilities/ODFSectionChrome.h`: canvas drawing declarations for axes, labels, title, information block, and color bar.
-- Create `Source/EbsdLib/Utilities/ODFSectionChrome.cpp`: deterministic canvas chrome implementation.
-- Create `Source/EbsdLib/Utilities/ODFSectionCompositor.h`: public render configuration/result/layout API.
-- Create `Source/EbsdLib/Utilities/ODFSectionCompositor.cpp`: colorization, layout, canvas composition, and RGBA extraction.
-- Create `Source/Test/ODFSectionUtilitiesTest.cpp`: analytical scientific-transform tests and invalid-input coverage.
-- Create `Source/Test/ODFSectionCompositorTest.cpp`: layout, scale, color, metadata, and selected-pixel rendering tests.
-- Modify `Source/EbsdLib/Utilities/SourceList.cmake`: compile and install the six new public/source files.
-- Modify `Source/Test/CMakeLists.txt`: register both new Catch2 test files.
+- Modify `Source/EbsdLib/Utilities/ODFSectionChrome.h`: deterministic title/color-bar/tick helper declarations.
+- Modify `Source/EbsdLib/Utilities/ODFSectionChrome.cpp`: Greek typography, degree symbol, adaptive ticks, and source-unit-aware MUD title.
+- Modify `Source/Test/ODFSectionCompositorTest.cpp`: helper and rendered-chrome regressions.
 
-### MTRSim repository
+### MTRSim
 
-- Create `src/MTRSim/Filters/WriteODFSectionsFilter.hpp`: filter traits, parameter keys, and filter declaration.
-- Create `src/MTRSim/Filters/WriteODFSectionsFilter.cpp`: parameters, preflight validation/actions/preview, and algorithm dispatch.
-- Create `src/MTRSim/Filters/Algorithms/WriteODFSections.hpp`: immutable execution input values and algorithm declaration.
-- Create `src/MTRSim/Filters/Algorithms/WriteODFSections.cpp`: type adaptation, EbsdLib invocation, RGB copy, and atomic PNG writing.
-- Create `test/WriteODFSectionsTest.cpp`: synthetic preflight, execution, equivalence, file, and error tests.
-- Create `docs/WriteODFSectionsFilter.md`: user-facing filter documentation.
-- Create `docs/Images/odf_phi2_sections.png`: approved canonical output from the external validation dataset.
-- Modify `MTRSimPlugin.cmake`: register the new filter and algorithm.
-- Modify `test/CMakeLists.txt`: compile the new unit test.
-- Modify `docs/ComputeODFFilter.md`: cross-link the presentation filter and explain phase-isolated ODF input.
-
-### External validation workspace
-
-- Create `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/compute_and_write_odf_sections.d3dpipeline`: Read ANG, construct indexed/phase mask, compute MUD, and write the montage.
-- Create `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/validation_notes.md`: commands, counts, scale, section angles, MTEX comparison, and artifact inventory.
-- Generate all pipelines, logs, DREAM3D data, PNGs, and comparison scripts for the 324 MB dataset only in that validation directory.
+- Create `src/MTRSim/Filters/ODFMetadata.hpp`: persistent units naming, paths, and exact string conversion.
+- Modify `src/MTRSim/Filters/ComputeODFFilter.hpp/.cpp`: phase/material parameters, units actions, presentation parameters/actions/previews, and combined execution.
+- Modify `src/MTRSim/Filters/Algorithms/ComputeODF.hpp/.cpp`: selected-phase accumulation.
+- Create `src/MTRSim/Filters/Algorithms/GenerateODFSections.hpp/.cpp`: internal presentation helper refactored from the standalone algorithm.
+- Delete `src/MTRSim/Filters/WriteODFSectionsFilter.hpp/.cpp`.
+- Delete `src/MTRSim/Filters/Algorithms/WriteODFSections.hpp/.cpp` after the helper refactor lands.
+- Modify `MTRSimPlugin.cmake`: remove standalone filter/algorithm registration and register the internal helper source through the plugin's algorithm list.
+- Modify `test/ComputeODFTest.cpp`: selected-phase, units metadata, and numeric regressions.
+- Create `test/ComputeODFPresentationTest.cpp`: combined-filter presentation/preflight/output tests.
+- Delete `test/WriteODFSectionsTest.cpp` after its useful cases are migrated.
+- Modify `test/CMakeLists.txt`: replace standalone test registration.
+- Modify `docs/ComputeODFFilter.md`: combined workflow documentation and final image.
+- Delete `docs/WriteODFSectionsFilter.md`.
+- Replace `docs/Images/odf_phi2_sections.png` with the final combined-filter output.
+- Update the external pipeline/scripts under `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/`.
 
 ---
 
-### Task 1: Implement EbsdLib ODF scientific preparation
+### Task 1: Refine EbsdLib ODF section chrome
 
 **Files:**
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionUtilities.h`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionUtilities.cpp`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/Test/ODFSectionUtilitiesTest.cpp`
-- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/SourceList.cmake`
-- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/Test/CMakeLists.txt`
+- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.h`
+- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.cpp`
+- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/Test/ODFSectionCompositorTest.cpp`
 
 **Interfaces:**
 - Produces:
-  - `enum class ODFValueUnits : uint8_t { MUD = 0, CountDensity = 1 };`
-  - `struct ODFGridView`
-  - `struct ODFEulerPlotLimits`
-  - `struct PreparedODFSections`
-  - `struct ODFSectionPreparationResult`
-  - `ODFEulerPlotLimits GetODFEulerPlotLimits(uint32_t laueOpsIndex);`
-  - `std::vector<double> GenerateODFSectionAngles(uint32_t laueOpsIndex, size_t sectionCount);`
-  - `ODFSectionPreparationResult PrepareODFSections(const ODFGridView& grid, size_t sectionCount);`
-- Consumed by: Task 2's compositor and Task 4's MTRSim adapter.
+  - `std::string FormatODFSectionTitle(double angleDeg);`
+  - `double SelectODFAxisTickInterval(double maximumDeg, int32_t pixelLength);`
+  - `std::vector<double> GenerateODFAxisTicks(double maximumDeg, int32_t pixelLength);`
+  - `std::string GetODFColorBarTitle(ODFValueUnits sourceUnits);`
+- Consumed by: `DrawODFSectionChrome()` and Task 3's Count-Density presentation tests.
 
-- [ ] **Step 1: Add the public declarations and failing analytical tests**
+- [ ] **Step 1: Write failing text/tick helper tests**
 
-Define the public contract in `ODFSectionUtilities.h`:
+Add tests before implementations:
 
 ```cpp
-enum class ODFValueUnits : uint8_t
-{
-  MUD = 0,
-  CountDensity = 1
-};
-
-struct EbsdLib_EXPORT ODFGridView
-{
-  DoubleArrayType* values = nullptr;
-  std::array<size_t, 3> dimensions = {0, 0, 0}; // phi1, PHI, phi2
-  std::array<double, 3> originDeg = {0.0, 0.0, 0.0};
-  std::array<double, 3> spacingDeg = {0.0, 0.0, 0.0};
-  ODFValueUnits units = ODFValueUnits::MUD;
-  uint32_t laueOpsIndex = CrystalStructure::UnknownCrystalStructure;
-};
-
-struct EbsdLib_EXPORT ODFEulerPlotLimits
-{
-  double phi1MaxDeg = 0.0;
-  double phiMaxDeg = 0.0;
-  double phi2MaxDeg = 0.0;
-};
-
-struct EbsdLib_EXPORT PreparedODFSections
-{
-  std::vector<double> mudValues; // section, PHI, phi1; phi1 fastest
-  std::vector<double> sectionAnglesDeg;
-  size_t phi1Count = 0;
-  size_t phiCount = 0;
-  double maximumDisplayedMUD = 0.0;
-  ODFEulerPlotLimits limits;
-};
-
-struct EbsdLib_EXPORT ODFSectionPreparationResult
-{
-  PreparedODFSections sections;
-  int32_t errorCode = 0;
-  std::string errorMessage;
-  explicit operator bool() const noexcept { return errorCode >= 0; }
-};
+REQUIRE(FormatODFSectionTitle(10.0) == "φ₂ = 10°");
+REQUIRE(SelectODFAxisTickInterval(360.0, 900) == Approx(10.0));
+REQUIRE(SelectODFAxisTickInterval(360.0, 512) == Approx(20.0));
+REQUIRE(GenerateODFAxisTicks(90.0, 128) == std::vector<double>{0.0, 20.0, 40.0, 60.0, 80.0, 90.0});
+REQUIRE(GetODFColorBarTitle(ODFValueUnits::MUD) == "MUD");
+REQUIRE(GetODFColorBarTitle(ODFValueUnits::CountDensity) == "MUD (from Count-Density)");
 ```
 
-Add `ODFSectionUtilitiesTest.cpp` to the test source list and add both new utility files to `Utilities/SourceList.cmake`. Write these first tests:
+Assert every generated numeric tick string contains neither `deg` nor `°`.
 
-```cpp
-TEST_CASE("ebsdlib::ODFSectionUtilities::LaueLimitsAndAngles", "[EbsdLib][ODFSectionUtilities]")
-{
-  const auto limits = GetODFEulerPlotLimits(CrystalStructure::Hexagonal_High);
-  REQUIRE(limits.phi1MaxDeg == Approx(360.0));
-  REQUIRE(limits.phiMaxDeg == Approx(90.0));
-  REQUIRE(limits.phi2MaxDeg == Approx(60.0));
-  REQUIRE(GenerateODFSectionAngles(CrystalStructure::Hexagonal_High, 6) ==
-          std::vector<double>{0.0, 10.0, 20.0, 30.0, 40.0, 50.0});
-}
-
-TEST_CASE("ebsdlib::ODFSectionUtilities::CountDensityToMUD", "[EbsdLib][ODFSectionUtilities]")
-{
-  auto values = DoubleArrayType::CreateArray(32, "CountDensity", true);
-  values->initializeWithValue(1.0 / 32.0);
-  ODFGridView grid{values.get(), {4, 2, 4}, {0.0, 0.0, 0.0}, {90.0, 90.0, 90.0}, ODFValueUnits::CountDensity, CrystalStructure::Triclinic};
-  const auto result = PrepareODFSections(grid, 4);
-  REQUIRE(result);
-  const double step = constants::k_PiD / 2.0;
-  const double expected = (1.0 / 32.0) * 8.0 * constants::k_PiD * constants::k_PiD /
-                          (step * step * step * std::sin(constants::k_PiD / 4.0));
-  REQUIRE(result.sections.mudValues.front() == Approx(expected));
-}
-```
-
-- [ ] **Step 2: Run the focused EbsdLib test and confirm the red state**
-
-Run from `/Users/mjackson/Workspace7/EbsdLib`:
-
-```bash
-cmake --preset ebsdlib-release
-cmake --build --preset "ebsdlib-release [BUILD]" --target EbsdLibUnitTest -j
-ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-release \
-  -R 'EbsdLib::ebsdlib::ODFSectionUtilities' -j 1 --output-on-failure
-```
-
-Expected: compilation or link failure because the three declared functions are not implemented.
-
-- [ ] **Step 3: Implement Laue limits, section angles, grid validation, and MUD conversion**
-
-Implement the approved Laue table exactly:
-
-```cpp
-constexpr std::array<ODFEulerPlotLimits, 11> k_Limits = {{
-    {360.0, 90.0, 60.0},   // Hexagonal High
-    {360.0, 90.0, 90.0},   // Cubic High
-    {360.0, 180.0, 60.0},  // Hexagonal Low
-    {360.0, 90.0, 180.0},  // Cubic Low
-    {360.0, 180.0, 360.0}, // Triclinic
-    {360.0, 90.0, 360.0},  // Monoclinic, EbsdLib unique-axis convention
-    {360.0, 90.0, 180.0},  // Orthorhombic
-    {360.0, 180.0, 90.0},  // Tetragonal Low
-    {360.0, 90.0, 90.0},   // Tetragonal High
-    {360.0, 180.0, 120.0}, // Trigonal Low
-    {360.0, 90.0, 120.0}   // Trigonal High
-}};
-```
-
-Use error codes and messages:
-
-```cpp
-constexpr int32_t k_NullValues = -7500;
-constexpr int32_t k_InvalidLaueClass = -7501;
-constexpr int32_t k_InvalidGrid = -7502;
-constexpr int32_t k_ValueCountMismatch = -7503;
-constexpr int32_t k_InvalidValue = -7504;
-constexpr int32_t k_InvalidSectionCount = -7505;
-```
-
-Validate zero origin, equal positive spacing, full-cube dimensions, tuple count, supported Laue index, section count of at least 2, and every source value being finite and nonnegative. Convert Count-Density with:
-
-```cpp
-const double stepRad = grid.spacingDeg[0] * constants::k_PiOver180D;
-const double phiCenterRad = (static_cast<double>(phiIndex) + 0.5) * stepRad;
-const double mud = countDensity * 8.0 * constants::k_PiD * constants::k_PiD /
-                   (stepRad * stepRad * stepRad * std::sin(phiCenterRad));
-```
-
-Add complete Doxygen comments for every public enum, struct, field, and function,
-including array order, degrees/radians, ownership, units, and failure semantics.
-
-- [ ] **Step 4: Add failing interpolation and invalid-input tests**
-
-Use a four-plane MUD grid with phi2-center values `{1,2,3,4}` repeated over phi1 and PHI. Assert that the exact zero-degree section equals `2.5`, the periodic midpoint between the 315-degree and 45-degree planes. Add table-driven assertions for all 11 Laue limits and errors for null values, transposed dimensions, nonuniform spacing, negative values, NaN, an unsupported crystal code, and section count 1.
-
-```cpp
-REQUIRE(result.sections.sectionAnglesDeg == std::vector<double>{0.0, 90.0, 180.0, 270.0});
-REQUIRE(result.sections.mudValues.front() == Approx(2.5));
-REQUIRE_FALSE(PrepareODFSections(negativeGrid, 4));
-REQUIRE(PrepareODFSections(negativeGrid, 4).errorCode == -7504);
-```
-
-- [ ] **Step 5: Run the focused test and confirm the interpolation assertions fail**
-
-Run the focused CTest command from Step 2. Expected: limit/conversion tests pass and interpolation/invalid-input cases fail until the remaining logic is implemented.
-
-- [ ] **Step 6: Implement periodic phi2 interpolation and cropped section buffers**
-
-For each exact section angle, compute its fractional position relative to the first cell center, wrap both neighboring phi2 indices modulo `nphi2`, and write section-major output with phi1 fastest:
-
-```cpp
-const double coordinate = (angleDeg - firstCenterDeg) / spacingDeg;
-const auto floorCoordinate = std::floor(coordinate);
-const auto lower = WrapIndex(static_cast<int64_t>(floorCoordinate), nphi2);
-const auto upper = (lower + 1) % nphi2;
-const double fraction = coordinate - floorCoordinate;
-const double value = (1.0 - fraction) * fullMud[FullIndex(phi1, phi, lower)] +
-                     fraction * fullMud[FullIndex(phi1, phi, upper)];
-prepared.mudValues[SectionIndex(section, phi, phi1)] = value;
-```
-
-Crop phi1 and PHI by selecting every cell center strictly below the approved maximum. Record the maximum over the displayed interpolated values.
-
-- [ ] **Step 7: Format, verify, and run focused tests**
-
-```bash
-/opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
-  --style="file:/Users/mjackson/Workspace7/EbsdLib/.clang-format" --fallback-style=none -i \
-  Source/EbsdLib/Utilities/ODFSectionUtilities.h \
-  Source/EbsdLib/Utilities/ODFSectionUtilities.cpp \
-  Source/Test/ODFSectionUtilitiesTest.cpp
-/opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
-  --style="file:/Users/mjackson/Workspace7/EbsdLib/.clang-format" --fallback-style=none \
-  --dry-run --Werror \
-  Source/EbsdLib/Utilities/ODFSectionUtilities.h \
-  Source/EbsdLib/Utilities/ODFSectionUtilities.cpp \
-  Source/Test/ODFSectionUtilitiesTest.cpp
-cmake --build --preset "ebsdlib-release [BUILD]" --target EbsdLibUnitTest -j
-ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-release \
-  -R 'EbsdLib::ebsdlib::ODFSectionUtilities' -j 1 --output-on-failure
-```
-
-Expected: all ODFSectionUtilities tests pass.
-
-- [ ] **Step 8: Commit the scientific preparation layer**
-
-```bash
-git add Source/EbsdLib/Utilities/ODFSectionUtilities.h \
-  Source/EbsdLib/Utilities/ODFSectionUtilities.cpp \
-  Source/EbsdLib/Utilities/SourceList.cmake \
-  Source/Test/ODFSectionUtilitiesTest.cpp Source/Test/CMakeLists.txt
-git commit -s -m "ENH: Add ODF section preparation utilities"
-```
-
----
-
-### Task 2: Implement the EbsdLib ODF compositor
-
-**Files:**
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.h`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.cpp`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionCompositor.h`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionCompositor.cpp`
-- Create: `/Users/mjackson/Workspace7/EbsdLib/Source/Test/ODFSectionCompositorTest.cpp`
-- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/SourceList.cmake`
-- Modify: `/Users/mjackson/Workspace7/EbsdLib/Source/Test/CMakeLists.txt`
-
-**Interfaces:**
-- Consumes: Task 1's `ODFGridView`, `PreparedODFSections`, and `PrepareODFSections()`.
-- Produces:
-  - `enum class ODFScaleMode : uint8_t { Automatic = 0, Manual = 1 };`
-  - `struct ODFSectionConfiguration`
-  - `struct ODFSectionLayoutMetrics`
-  - `struct ODFSectionResult`
-  - `ODFSectionLayoutMetrics ComputeODFSectionLayout(const ODFSectionConfiguration& config);`
-  - `ODFSectionResult ODFSectionCompositor::generateCompositeImage(const ODFSectionConfiguration& config) const;`
-- Consumed by: Tasks 3 and 4.
-
-- [ ] **Step 1: Add compositor declarations and failing configuration/layout tests**
-
-Define this public shape in `ODFSectionCompositor.h`:
-
-```cpp
-enum class ODFScaleMode : uint8_t
-{
-  Automatic = 0,
-  Manual = 1
-};
-
-struct EbsdLib_EXPORT ODFSectionConfiguration
-{
-  ODFGridView grid;
-  size_t sectionCount = 6;
-  size_t sectionsPerRow = 3;
-  int32_t sectionWidth = 512;
-  ODFScaleMode scaleMode = ODFScaleMode::Automatic;
-  double manualMinimumMUD = 0.0;
-  double manualMaximumMUD = 1.0;
-  std::vector<float> colorControlPoints;
-  std::string title;
-  std::string materialName;
-  int32_t phaseNumber = 1;
-};
-
-struct EbsdLib_EXPORT ODFSectionLayoutMetrics
-{
-  int32_t panelWidth = 0;
-  int32_t panelHeight = 0;
-  int32_t columns = 0;
-  int32_t rows = 0;
-  float fontPtSize = 0.0f;
-  float margin = 0.0f;
-  float panelSlotWidth = 0.0f;
-  float panelSlotHeight = 0.0f;
-  float titleHeight = 0.0f;
-  float legendWidth = 0.0f;
-  int32_t pageWidth = 0;
-  int32_t pageHeight = 0;
-};
-
-struct EbsdLib_EXPORT ODFSectionResult
-{
-  UInt8ArrayType::Pointer image;
-  int32_t width = 0;
-  int32_t height = 0;
-  std::vector<double> sectionAnglesDeg;
-  double appliedMinimumMUD = 0.0;
-  double appliedMaximumMUD = 0.0;
-  int32_t errorCode = 0;
-  std::string errorMessage;
-  explicit operator bool() const noexcept { return errorCode >= 0 && image != nullptr; }
-};
-```
-
-Write tests asserting default values and, for Hexagonal High with width 512, a data-panel height of 128, three columns, and two rows. Assert that invalid section width, row count, manual range, and fewer than two color controls return `-7510` through `-7513`.
-
-- [ ] **Step 2: Run focused compositor tests and confirm the red state**
+- [ ] **Step 2: Run the focused tests and capture RED**
 
 ```bash
 cmake --build --preset "ebsdlib-release [BUILD]" --target EbsdLibUnitTest -j
@@ -374,579 +103,494 @@ ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-release \
   -R 'EbsdLib::ebsdlib::ODFSectionCompositor' -j 1 --output-on-failure
 ```
 
-Expected: compilation or link failure for the undeclared compositor implementation.
+Expected: compile/link failure because the four helper functions do not exist.
 
-- [ ] **Step 3: Implement deterministic layout and color mapping**
+- [ ] **Step 3: Implement the chrome helpers**
 
-Compute panel height from the Laue limit and arrange the requested grid:
-
-```cpp
-metrics.panelWidth = config.sectionWidth;
-metrics.panelHeight = static_cast<int32_t>(std::lround(
-    static_cast<double>(config.sectionWidth) * limits.phiMaxDeg / limits.phi1MaxDeg));
-metrics.columns = static_cast<int32_t>(config.sectionsPerRow);
-metrics.rows = static_cast<int32_t>((config.sectionCount + config.sectionsPerRow - 1) /
-                                    config.sectionsPerRow);
-```
-
-Use these deterministic page metrics:
+Use this exact tick rule:
 
 ```cpp
-metrics.fontPtSize = std::max(10.0f, static_cast<float>(config.sectionWidth) / 24.0f);
-metrics.margin = std::max(8.0f, static_cast<float>(config.sectionWidth) / 32.0f);
-metrics.panelSlotWidth = static_cast<float>(metrics.panelWidth) + 2.0f * metrics.margin;
-metrics.panelSlotHeight = static_cast<float>(metrics.panelHeight) +
-                          3.0f * metrics.fontPtSize + 3.0f * metrics.margin;
-metrics.titleHeight = metrics.fontPtSize + 2.0f * metrics.margin;
-metrics.legendWidth = std::max(static_cast<float>(config.sectionWidth) / 3.0f, 180.0f);
-metrics.pageWidth = static_cast<int32_t>(std::ceil(
-    metrics.columns * metrics.panelSlotWidth + metrics.legendWidth + 2.0f * metrics.margin));
-metrics.pageHeight = static_cast<int32_t>(std::ceil(
-    metrics.titleHeight + metrics.rows * metrics.panelSlotHeight + metrics.margin));
+double SelectODFAxisTickInterval(double maximumDeg, int32_t pixelLength)
+{
+  const double tenDegreePixelSpacing = static_cast<double>(pixelLength) /
+                                       (maximumDeg / 10.0);
+  return tenDegreePixelSpacing >= 24.0 ? 10.0 : 20.0;
+}
 ```
 
-Use these fields directly in tests and chrome so both share one source of truth.
+`GenerateODFAxisTicks()` starts at zero, advances by the selected interval, and
+always appends `maximumDeg` when the interval does not land on it exactly.
 
-Normalize each MUD value against the applied range, clamp to `[0,1]`, locate the surrounding `[position,r,g,b]` controls, and linearly interpolate RGB. Automatic range is exactly `[0, prepared.maximumDisplayedMUD]`; reject an automatic maximum of zero. Manual range requires `0 <= minimum < maximum` and clips endpoint values.
+Use UTF-8 literals `φ₂`, `φ₁`, `Φ`, and `°`. Keep PHI increasing downward.
+Draw short hash marks at every generated tick and numeric labels without units.
+Render `φ₁` centered below and `Φ` vertically centered to the left.
 
-- [ ] **Step 4: Add failing chrome and RGBA composition tests**
+- [ ] **Step 4: Update rendered-pixel regressions**
 
-Use a 4x2x4 Triclinic grid, four sections, two per row, a 128-pixel panel width, manual scale `[0,4]`, and two controls `[0,0,0,1]` and `[1,1,0,0]`. Assert:
+Retain existing panel/background/color-bar assertions. Add separate renders for
+MUD and Count-Density sources and assert:
 
-```cpp
-ODFSectionResult result = ODFSectionCompositor{}.generateCompositeImage(config);
-REQUIRE(result);
-REQUIRE(result.image->getNumberOfComponents() == 4);
-REQUIRE(result.image->getNumberOfTuples() == static_cast<size_t>(result.width * result.height));
-REQUIRE(result.sectionAnglesDeg == std::vector<double>{0.0, 90.0, 180.0, 270.0});
-REQUIRE(result.appliedMinimumMUD == Approx(0.0));
-REQUIRE(result.appliedMaximumMUD == Approx(4.0));
-```
+- Dimensions/layout remain identical.
+- Panel data remains identical for mathematically equivalent values.
+- Chrome differs in the expected title/info region.
+- Selected non-background pixels exist where the Greek titles/axes and dense
+  tick marks are expected.
 
-Check selected pixels inside a low-value panel, a high-value panel, the white background, a black axis, and both color-bar endpoints. Permit a per-channel tolerance of 1 for `canvas_ity` floating-point differences; do not use a broad whole-image tolerance to hide layout regressions.
-
-- [ ] **Step 5: Implement `ODFSectionChrome` and RGBA composition**
-
-Use embedded Lato/Fira fonts and `canvas_ity` to draw:
-
-- White page background.
-- Figure title.
-- Each RGB panel scaled to its data rectangle.
-- `phi1` and `PHI` axes with degree ticks.
-- Per-panel `phi2 = N degrees` title.
-- One shared MUD color bar and numeric endpoints.
-- Phase number, material name, Laue group, input/rendered units, bin spacing,
-  and section count.
-
-Allocate the final image as:
-
-```cpp
-auto image = UInt8ArrayType::CreateArray(
-    static_cast<size_t>(layout.pageWidth) * layout.pageHeight,
-    {4ULL}, "ODFSectionsComposite", true);
-context.get_image_data(image->getPointer(0), layout.pageWidth, layout.pageHeight,
-                       layout.pageWidth * 4, 0, 0);
-```
-
-Add complete Doxygen comments for the public configuration, result, layout,
-free layout function, compositor class, and `generateCompositeImage()` method.
-
-- [ ] **Step 6: Format, build, and run both ODF section suites**
+- [ ] **Step 5: Format, test, and commit**
 
 ```bash
 /opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
   --style="file:/Users/mjackson/Workspace7/EbsdLib/.clang-format" --fallback-style=none -i \
   Source/EbsdLib/Utilities/ODFSectionChrome.h \
   Source/EbsdLib/Utilities/ODFSectionChrome.cpp \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.h \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.cpp \
   Source/Test/ODFSectionCompositorTest.cpp
 /opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
   --style="file:/Users/mjackson/Workspace7/EbsdLib/.clang-format" --fallback-style=none \
   --dry-run --Werror \
   Source/EbsdLib/Utilities/ODFSectionChrome.h \
   Source/EbsdLib/Utilities/ODFSectionChrome.cpp \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.h \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.cpp \
   Source/Test/ODFSectionCompositorTest.cpp
 cmake --build --preset "ebsdlib-release [BUILD]" --target EbsdLibUnitTest -j
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-release \
   -R 'EbsdLib::ebsdlib::ODFSection' -j 1 --output-on-failure
-```
-
-Expected: utility and compositor suites pass.
-
-- [ ] **Step 7: Commit the compositor**
-
-```bash
 git add Source/EbsdLib/Utilities/ODFSectionChrome.h \
   Source/EbsdLib/Utilities/ODFSectionChrome.cpp \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.h \
-  Source/EbsdLib/Utilities/ODFSectionCompositor.cpp \
-  Source/EbsdLib/Utilities/SourceList.cmake \
-  Source/Test/ODFSectionCompositorTest.cpp Source/Test/CMakeLists.txt
-git commit -s -m "ENH: Add standard ODF section compositor"
+  Source/Test/ODFSectionCompositorTest.cpp
+git commit -s -m "ENH: Refine ODF section annotations"
 ```
+
+Expected: all focused ODF section tests pass and the EbsdLib worktree is clean.
 
 ---
 
-### Task 3: Add the MTRSim filter surface and preflight
+### Task 2: Add selected-phase computation and persistent units metadata
 
 **Files:**
-- Create: `src/MTRSim/Filters/WriteODFSectionsFilter.hpp`
-- Create: `src/MTRSim/Filters/WriteODFSectionsFilter.cpp`
-- Create: `src/MTRSim/Filters/Algorithms/WriteODFSections.hpp`
-- Create: `src/MTRSim/Filters/Algorithms/WriteODFSections.cpp`
-- Create: `test/WriteODFSectionsTest.cpp`
-- Modify: `MTRSimPlugin.cmake`
-- Modify: `test/CMakeLists.txt`
+- Create: `src/MTRSim/Filters/ODFMetadata.hpp`
+- Modify: `src/MTRSim/Filters/ComputeODFFilter.hpp`
+- Modify: `src/MTRSim/Filters/ComputeODFFilter.cpp`
+- Modify: `src/MTRSim/Filters/Algorithms/ComputeODF.hpp`
+- Modify: `src/MTRSim/Filters/Algorithms/ComputeODF.cpp`
+- Modify: `test/ComputeODFTest.cpp`
 
 **Interfaces:**
-- Consumes: Task 2's `ODFSectionConfiguration`, `ComputeODFSectionLayout()`, and `ODFSectionCompositor`.
 - Produces:
-  - Filter UUID `5ec65380-b1a8-4aff-8bcd-310b5067b236`.
-  - `WriteODFSectionsFilter` parameter contract.
-  - `WriteODFSectionsInputValues` consumed by Task 4.
-  - Preflight-created `Output ODF Sections/Cell Data/ODF Sections RGB` UInt8 array with three components.
+  - `ComputeODFFilter::k_MaterialNames_Key = "material_names_path"`
+  - `ComputeODFFilter::k_PhaseIndex_Key = "phase_index"`
+  - `mtrsim::odf_metadata::k_GroupName = "ODF Metadata"`
+  - `CreateUnitsPath(const DataPath& geometryPath, std::string_view componentName)`
+  - `UnitsToString(ChoicesParameter::ValueType units)` returning exactly `MUD` or `Count-Density`
+  - Selected-phase field in `ComputeODFInputValues`.
+- Consumed by: Task 3's combined presentation.
 
-- [ ] **Step 1: Register skeleton files and write failing preflight tests**
+- [ ] **Step 1: Add failing selected-phase tests**
 
-Add `WriteODFSectionsFilter` and `WriteODFSections` to `FilterList` and `AlgorithmList`, and add `WriteODFSectionsTest.cpp` to the plugin unit-test list.
-
-Define these keys in the filter header:
-
-```cpp
-static constexpr StringLiteral k_InputImageGeometryPath_Key = "input_image_geometry_path";
-static constexpr StringLiteral k_ODFArrayPath_Key = "odf_array_path";
-static constexpr StringLiteral k_InputUnits_Key = "input_units_index";
-static constexpr StringLiteral k_CrystalStructuresPath_Key = "crystal_structures_path";
-static constexpr StringLiteral k_MaterialNamesPath_Key = "material_names_path";
-static constexpr StringLiteral k_PhaseIndex_Key = "phase_index";
-static constexpr StringLiteral k_Title_Key = "title";
-static constexpr StringLiteral k_NumSections_Key = "number_of_sections";
-static constexpr StringLiteral k_SectionsPerRow_Key = "sections_per_row";
-static constexpr StringLiteral k_SectionWidth_Key = "section_width";
-static constexpr StringLiteral k_ColorTablePreset_Key = "color_table_preset";
-static constexpr StringLiteral k_ScaleMode_Key = "scale_mode_index";
-static constexpr StringLiteral k_ManualMinimum_Key = "manual_minimum_mud";
-static constexpr StringLiteral k_ManualMaximum_Key = "manual_maximum_mud";
-static constexpr StringLiteral k_WritePng_Key = "write_png";
-static constexpr StringLiteral k_OutputPngPath_Key = "output_png_file";
-static constexpr StringLiteral k_SaveAsImageGeometry_Key = "save_as_image_geometry";
-static constexpr StringLiteral k_OutputImageGeometryPath_Key = "output_image_geometry_path";
-```
-
-Use:
+Extend the synthetic helper with a two-tuple Material Names array and set phase
+labels containing phases 1 and 2. Add tests proving:
 
 ```cpp
-SIMPLNX_DEF_FILTER_TRAITS(nx::core, WriteODFSectionsFilter,
-                          "5ec65380-b1a8-4aff-8bcd-310b5067b236");
+args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
+// Only phase-1 voxels contribute.
+
+args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{2});
+// Only phase-2 voxels contribute and that phase's Laue operators are used.
 ```
 
-Build test data with a 72x36x72, five-degree `ImageGeom`, a scalar Float64 ODF array, a two-tuple UInt32 Crystal Structures array whose phase-1 value is `Hexagonal_High`, and `StringArray::CreateWithValues(..., {"Invalid", "Titanium (Alpha)"})`.
+Use a mixed HCP/Cubic fixture whose nonzero-bin count or exact sentinel bins
+distinguish the selections. Add a mask case that removes one selected-phase
+voxel while non-selected voxels remain irrelevant.
 
-Write a valid-preflight test asserting:
+- [ ] **Step 2: Add failing units-metadata action tests**
 
-- No errors.
-- Exact section-angle preflight value `0, 10, 20, 30, 40, 50 degrees`.
-- Phase/material/Laue preview values.
-- One output Image Geometry action and one UInt8 RGB array action.
-- Composite dimensions equal `ComputeODFSectionLayout()`.
+For Create-New and Append modes, assert preflight proposes:
 
-- [ ] **Step 2: Run the focused MTRSim test and confirm the red state**
+```text
+ODF/ODF Metadata/Component 1 Units
+```
 
-From `/Users/mjackson/Workspace7/DREAM3DNX`:
+as a one-tuple StringArray initialized to the selected exact string. Apply
+actions in Preflight mode and assert the value is immediately readable. Cover
+MUD and Count-Density and reject units-array collisions or a non-DataGroup
+`ODF Metadata` object.
+
+- [ ] **Step 3: Run RED tests**
 
 ```bash
-cmake --preset NX-Com-Qt69-Vtk96-Rel-EbsdLib
 env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
   cmake --build --preset "NX-Com-Qt69-Vtk96-Rel-EbsdLib [BUILD]" \
   --target MTRSimUnitTest -j
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
-  -R 'MTRSim::WriteODFSectionsFilter' -j 1 --output-on-failure --timeout 1500
+  -R 'MTRSim::ComputeODFFilter' -j 1 --output-on-failure --timeout 1500
 ```
 
-Expected: compilation failure because the new filter surface is not implemented.
+Expected: missing parameter/action behavior and mixed-phase accumulation failures.
 
-- [ ] **Step 3: Implement parameters and links**
+- [ ] **Step 4: Implement metadata helpers and parameters**
 
-Use these parameter types and defaults:
+In `ODFMetadata.hpp` define:
 
 ```cpp
-GeometrySelectionParameter  // ODF Image Geometry
-ArraySelectionParameter     // scalar float32/float64 ODF array
-ChoicesParameter            // MUD, Count-Density; default MUD
-ArraySelectionParameter     // UInt32 Crystal Structures
-DataPathSelectionParameter  // StringArray Material Names
-Int32Parameter              // Phase Index = 1
-StringParameter             // Figure Title
-Int32Parameter              // Number of Sections = 6
-Int32Parameter              // Sections Per Row = 3
-Int32Parameter              // Section Width = 512
-CreateColorMapParameter     // default "Rainbow"
-ChoicesParameter            // Automatic, Manual; default Automatic
-Float64Parameter            // Manual Minimum MUD = 0.0
-Float64Parameter            // Manual Maximum MUD = 1.0
-BoolParameter               // Write PNG = true
-FileSystemPathParameter     // Output PNG, PathType::OutputFile, extension .png
-BoolParameter               // Save as Image Geometry = true
-DataGroupCreationParameter  // Output Image Geometry = "ODF Sections"
+namespace nx::core::mtrsim::odf_metadata
+{
+inline constexpr StringLiteral k_GroupName = "ODF Metadata";
+inline constexpr StringLiteral k_UnitsSuffix = " Units";
+
+inline DataPath CreateUnitsPath(const DataPath& geometryPath,
+                                std::string_view componentName)
+{
+  return geometryPath.createChildPath(k_GroupName.str())
+      .createChildPath(fmt::format("{}{}", componentName, k_UnitsSuffix.view()));
+}
+
+inline std::string UnitsToString(ChoicesParameter::ValueType units)
+{
+  return units == 0 ? "Count-Density" : "MUD";
+}
+}
 ```
 
-Link manual limits to Manual mode, PNG path to Write PNG, and output geometry path to Save as Image Geometry.
+Add required Material Names and Phase Index parameters. Increment the parameter
+version. Validate equal ensemble tuple counts, positive/in-range phase index,
+and the material object type whenever values are available.
 
-- [ ] **Step 4: Add failing table-driven preflight error tests**
+Append `CreateDataGroupAction` only when the group does not exist, then append
+`CreateStringArrayAction({1}, unitsPath, unitsString)`. Reject wrong-type group
+objects and units-path collisions.
 
-Cover codes in `-12300..-12319` for:
+- [ ] **Step 5: Enforce selected-phase accumulation**
 
-- Both outputs disabled.
-- ODF array not scalar or not Float32/Float64.
-- ODF array not under the selected geometry's cell Attribute Matrix.
-- Nonzero origin.
-- Nonuniform, zero, or negative spacing.
-- Dimensions not matching the full Bunge cube.
-- Ensemble tuple-count mismatch.
-- Phase index 0 or out of range.
-- Unknown crystal structure.
-- Section count below 2.
-- Sections per row outside `[1, sectionCount]`.
-- Section width below 128.
-- Invalid preset.
-- Manual minimum negative, non-finite, or greater than/equal to maximum.
-- Non-PNG output extension.
-
-Assert each message includes the selected path or actual invalid value.
-
-- [ ] **Step 5: Implement preflight validation, actions, and preview**
-
-Reorder Image Geometry XYZ values to EbsdLib `(phi1,PHI,phi2)` values:
+Carry `selectedPhase` into `ComputeODFInputValues` and `AccumulateWorker`. Replace
+the former nonzero-phase condition with:
 
 ```cpp
-config.grid.dimensions = {imageGeom.getNumZCells(), imageGeom.getNumYCells(),
-                          imageGeom.getNumXCells()};
-config.grid.originDeg = {origin[2], origin[1], origin[0]};
-config.grid.spacingDeg = {spacing[2], spacing[1], spacing[0]};
+const int32_t phase = m_Phases[i];
+if(phase != m_SelectedPhase || (m_Mask != nullptr && !m_Mask->isTrue(i)))
+{
+  progressMessenger.sendProgressMessage(1);
+  continue;
+}
 ```
 
-Resolve the phase tuple, call `GetODFEulerPlotLimits()` and `GenerateODFSectionAngles()`, call `ComputeODFSectionLayout()`, and append `CreateImageGeometryAction` plus `CreateArrayAction` only when geometry output is enabled. Use cell Attribute Matrix name `Cell Data` and array name `ODF Sections RGB`.
+Validate the selected phase's crystal code at execution before launching the
+parallel algorithm. Update progress/completion messages to name the phase.
 
-Create Image Geometry dimensions as `{pageWidth, pageHeight, 1}` and the RGB
-array tuple shape as `{1, pageHeight, pageWidth}` with component shape `{3}`.
+- [ ] **Step 6: Verify DREAM3D serialization of units metadata**
 
-- [ ] **Step 6: Format, build, and run preflight tests**
+Execute Compute ODF, write the Data Structure to a temporary DREAM3D file, read
+it into a fresh Data Structure, and assert the exact metadata path/value
+survives. Use existing `WriteDREAM3DFilter`/`ReadDREAM3DFilter` test patterns;
+do not infer persistence from in-memory behavior alone.
+
+- [ ] **Step 7: Format, test, and commit**
 
 ```bash
 /opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
   --style="file:/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/.clang-format" \
   --fallback-style=none -i \
-  src/MTRSim/Filters/WriteODFSectionsFilter.hpp \
-  src/MTRSim/Filters/WriteODFSectionsFilter.cpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.hpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.cpp \
-  test/WriteODFSectionsTest.cpp
+  src/MTRSim/Filters/ODFMetadata.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.cpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.hpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.cpp \
+  test/ComputeODFTest.cpp
 /opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
   --style="file:/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/.clang-format" \
   --fallback-style=none --dry-run --Werror \
-  src/MTRSim/Filters/WriteODFSectionsFilter.hpp \
-  src/MTRSim/Filters/WriteODFSectionsFilter.cpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.hpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.cpp \
-  test/WriteODFSectionsTest.cpp
+  src/MTRSim/Filters/ODFMetadata.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.cpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.hpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.cpp \
+  test/ComputeODFTest.cpp
 env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
   cmake --build --preset "NX-Com-Qt69-Vtk96-Rel-EbsdLib [BUILD]" \
   --target MTRSimUnitTest -j
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
-  -R 'MTRSim::WriteODFSectionsFilter.*Preflight' -j 1 \
-  --output-on-failure --timeout 1500
-```
-
-Expected: all preflight and parameter tests pass. Execution tests remain absent until Task 4.
-
-- [ ] **Step 7: Commit the filter surface**
-
-```bash
-git add MTRSimPlugin.cmake test/CMakeLists.txt test/WriteODFSectionsTest.cpp \
-  src/MTRSim/Filters/WriteODFSectionsFilter.hpp \
-  src/MTRSim/Filters/WriteODFSectionsFilter.cpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.hpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.cpp
-git commit -s -m "FILT: Add ODF section image filter preflight"
+  -R 'MTRSim::ComputeODFFilter' -j 1 --output-on-failure --timeout 1500
+git add src/MTRSim/Filters/ODFMetadata.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.hpp \
+  src/MTRSim/Filters/ComputeODFFilter.cpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.hpp \
+  src/MTRSim/Filters/Algorithms/ComputeODF.cpp \
+  test/ComputeODFTest.cpp
+git commit -s -m "ENH: Add phase and units provenance to ODF output"
 ```
 
 ---
 
-### Task 4: Implement MTRSim execution and outputs
+### Task 3: Fold presentation into Compute ODF and remove the standalone filter
 
 **Files:**
-- Modify: `src/MTRSim/Filters/WriteODFSectionsFilter.cpp`
-- Modify: `src/MTRSim/Filters/Algorithms/WriteODFSections.hpp`
-- Modify: `src/MTRSim/Filters/Algorithms/WriteODFSections.cpp`
-- Modify: `test/WriteODFSectionsTest.cpp`
+- Create: `src/MTRSim/Filters/Algorithms/GenerateODFSections.hpp`
+- Create: `src/MTRSim/Filters/Algorithms/GenerateODFSections.cpp`
+- Modify: `src/MTRSim/Filters/ComputeODFFilter.hpp`
+- Modify: `src/MTRSim/Filters/ComputeODFFilter.cpp`
+- Delete: `src/MTRSim/Filters/WriteODFSectionsFilter.hpp`
+- Delete: `src/MTRSim/Filters/WriteODFSectionsFilter.cpp`
+- Delete after refactor: `src/MTRSim/Filters/Algorithms/WriteODFSections.hpp`
+- Delete after refactor: `src/MTRSim/Filters/Algorithms/WriteODFSections.cpp`
+- Modify: `MTRSimPlugin.cmake`
+- Create: `test/ComputeODFPresentationTest.cpp`
+- Delete: `test/WriteODFSectionsTest.cpp`
+- Modify: `test/CMakeLists.txt`
 
 **Interfaces:**
-- Consumes: Task 3's filter arguments and Task 2's EbsdLib compositor.
-- Produces: complete `WriteODFSections::operator()()` behavior, optional RGB geometry, and optional atomic PNG output.
+- Consumes: Task 1's final EbsdLib chrome and Task 2's selected phase/units metadata.
+- Produces:
+  - One public `ComputeODFFilter` with optional presentation parameters.
+  - Internal `GenerateODFSectionsInputValues` and `GenerateODFSections` helper.
+  - No `WriteODFSectionsFilter` registration, UUID, or public class.
 
-- [ ] **Step 1: Add failing MUD/Count-Density equivalence tests**
+- [ ] **Step 1: Migrate standalone execution tests before deleting code**
 
-Create two Data Structures containing the same analytical distribution:
+Create `ComputeODFPresentationTest.cpp` and port the useful standalone cases to
+execute the public Compute filter from Euler/phase inputs:
 
-```cpp
-const double phiCenter = (static_cast<double>(phiIndex) + 0.5) * stepRad;
-countDensity[index] = mud[index] * stepRad * stepRad * stepRad *
-                      std::sin(phiCenter) /
-                      (8.0 * std::numbers::pi * std::numbers::pi);
+- MUD and Count-Density numeric modes produce equivalent section/color-bar data.
+- Count-Density chrome uses `MUD (from Count-Density)`.
+- PNG-only, RGB-only, both, and numeric-only output modes.
+- RGB geometry equals decoded PNG RGB channels.
+- Float32/Float64 renderer adaptation remains covered through the internal
+  helper where the public Compute output is Float64.
+- Automatic/manual scale, invalid values, cancellation, and atomic destination
+  preservation.
+- Deferred metadata conservative sizing and execution shrink.
+- Float32 fractional bin spacing.
+
+First register the new test alongside the old one and demonstrate the new
+combined-filter tests fail because presentation parameters/actions do not exist.
+
+- [ ] **Step 2: Add presentation parameters to Compute ODF**
+
+Move these unreleased keys/defaults to `ComputeODFFilter`:
+
+```text
+title                         = "ODF Sections"
+number_of_sections            = 6
+sections_per_row              = 3
+section_width                 = 512
+color_table_preset            = "Rainbow Blended White"
+scale_mode_index              = Automatic
+manual_minimum_mud            = 0.0
+manual_maximum_mud            = 1.0
+write_png                     = false
+output_png_file
+save_as_image_geometry        = true
+output_presentation_geometry  = "ODF Sections"
 ```
 
-Execute once with MUD and once with Count-Density. Save geometry only, then assert equal dimensions and byte-identical `ODF Sections RGB` arrays.
+Presentation is enabled when `write_png || save_as_image_geometry`. Both false
+is valid numeric-only mode.
 
-- [ ] **Step 2: Run the focused execution test and confirm the red state**
+- [ ] **Step 3: Integrate presentation preflight**
 
-Run:
+After numeric ODF and units-metadata actions, validate presentation parameters.
+When ensemble values exist, use the selected phase's exact Laue limits/angles.
+When the Crystal Structures store is Empty/EmptyOutOfCore:
+
+- Do not index Crystal Structures or Material Names.
+- Use the Triclinic maximum layout for presentation actions.
+- Omit Section Angles, Material, Laue Class, and Euler Plot Limits updated
+  values entirely.
+- Emit no string containing `Deferred until execution`.
+- Retain known phase index, numeric/rendered units, full-grid dimensions,
+  requested layout/scale, and conservative composite dimensions.
+
+Add an assertion over every updated value:
+
+```cpp
+for(const auto& value : preflight.outputValues)
+{
+  REQUIRE(value.value.find("Deferred until execution") == std::string::npos);
+}
+```
+
+- [ ] **Step 4: Refactor the internal helper**
+
+Rename `WriteODFSectionsInputValues`/`WriteODFSections` to
+`GenerateODFSectionsInputValues`/`GenerateODFSections`. Remove filter-argument
+semantics. Pass the known units enum/string from Compute execution; do not read
+or ask for a units override.
+
+Keep reviewed behavior for:
+
+- Typed input copy.
+- Color-control normalization.
+- EbsdLib invocation.
+- Contextual errors.
+- Conservative geometry resize.
+- RGB copy.
+- Atomic PNG write.
+- Stage cancellation.
+
+- [ ] **Step 5: Chain compute and presentation execution**
+
+`ComputeODFFilter::executeImpl()` first runs `ComputeODF`. If valid and
+presentation is enabled, construct `GenerateODFSectionsInputValues` using the
+same selected phase, material, output units, numeric ODF path, and presentation
+arguments, then invoke the helper.
+
+Numeric ODF and units metadata remain valid if presentation is disabled. A
+presentation failure returns an invalid filter result and does not commit a PNG.
+
+- [ ] **Step 6: Remove the standalone public filter**
+
+Remove filter registration, source/header files, standalone algorithm files,
+and standalone test registration only after all combined tests are green. Search
+the repository:
 
 ```bash
-ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
-  -R 'MTRSim::WriteODFSectionsFilter.*Units' -j 1 \
-  --output-on-failure --timeout 1500
+rg -n "WriteODFSections(Filter)?" src test MTRSimPlugin.cmake
 ```
 
-Expected: execution returns the algorithm's not-implemented error or produces an empty RGB array.
+Expected: no public implementation, registration, or test references remain.
+Task 4 removes the standalone documentation and validation-pipeline references.
 
-- [ ] **Step 3: Implement typed ODF adaptation and EbsdLib invocation**
+- [ ] **Step 7: Run focused tests, format, and commit**
 
-Populate `WriteODFSectionsInputValues` with every resolved argument. Use runtime type dispatch to copy Float32 or Float64 values to an EbsdLib `DoubleArrayType`:
-
-```cpp
-struct CopyODFToDouble
-{
-  template <class T>
-  void operator()(const IDataArray& input, ebsdlib::DoubleArrayType& output) const
-  {
-    const auto& array = dynamic_cast<const DataArray<T>&>(input);
-    for(usize index = 0; index < array.getSize(); ++index)
-    {
-      output[index] = static_cast<double>(array[index]);
-    }
-  }
-};
-
-ExecuteDataFunction(CopyODFToDouble{}, inputArray.getDataType(), inputArray,
-                    *ebsdValues);
-```
-
-Resolve the color preset with `ColorTableUtilities::ExtractControlPoints()`, build the EbsdLib configuration, call `generateCompositeImage()`, and convert any EbsdLib error to a SIMPLNX error containing the ODF path and phase index.
-
-- [ ] **Step 4: Add failing output-mode and invalid-value tests**
-
-Add test sections for:
-
-- Geometry only: output RGB array exists and is nonzero.
-- PNG only: no output geometry is created and PNG exists.
-- Both: decoded PNG dimensions and RGB pixels match the geometry array.
-- Float32 and Float64 inputs render identically.
-- Negative, NaN, and infinity source values fail with the actual flat index and value.
-- All-zero automatic input fails.
-- All-zero manual input succeeds and uses the first color.
-- Cancellation before composition produces no destination file.
-- A writer failure leaves an existing destination byte-identical.
-
-Use `SimplnxCore::ReadImageFilter` in the test to decode the PNG and compare its RGB array to the generated geometry; MTRSimUnitTest already links `SimplnxCore`.
-
-- [ ] **Step 5: Implement RGB geometry copying and atomic PNG writing**
-
-Copy only RGB from the RGBA result:
-
-```cpp
-for(size_t tuple = 0; tuple < pixelCount; ++tuple)
-{
-  outputRgb[tuple * 3] = rgba[tuple * 4];
-  outputRgb[tuple * 3 + 1] = rgba[tuple * 4 + 1];
-  outputRgb[tuple * 3 + 2] = rgba[tuple * 4 + 2];
-}
-```
-
-Write atomically:
-
-```cpp
-auto atomicResult = AtomicFile::Create(outputPath);
-if(atomicResult.invalid())
-{
-  return ConvertResult(std::move(atomicResult));
-}
-AtomicFile atomicFile = std::move(atomicResult.value());
-auto pngResult = PngWriter::WriteColorImage(atomicFile.tempFilePath().string(),
-                                            result.width, result.height, 4,
-                                            result.image->getPointer(0));
-if(pngResult.first < 0)
-{
-  return MakeErrorResult(-12330, fmt::format(
-      "Could not write ODF section PNG '{}': {} (writer code {}).",
-      outputPath.string(), pngResult.second, pngResult.first));
-}
-return atomicFile.commit();
-```
-
-Check cancellation before conversion, before composition, before RGB copy, and before file creation.
-
-- [ ] **Step 6: Add and pass the end-to-end Compute ODF test**
-
-Build a small deterministic HCP Euler dataset using the existing `ComputeODFTest.cpp` helper pattern. Execute `ComputeODFFilter` with five-degree MUD output, create matching phase metadata, then execute `WriteODFSectionsFilter`. Assert six section angles in preflight, a valid RGB geometry, a finite positive automatic maximum, and a readable PNG.
-
-- [ ] **Step 7: Format, build, and run the complete filter suite**
-
-Run the MTRSim formatting commands from Task 3, then:
+Format every touched/created C++ file with the pinned command and verify
+`--dry-run --Werror`. Then:
 
 ```bash
 env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
   cmake --build --preset "NX-Com-Qt69-Vtk96-Rel-EbsdLib [BUILD]" \
   --target MTRSimUnitTest -j
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
-  -R 'MTRSim::WriteODFSectionsFilter' -j 1 \
-  --output-on-failure --timeout 1500
-```
-
-Expected: all WriteODFSectionsFilter tests pass.
-
-- [ ] **Step 8: Commit filter execution**
-
-```bash
-git add src/MTRSim/Filters/WriteODFSectionsFilter.cpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.hpp \
-  src/MTRSim/Filters/Algorithms/WriteODFSections.cpp \
+  -R 'MTRSim::ComputeODFFilter' -j 1 --output-on-failure --timeout 1500
+git add MTRSimPlugin.cmake test/CMakeLists.txt \
+  src/MTRSim/Filters test/ComputeODFTest.cpp test/ComputeODFPresentationTest.cpp \
   test/WriteODFSectionsTest.cpp
-git commit -s -m "ENH: Render standard ODF section images"
+git commit -s -m "REV/ENH: Combine ODF computation and presentation"
 ```
+
+Use `git diff --cached --name-status` before committing to verify intended
+creates/modifications/deletions and no protected paths.
 
 ---
 
-### Task 5: Document and validate the complete workflow
+### Task 4: Update documentation and regenerate real-data validation
 
 **Files:**
-- Create: `docs/WriteODFSectionsFilter.md`
-- Create: `docs/Images/odf_phi2_sections.png`
 - Modify: `docs/ComputeODFFilter.md`
-- Create externally: `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/compute_and_write_odf_sections.d3dpipeline`
-- Create externally: `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/validation_notes.md`
+- Delete: `docs/WriteODFSectionsFilter.md`
+- Replace: `docs/Images/odf_phi2_sections.png`
+- Modify externally: `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/compute_and_write_odf_sections.d3dpipeline`
+- Modify externally: validation scripts, logs, results, and notes in the same directory.
 
 **Interfaces:**
-- Consumes: complete EbsdLib and MTRSim implementation.
-- Produces: reproducible real-data evidence, canonical documentation image, and user-facing workflow documentation.
+- Consumes: the completed combined filter.
+- Produces: the final public documentation and corrected reference montage.
 
-- [ ] **Step 1: Write the new filter documentation before generating its image**
+- [ ] **Step 1: Update the validation pipeline**
 
-Invoke `bluequartz-skills:filter-documentation` before editing the filter page.
-
-Document these sections in `docs/WriteODFSectionsFilter.md`:
-
-- Description and standard phi2-section convention.
-- Input ODF axis mapping and full-grid requirement.
-- MUD and Count-Density conversion formula.
-- Crystal Structures, Material Names, phase index, and phase-isolated ODF requirement.
-- Laue plotting-limit table from the spec.
-- Exact section interpolation and default angles.
-- Color-table and automatic/manual scale behavior.
-- PNG and RGB Image Geometry outputs.
-- Error conditions and references to MTEX/Euler-section conventions.
-
-Add a `See Also` link from `docs/ComputeODFFilter.md` that directs users to compute a phase-isolated MUD or Count-Density array and then run `WriteODFSectionsFilter`.
-
-- [ ] **Step 2: Create and preflight the external validation pipeline**
-
-Invoke `bluequartz-skills:write-d3dpipeline`. Create the validation directory and pipeline with this sequence:
+Invoke `bluequartz-skills:write-d3dpipeline`. The final sequence is:
 
 ```text
 ReadAngDataFilter(1.ang)
   -> MultiThresholdObjectsFilter(Confidence Index > 0, Bool "Indexed Mask")
-  -> ComputeODFFilter(5 degrees, smoothing on, MUD, Indexed Mask)
-  -> WriteODFSectionsFilter(phase 1, 6 sections, 3 per row, Rainbow, automatic scale)
+  -> ComputeODFFilter(
+       phase 1,
+       5 degrees,
+       smoothing on,
+       MUD,
+       Indexed Mask,
+       six sections,
+       three per row,
+       Rainbow Blended White,
+       automatic scale,
+       PNG + RGB geometry)
   -> WriteDREAM3DFilter(validation.dream3d)
 ```
 
-Use absolute input/output paths under `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation`. Preflight with:
+There is no standalone presentation-filter step.
+
+- [ ] **Step 2: Preflight and execute**
 
 ```bash
 /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib/Bin/nxrunner \
   -p /Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/compute_and_write_odf_sections.d3dpipeline \
   -l /Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/preflight.log
-```
-
-Expected: preflight succeeds and reports phase 1, Titanium (Alpha), Hexagonal High, angles 0/10/20/30/40/50 degrees, and a three-by-two layout.
-
-- [ ] **Step 3: Execute the pipeline and verify quantitative metadata**
-
-```bash
 /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib/Bin/nxrunner \
   -e /Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/compute_and_write_odf_sections.d3dpipeline \
   -l /Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_section_validation/execute.log
 ```
 
-Verify the log reports exactly 2,493,822 contributing indexed pixels. Read the PNG and DREAM3D output independently and verify:
+Assert preflight output contains no `Deferred until execution` string.
 
-- Six sections.
-- Three columns by two rows.
-- Shared automatic scale starts at 0 MUD.
-- RGB geometry dimensions equal PNG dimensions.
-- RGB bytes equal decoded PNG RGB bytes.
-- All ODF and output image values are finite.
+- [ ] **Step 3: Extend independent validation**
 
-- [ ] **Step 4: Compare the montage with the retained MTEX reference**
+Verify:
 
-Use the existing reference files in `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1/odf_comparison`. Record in `validation_notes.md`:
+- 2,493,822 contributing phase-1 indexed points and 1,506,178 excluded points.
+- Numeric ODF path, finite values, full 72x36x72 grid, and five-degree spacing.
+- Units metadata path exists, equals `MUD`, and survives the DREAM3D file.
+- Six sections at 0/10/20/30/40/50 degrees.
+- PNG/RGB dimensions and byte equality.
+- `Rainbow Blended White` default.
+- MUD maximum agrees with independent extraction within `1e-12`.
+- MTEX panel correlations remain 0.9730–0.9783.
+- The standalone filter UUID/name is absent from the saved pipeline.
 
-- MTEX version and kernel halfwidth.
-- EbsdLib/MTRSim grid spacing and section angles.
-- Matching phase population.
-- Applied MUD maximum.
-- Visual correspondence of every major peak/valley across the six panels.
-- Expected differences caused by MTEX's continuous kernel versus the 27-bin MTRSim smoothing stencil.
-- The known MATLAB R2025b post-output teardown fault, clearly separated from EbsdLib/MTRSim behavior.
+Add a Count-Density validation variant or focused runner invocation that proves
+the image reports `MUD (from Count-Density)` without manual unit input.
 
-- [ ] **Step 5: Promote the approved montage into filter documentation**
+- [ ] **Step 4: Visually inspect the final montage**
 
-Copy only the approved generated montage to `docs/Images/odf_phi2_sections.png`, reference it from `docs/WriteODFSectionsFilter.md`, and include a caption stating phase, input dataset, bin size, units, section angles, and color-table preset.
+Use image inspection and confirm:
 
-- [ ] **Step 6: Verify documentation and focused tests**
+- `φ₂ = N°` titles render with correct glyphs.
+- `φ₁` and vertical `Φ` render correctly.
+- Default-width axes use 20-degree ticks with no unit suffixes.
+- Tick marks/labels do not overlap or clip.
+- Rainbow Blended White matches the filter default.
+- MUD/phase/material information remains readable.
+
+- [ ] **Step 5: Consolidate documentation**
+
+Invoke `bluequartz-skills:filter-documentation`. Expand
+`docs/ComputeODFFilter.md` with selected-phase semantics, units metadata path,
+combined presentation parameters, optional output modes, exact unit labels,
+preflight behavior, and final figure. Remove the standalone filter document.
+
+Caption the figure with dataset, phase, bin size, MUD rendering, section angles,
+and `Rainbow Blended White`.
+
+- [ ] **Step 6: Verify and commit docs**
 
 ```bash
-git diff --check -- docs/WriteODFSectionsFilter.md docs/ComputeODFFilter.md
+git diff --check -- docs/ComputeODFFilter.md docs/WriteODFSectionsFilter.md
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
-  -R 'MTRSim::(ComputeODFFilter|WriteODFSectionsFilter)' -j 1 \
-  --output-on-failure --timeout 1500
-```
-
-Expected: no whitespace errors and all ComputeODF/WriteODFSections tests pass.
-
-- [ ] **Step 7: Commit documentation and the approved image**
-
-```bash
-git add docs/WriteODFSectionsFilter.md docs/ComputeODFFilter.md \
+  -R 'MTRSim::ComputeODFFilter' -j 1 --output-on-failure --timeout 1500
+git add docs/ComputeODFFilter.md docs/WriteODFSectionsFilter.md \
   docs/Images/odf_phi2_sections.png
-git commit -s -m "DOC: Document standard ODF section output"
+git commit -s -m "DOC: Document combined ODF presentation"
 ```
 
 ---
 
-### Task 6: Run cross-repository completion verification
+### Task 5: Cross-repository completion verification
 
 **Files:**
-- Verify only; no source mutation is expected.
+- Verification only; no source mutation expected.
 
 **Interfaces:**
 - Consumes: all prior tasks.
-- Produces: final build/test/validation evidence and dependency-release readiness notes.
+- Produces: final evidence and release-gate handoff.
 
-- [ ] **Step 1: Verify both worktrees and commit boundaries**
+- [ ] **Step 1: Verify branch scope and protected paths**
 
 ```bash
 git -C /Users/mjackson/Workspace7/EbsdLib status --short
-git -C /Users/mjackson/Workspace7/EbsdLib log --oneline --decorate -5
+git -C /Users/mjackson/Workspace7/EbsdLib log --oneline --decorate -8
 git -C /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim status --short
-git -C /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim log --oneline --decorate -7
+git -C /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim log --oneline --decorate -12
 ```
 
-Expected: EbsdLib contains only the two planned implementation commits; MTRSim contains the preflight, execution, and documentation commits plus the existing design commit. Existing unrelated untracked MTRSim paths remain uncommitted.
+Expected: EbsdLib contains the annotation commit; MTRSim contains the phase/unit,
+combined-filter, and documentation commits. Only the known protected untracked
+MTRSim paths remain.
 
-- [ ] **Step 2: Run the complete EbsdLib build and test suite**
+- [ ] **Step 2: Run complete EbsdLib verification**
 
 ```bash
 cd /Users/mjackson/Workspace7/EbsdLib
@@ -956,60 +600,39 @@ ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/ebsdlib-release \
   -j 1 --output-on-failure
 ```
 
-Expected: configure/build succeed and the full EbsdLib suite, including both ODF section suites, has zero failures.
-
-- [ ] **Step 3: Run the full local-EbsdLib DREAM3D-NX build**
+- [ ] **Step 3: Run full local-EbsdLib DREAM3D-NX build and MTRSim tests**
 
 ```bash
 cd /Users/mjackson/Workspace7/DREAM3DNX
 cmake --preset NX-Com-Qt69-Vtk96-Rel-EbsdLib
 env LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 \
   cmake --build --preset "NX-Com-Qt69-Vtk96-Rel-EbsdLib [BUILD]" -j
-```
-
-Expected: full build succeeds, including documentation generation, MTRSim, and `nxrunner`.
-
-- [ ] **Step 4: Run all MTRSim tests serially**
-
-```bash
 ctest --test-dir /Users/mjackson/Workspace7/DREAM3D-Build/NX-Com-Qt69-Vtk96-Rel-EbsdLib \
   -R '^MTRSim::' -j 1 --output-on-failure --timeout 1500
 ```
 
-Expected: every registered MTRSim test passes.
+- [ ] **Step 4: Rerun external pipeline and validators from scratch**
 
-- [ ] **Step 5: Re-run the shipped validation pipeline from scratch**
+Run Task 4 preflight, execute, structural validator, and MTEX comparison again.
+Require zero-error exits, no stale standalone-filter step, correct unit metadata,
+PNG/RGB equality, correct maximum, and expected correlations.
 
-Run the Task 5 preflight and execute commands again. Confirm a zero-error exit from both, compare the regenerated PNG and RGB geometry, and update `validation_notes.md` only if the measured scale or dimensions changed for an explained implementation reason.
-
-- [ ] **Step 6: Record the normal-preset dependency boundary**
-
-The normal `NX-Com-Qt69-Vtk96-Rel` preset consumes the released vcpkg EbsdLib package. Do not claim it builds the new filter until an EbsdLib release containing `ODFSectionCompositor` is available and the vcpkg dependency is updated. Record the exact EbsdLib commit tested by the local-EbsdLib preset and the future released version required by the normal preset.
-
-- [ ] **Step 7: Run final diff and format gates**
+- [ ] **Step 5: Run final searches and format gates**
 
 ```bash
+rg -n "WriteODFSections(Filter)?" /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim \
+  -g '!docs/architecture/**' -g '!.superpowers/**'
+rg -n "Deferred until execution" /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim \
+  -g '!docs/architecture/**' -g '!.superpowers/**'
 git -C /Users/mjackson/Workspace7/EbsdLib diff --check upstream/develop...HEAD
 git -C /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim diff --check
-/opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
-  --style="file:/Users/mjackson/Workspace7/EbsdLib/.clang-format" --fallback-style=none \
-  --dry-run --Werror \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionUtilities.h \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionUtilities.cpp \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.h \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionChrome.cpp \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionCompositor.h \
-  /Users/mjackson/Workspace7/EbsdLib/Source/EbsdLib/Utilities/ODFSectionCompositor.cpp \
-  /Users/mjackson/Workspace7/EbsdLib/Source/Test/ODFSectionUtilitiesTest.cpp \
-  /Users/mjackson/Workspace7/EbsdLib/Source/Test/ODFSectionCompositorTest.cpp
-/opt/local/LLVM-19.1.1-macOS-ARM64/bin/clang-format \
-  --style="file:/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/.clang-format" \
-  --fallback-style=none --dry-run --Werror \
-  /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/src/MTRSim/Filters/WriteODFSectionsFilter.hpp \
-  /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/src/MTRSim/Filters/WriteODFSectionsFilter.cpp \
-  /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/src/MTRSim/Filters/Algorithms/WriteODFSections.hpp \
-  /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/src/MTRSim/Filters/Algorithms/WriteODFSections.cpp \
-  /Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/test/WriteODFSectionsTest.cpp
 ```
 
-Expected: no diff-check or formatting errors.
+Both searches must return no product/docs/pipeline matches. Run pinned
+clang-format `--dry-run --Werror` over every touched C/C++ file in both repos.
+
+- [ ] **Step 6: Record the release boundary**
+
+The normal `NX-Com-Qt69-Vtk96-Rel` preset remains gated until an EbsdLib release
+contains the final annotation/compositor API and the dependency is updated.
+Record the exact tested EbsdLib commit and do not change vcpkg in this plan.
