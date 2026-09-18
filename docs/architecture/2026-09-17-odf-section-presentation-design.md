@@ -1,154 +1,217 @@
-# Standard ODF Section Presentation Design
+# Combined ODF Computation and Section Presentation Design
 
 ## Status
 
-Approved design for a reusable EbsdLib ODF-section renderer and an MTRSim
-SIMPLNX filter that exposes it.
+Approved design, revised 2026-09-18. This replaces the earlier design for a
+separate `WriteODFSectionsFilter`.
 
 ## Context
 
 `ComputeODFFilter` produces a quantitative orientation distribution function
-(ODF) as a scalar array on a regular Bunge-Euler Image Geometry. Although this
-representation is appropriate for storage and downstream computation, it does
-not directly produce the conventional constant-phi2 section montage used by
-microscopists and texture analysts.
+(ODF) as a scalar array on a regular Bunge-Euler Image Geometry. The initial
+implementation added a second public filter to convert that grid into a
+conventional constant-phi2 section montage.
 
-The existing pole-figure implementation provides the architectural precedent:
-EbsdLib owns the scientific rendering and composite-image generation, while a
-SIMPLNX filter owns Data Structure validation, parameter handling, file output,
-and optional Image Geometry output.
+That separation created two avoidable user hazards:
+
+1. The ODF units were only a Compute-filter argument and were not retained in
+   the Data Structure. The presentation filter therefore asked users to
+   remember whether the array contained MUD or Count-Density.
+2. The ODF could contain multiple phases while a standard Euler-section
+   presentation requires one well-defined Laue class.
+
+The filters have not been released, so the final public design combines
+computation and presentation in `ComputeODFFilter`, enforces one selected phase,
+and persists unit provenance with the quantitative ODF.
+
+The existing pole-figure implementation remains the architectural precedent:
+EbsdLib owns reusable scientific rendering, while MTRSim owns SIMPLNX Data
+Structure integration, pipeline actions, and file output.
 
 ## Goals
 
-- Add a reusable EbsdLib API for producing a conventional phi2-section ODF
-  montage from a regular full-Bunge grid.
-- Display phi1 horizontally, PHI vertically, and exact constant-phi2 sections.
-- Use the selected phase's Laue class to choose the rectangular Euler plotting
-  region and phi2 section range.
-- Support MUD and Count-Density inputs while always presenting the result in
-  MUD.
-- Allow users to select any registered SIMPLNX RGB color-table preset.
-- Produce a PNG file, an RGB SIMPLNX Image Geometry, or both.
-- Provide deterministic, independently testable scientific transformations and
-  rendering.
+- Make `ComputeODFFilter` the only public ODF computation/presentation filter.
+- Compute one phase per execution using an explicit phase index.
+- Preserve the quantitative ODF Image Geometry and scalar component array.
+- Persist each component's units in serializable Data Structure objects.
+- Optionally generate a conventional constant-phi2 montage as PNG, RGB Image
+  Geometry, or both.
+- Always render the standard presentation in MUD while identifying whether the
+  source array was already MUD or converted from Count-Density.
+- Use conventional Greek Euler symbols, degree symbols, and readable angular
+  tick marks.
+- Support pure pipeline preflight where upstream ensemble values are not yet
+  materialized.
+- Retain the reviewed EbsdLib scientific preparation and compositor APIs.
 
 ## Non-goals
 
+- A standalone public `WriteODFSectionsFilter`.
+- Backward compatibility for the unreleased standalone filter or its UUID.
+- Manual unit selection or override in the presentation workflow.
 - Three-dimensional Euler-space rendering.
 - Sigma, omega, axis-angle, or arbitrary section families.
-- User-supplied lists of arbitrary phi2 section angles.
-- ODF calculation from Euler angles; `ComputeODFFilter` remains responsible for
-  that operation.
-- Inferring which phase generated an ODF.
-- Supporting cropped or nonuniform Euler grids.
-- Adding the SIMPLNX wrapper to OrientationAnalysis in this version.
+- Arbitrary user-supplied phi2 section angles.
+- Rendering multiphase ODF values through one Laue class.
+- Supporting cropped, transposed, or nonuniform input ODF grids.
 
 ## Approved user-facing decisions
 
 | Decision | Choice |
 |---|---|
-| Canonical representation | Constant-phi2 Euler sections |
+| Public filter | `ComputeODFFilter` only |
+| Computation scope | One required phase index per execution |
+| Numeric output | Full ODF Image Geometry and scalar component array |
+| Numeric output units | User selects MUD or Count-Density |
+| Persistent units | One-value StringArray per ODF component |
+| Presentation units | MUD |
+| Count-Density presentation label | `MUD (from Count-Density)` |
 | Default section count | 6 |
 | Section placement | Evenly spaced over the Laue-class phi2 range; upper endpoint excluded |
 | Default layout | 3 columns by 2 rows |
-| Layout configurability | User-selectable sections per row |
-| Input units | MUD or Count-Density |
-| Rendered units | MUD |
-| Crystal symmetry source | Required `Crystal Structures` ensemble array plus phase index |
-| Material label source | Required `Material Names` ensemble array |
-| Color selection | SIMPLNX `CreateColorMapParameter`, default `Rainbow` |
-| Automatic scale | 0 MUD through the maximum displayed value |
-| Manual scale | User-supplied minimum and maximum MUD |
-| Output | Optional PNG and optional RGB Image Geometry; at least one required |
-| SIMPLNX plugin | MTRSim |
+| Default color table | `Rainbow Blended White` |
+| Scale control | Automatic or Manual MUD range |
+| Presentation outputs | Optional PNG and optional RGB Image Geometry |
+| Section title | Greek phi2 with subscript and degree symbol, for example `φ₂ = 10°` |
+| Axis titles | `φ₁` and `Φ` |
+| Axis ticks | 10 degrees when spacing permits, otherwise 20 degrees; numeric labels have no unit suffix |
 
 ## Architecture
 
 ### Responsibility boundary
 
-EbsdLib owns all scientific presentation semantics and RGBA composition:
+EbsdLib owns:
 
-1. Validate the regular Euler grid.
-2. Convert Count-Density to MUD when requested.
-3. Determine the rectangular Euler plotting region for the Laue class.
-4. Generate exact section angles.
-5. Interpolate the cell-centered grid to those section angles.
-6. Apply the common color scale and color table.
-7. Draw the section panels, axes, labels, title, information block, and shared
-   color bar.
+1. Full-grid validation.
+2. Count-Density-to-MUD conversion.
+3. Laue-class Euler plotting limits.
+4. Exact periodic phi2 section interpolation.
+5. Common scaling and color control interpolation.
+6. Panel layout and annotated RGBA composition.
+7. Greek section/axis typography, ticks, labels, and shared color bar.
 
-MTRSim owns all SIMPLNX integration:
+MTRSim owns:
 
-1. Resolve Data Paths and validate Data Structure relationships.
-2. Read the selected crystal structure and material name.
-3. Resolve the SIMPLNX color-table preset.
-4. Adapt Float32 or Float64 input into the EbsdLib data contract.
-5. Call EbsdLib and translate its diagnostics into SIMPLNX results.
-6. Populate the optional RGB Image Geometry.
-7. Write the optional PNG atomically.
+1. SIMPLNX filter parameters and parameter linking.
+2. Phase and optional-mask selection.
+3. Numeric ODF accumulation and output actions.
+4. Persistent per-component units metadata.
+5. Adapting SIMPLNX arrays to EbsdLib.
+6. Optional RGB Image Geometry population.
+7. Atomic PNG output.
 
-Neither layer recomputes an ODF from Euler angles.
+The public filter is combined. Internally, presentation remains a focused
+helper/algorithm so ODF accumulation is not mixed with canvas composition in
+one large source file.
 
 ### EbsdLib components
 
-Add these public utilities under `Source/EbsdLib/Utilities`:
+The reviewed EbsdLib components remain:
 
 - `ODFSectionUtilities`
   - Grid validation.
   - Count-Density-to-MUD conversion.
-  - Laue-class Euler plotting limits.
-  - Section-angle generation.
+  - Laue plotting limits.
+  - Exact section-angle generation.
   - Periodic cell-center interpolation along phi2.
 - `ODFSectionChrome`
-  - Axes, tick labels, section titles, shared MUD color bar, figure title, and
-    phase-information block.
+  - Section titles, axes, ticks, shared color bar, title, and phase information.
 - `ODFSectionCompositor`
-  - Orchestration, panel colorization, layout, and final RGBA extraction through
-    `canvas_ity`.
+  - Scientific preparation orchestration, colorization, layout, and RGBA output.
 
-This separation follows `PoleFigureCompositor` and `PoleFigureChrome` while
-keeping the scientific transformations independently testable without image
-composition.
+No SIMPLNX type, path, parameter, or preset name enters EbsdLib.
 
-### EbsdLib configuration contract
+### MTRSim internal presentation helper
 
-The public configuration contains:
+The existing standalone-filter algorithm is retained only as an internal
+presentation helper after being renamed or refactored to remove any dependency
+on `WriteODFSectionsFilter`.
 
-- A non-owning `DoubleArrayType*` containing the ODF scalar values.
-- Explicit `(nphi1, nPHI, nphi2)` dimensions.
-- Euler-grid origin and spacing in degrees.
-- Input-unit enumeration: `MUD` or `CountDensity`.
-- EbsdLib crystal-structure/Laue index.
-- Section count.
-- Sections per row.
-- Section width in pixels.
-- Automatic or manual scale mode and manual limits.
-- Normalized RGB color control points supplied by the caller as repeated
-  `[position, red, green, blue]` values.
-- Figure title, phase number, material name, and informational labels.
+It consumes:
 
-The result contains:
+- The computed ODF array and Image Geometry.
+- The selected phase's crystal structure and material name.
+- The known numeric output units from the same filter execution.
+- Presentation parameters and output paths.
 
-- RGBA image data.
-- Composite width and height.
-- Exact section angles used.
-- Applied MUD minimum and maximum.
-- Structured error code and message when generation fails.
+It produces optional PNG/RGB outputs and returns contextual errors to
+`ComputeODFFilter`.
 
-The API contains no SIMPLNX Data Paths, Image Geometry types, parameter types,
-or preset names.
+## Single-phase computation contract
+
+`ComputeODFFilter` requires:
+
+- Cell Euler Angles.
+- Cell Phases.
+- Crystal Structures.
+- Material Names.
+- Phase Index, default 1.
+- Optional Bool/UInt8 mask.
+
+A voxel contributes only when:
+
+```text
+phases[voxel] == selectedPhase
+AND (mask is disabled OR mask[voxel] is true)
+```
+
+Phase zero and every non-selected phase are skipped. The selected phase index
+must exist in both ensemble arrays and must contain a supported EbsdLib crystal
+structure. Material Names and Crystal Structures must have equal tuple counts.
+
+For multiphase EBSD data, users run the filter once per phase. Append mode can
+place multiple phase-specific ODF components on one compatible Euler grid.
+
+This contract guarantees that the numeric ODF, Laue plotting region, material
+label, and presentation image describe the same phase.
+
+## Persistent units contract
+
+### Data Structure layout
+
+For every ODF component array, `ComputeODFFilter` creates:
+
+```text
+<ODF Image Geometry>/ODF Metadata/<Component Name> Units
+```
+
+`ODF Metadata` is a DataGroup. `<Component Name> Units` is a one-tuple
+StringArray whose only accepted values are:
+
+- `MUD`
+- `Count-Density`
+
+The metadata object is separate from the cell Attribute Matrix so its one-tuple
+shape does not conflict with the Euler-grid tuple shape. StringArray/DataGroup
+objects are serialized by DREAM3D file writing, unlike in-memory
+`DataObject::Metadata`.
+
+### Preflight behavior
+
+The selected output-unit argument is known during preflight. A
+`CreateStringArrayAction` therefore initializes the units value in both
+preflight and execution modes. Downstream filters in the same pipeline can read
+the provenance without waiting for ODF execution.
+
+Create-New mode creates the metadata group and unit array with the geometry.
+Append mode reuses or creates `ODF Metadata` and adds the selected component's
+unit array. A conflicting metadata object or existing component remains an
+error.
+
+No manual units override exists. Missing or invalid units metadata is a
+contract error for any future consumer.
 
 ## Scientific conventions
 
 ### Full-Bunge grid
 
-The input must cover the full Bunge cube:
+The numeric ODF covers:
 
 - phi1: `[0 degrees, 360 degrees)`
 - PHI: `[0 degrees, 180 degrees)`
 - phi2: `[0 degrees, 360 degrees)`
 
-The MTRSim/SIMPLNX Image Geometry mapping is:
+Image Geometry mapping:
 
 | Image axis | Euler axis | Array-order role |
 |---|---|---|
@@ -156,17 +219,25 @@ The MTRSim/SIMPLNX Image Geometry mapping is:
 | Y | PHI | Middle |
 | Z | phi1 | Slowest varying |
 
-All three axes must have the same positive spacing. Dimensions must equal
-`360 / spacing`, `180 / spacing`, and `360 / spacing` for phi1, PHI, and phi2,
-respectively. The origin must be zero and the quotients must be positive
-integers within floating-point tolerance.
+Full-source flat indexing is:
 
-Cell values are located at bin centers. For a five-degree grid, the centers are
-2.5, 7.5, and so on.
+```text
+linear = phi1 * (nPHI * nphi2) + PHI * nphi2 + phi2
+```
+
+Grid validity uses the same quotient-based Float32-safe rule in computation and
+presentation:
+
+```text
+abs(360 / spacing - nphi1) <= 1e-6
+abs(180 / spacing - nPHI)  <= 1e-6
+abs(360 / spacing - nphi2) <= 1e-6
+```
 
 ### Count-Density-to-MUD conversion
 
-Count-Density is converted before section extraction:
+The numeric output preserves the user's selected units. Presentation always
+uses MUD. Count-Density is converted before section extraction:
 
 ```text
 MUD(i, j, k) = CountDensity(i, j, k)
@@ -174,17 +245,18 @@ MUD(i, j, k) = CountDensity(i, j, k)
              / (dphi1 * dPHI * dphi2 * sin(PHI_center(j)))
 ```
 
-Angular spacings are expressed in radians in this formula. Because the full
-grid is cell-centered, `PHI_center` never lies exactly on a Bunge pole. MUD
-input bypasses this conversion.
+Angular spacings are radians in this formula. MUD output bypasses conversion.
 
-The conversion matches `ComputeODFFilter`, so mathematically equivalent MUD
-and Count-Density inputs render identically.
+The shared color-bar title is:
+
+- `MUD` when the numeric output is MUD.
+- `MUD (from Count-Density)` when conversion was applied.
+
+The information block also records the numeric output units and rendered units.
 
 ### Rectangular Euler plotting regions
 
-phi1 remains `[0 degrees, 360 degrees)` for all Laue classes. EbsdLib owns the
-following PHI and phi2 maxima:
+phi1 remains `[0 degrees, 360 degrees)` for all Laue classes:
 
 | EbsdLib crystal structure | PHI maximum | phi2 maximum |
 |---|---:|---:|
@@ -200,234 +272,222 @@ following PHI and phi2 maxima:
 | Trigonal Low (`-3`) | 180 degrees | 120 degrees |
 | Trigonal High (`-3m`) | 90 degrees | 120 degrees |
 
-For cubic classes this is the conventional rectangular Euler plotting box, not
+Cubic classes use the conventional rectangular Euler plotting box rather than
 the nonrectangular strict fundamental zone.
 
-### Section angles and interpolation
+### Section angles
 
-For `N` requested sections and symmetry maximum `phi2Max`, section `s` uses:
+For `N` sections and symmetry maximum `phi2Max`:
 
 ```text
 phi2Section(s) = s * phi2Max / N,  s = 0 ... N - 1
 ```
 
-The redundant `phi2Max` endpoint is excluded. This reproduces the MTEX default;
-for six hexagonal sections the angles are 0, 10, 20, 30, 40, and 50 degrees.
+The upper endpoint is excluded. Six Hexagonal High sections are therefore 0,
+10, 20, 30, 40, and 50 degrees. Each exact section is periodically
+interpolated between neighboring cell-centered phi2 planes.
 
-Each exact section is linearly interpolated between its two neighboring
-cell-centered phi2 planes. Interpolation is periodic across 360 degrees, so the
-zero-degree section interpolates between the final and first planes. No
-interpolation is performed along phi1 or PHI; those cell-centered values are
-colorized and scaled into the displayed panel.
+### Typography and ticks
 
-### Panel geometry and layout
-
-The user controls section width. Section height is derived from the displayed
-angular extents so phi1 and PHI use equal angular scale:
+Section titles use embedded-font Unicode text:
 
 ```text
-sectionHeight = sectionWidth * PHIMax / 360 degrees
+φ₂ = 10°
 ```
 
-The default is six sections with three sections per row. Other section counts
-use the requested `Sections Per Row`; the final row may be partially filled.
-Unused cells are left blank. A single shared color bar is placed to the right of
-the montage.
+Axis titles are `φ₁` horizontally and `Φ` vertically.
 
-### Color mapping and scaling
+For each axis, use 10-degree tick intervals when the pixel distance between
+ticks is at least 24 pixels. Otherwise use 20-degree intervals. Tick values are
+plain numbers such as `0`, `20`, and `40`; they do not repeat `deg` or `°`.
+The axis titles and section title establish the angular context.
 
-The MTRSim filter uses `CreateColorMapParameter` with `Rainbow` as the default.
-It resolves the selected preset through `ColorTableUtilities` and passes plain
-normalized RGB control points to EbsdLib.
+Ticks include both zero and the rectangular plotting maximum. PHI increases
+down the page to match prepared section row order.
 
-Automatic scaling uses `[0, maximumDisplayedMUD]`, where the maximum is measured
-after conversion and exact section interpolation. An all-zero result is an
-error because it has no meaningful automatic ODF scale.
+## Combined `ComputeODFFilter` surface
 
-Manual scaling requires finite values with `minimum < maximum`. Values below or
-above the range use the first or last color, respectively. The shared color bar
-always reports the applied MUD range.
+### Computation inputs
 
-## MTRSim filter
+- Apply Smoothing.
+- Bin Size in degrees.
+- Output Units: Count-Density or MUD.
+- Cell Euler Angles.
+- Cell Phases.
+- Crystal Structures.
+- Material Names.
+- Phase Index.
+- Optional Mask.
 
-### Name and ownership
+### Numeric output
 
-- C++ name: `WriteODFSectionsFilter`
-- Human name: `Write ODF Section Image`
-- Plugin: MTRSim
-- Algorithm class: `WriteODFSections`
+- Create-New or Append mode.
+- ODF Image Geometry.
+- Cell Attribute Matrix name.
+- Component name.
+- Per-component persisted units metadata.
 
-### Parameters
+### Optional presentation
 
-#### Input ODF
+Presentation runs when either output is enabled:
 
-- `ODF Image Geometry`: required Image Geometry.
-- `ODF Array`: required scalar Float32 or Float64 cell array on that geometry.
-- `Input ODF Units`: `MUD` or `Count-Density`.
+- `Write PNG`, default false.
+- `Save Presentation as Image Geometry`, default true.
 
-#### Phase metadata
+Both may be false when only the quantitative ODF is wanted.
 
-- `Crystal Structures`: required UInt32 ensemble array.
-- `Material Names`: required StringArray ensemble array.
-- `Phase Index`: required positive integer, default 1.
+Presentation parameters:
 
-The selected ODF must represent the selected phase alone. A pipeline processing
-multiphase EBSD data normally creates that ODF with a phase mask. The filter can
-validate the selected metadata tuple but cannot prove ODF phase provenance.
-When an imported ODF has no ensemble metadata, users can create the required
-arrays with `Create Ensemble Info`.
+- Figure Title.
+- Number of phi2 Sections, default 6.
+- Sections Per Row, default 3.
+- Section Width, default 512 pixels.
+- Color Table Preset, default `Rainbow Blended White`.
+- Scale Mode: Automatic or Manual.
+- Manual Minimum/Maximum MUD.
+- Output PNG path when enabled.
+- Output Presentation Image Geometry path when enabled.
 
-#### Presentation
+The presentation Image Geometry contains a UInt8 three-component RGB array
+named `ODF Sections RGB` under `Cell Data`.
 
-- `Figure Title`: string.
-- `Number of phi2 Sections`: integer, default 6.
-- `Sections Per Row`: integer, default 3.
-- `Section Width`: integer pixels, default 512.
-- `Color Table`: `CreateColorMapParameter`, default `Rainbow`.
-- `Scale Mode`: `Automatic` or `Manual`.
-- `Manual Minimum MUD`: active only in Manual mode.
-- `Manual Maximum MUD`: active only in Manual mode.
+## Preflight
 
-#### Output PNG
+Preflight always validates:
 
-- `Write PNG`: boolean, default true.
-- `Output PNG File`: output-file path, active when `Write PNG` is true.
+- Matching cell tuple counts for Euler Angles and Phases.
+- Valid selected phase index and equal ensemble tuple counts.
+- Valid bin size/full-grid dimensions.
+- Create-New/Append compatibility and component collisions.
+- Metadata group/units-array collisions.
+- Mask type and tuple count when enabled.
+- Presentation count/layout/width/color/scale/path parameters.
 
-#### Output Image Geometry
+When upstream Crystal Structures and Material Names values are materialized,
+preflight also validates the crystal code/material and reports exact section
+angles, Euler limits, and presentation dimensions.
 
-- `Save as Image Geometry`: boolean, default true.
-- `Output Image Geometry`: creation path, active when geometry output is true.
-- The output contains a UInt8, three-component RGB array under `Cell Data`.
+When upstream phase metadata values are unavailable during pure pipeline
+preflight:
 
-At least one output mode must be enabled.
+- Do not index EmptyDataStore values.
+- Use the conservative Triclinic layout envelope for output actions.
+- Omit phase-dependent updated values entirely. Do not emit values containing
+  `Deferred until execution` because SIMPLNX will not update them later.
+- Report only values already known, such as phase index, numeric output units,
+  grid dimensions/spacing, requested layout, scale mode, and conservative
+  presentation dimensions.
 
-### Preflight
+Execution validates the materialized phase metadata and resizes a conservative
+presentation geometry to the actual Laue-specific dimensions.
 
-Preflight validates:
+## Execution flow
 
-- ODF geometry type, origin, uniform spacing, dimensions, and full-cube extent.
-- Scalar Float32 or Float64 ODF array placement and tuple count.
-- Equal tuple counts for Crystal Structures and Material Names.
-- Phase index range and a supported EbsdLib crystal-structure value.
-- Section count of at least 2.
-- Sections per row from 1 through the section count.
-- A section width of at least 128 pixels.
-- A valid RGB color-table preset with at least two control colors.
-- Finite manual limits with `0 <= minimum < maximum`.
-- At least one enabled output.
-- A `.png` destination when disk output is enabled.
+1. Resolve the selected phase, material name, crystal structure, and optional
+   mask.
+2. Accumulate only selected-phase voxels.
+3. Normalize the ODF and produce the selected numeric units.
+4. Write the scalar ODF array.
+5. Persist the selected units StringArray.
+6. If presentation is disabled, finish.
+7. Resolve and normalize the selected color-table controls.
+8. Invoke EbsdLib with the known numeric units and selected phase metadata.
+9. Resize/copy the optional RGB Image Geometry.
+10. Write the optional PNG through `AtomicFile`.
 
-Preflight reports:
+Cancellation is checked between phases. A failed render or PNG encode does not
+replace an existing destination.
 
-- Selected phase, material, and Laue group.
-- Input and rendered units.
-- Full grid dimensions and spacing.
-- Euler plotting limits.
-- Exact section angles.
-- Section layout and final composite dimensions.
-- Automatic or manual scale mode.
+## Removal of the standalone filter
 
-When Image Geometry output is enabled, preflight creates the correctly sized
-geometry and RGB array. It does not need the data-dependent automatic maximum to
-determine image dimensions.
+Remove:
 
-### Execution
+- `WriteODFSectionsFilter.hpp/.cpp`.
+- Public filter registration and UUID.
+- Standalone filter documentation.
+- Standalone filter-specific test registration.
 
-Execution:
-
-1. Checks cancellation.
-2. Converts Float32 or Float64 input to an EbsdLib double buffer.
-3. Resolves and validates the selected color-table control points.
-4. Builds the EbsdLib configuration and calls `ODFSectionCompositor`.
-5. Maps EbsdLib diagnostics to contextual SIMPLNX errors.
-6. Copies RGBA to the optional three-component RGB Image Geometry.
-7. Writes the optional PNG through `PngWriter` and `AtomicFile`.
-
-Cancellation is checked between each stage. No destination file is replaced
-until PNG encoding succeeds and the atomic file commits.
+Refactor useful execution code into an internal presentation helper consumed by
+`ComputeODFFilter`. Tests may remain in a focused presentation test file, but
+they exercise the single public Compute filter.
 
 ## Error behavior
 
-- Negative or non-finite ODF values are errors; they are never silently
-  clamped.
-- An all-zero ODF is an execution error in automatic scale mode.
-- Unknown or unsupported crystal-structure values are errors.
-- Cropped, nonuniform, transposed, or incomplete Euler grids are rejected with
-  actual dimensions, origin, spacing, and expected values in the message.
-- Output file errors include the complete requested path and underlying writer
-  diagnostic.
-- An EbsdLib error includes its code and message plus the selected ODF path and
-  phase context.
+- Selected phase index zero/out-of-range is an error.
+- Unknown crystal structure is an error for the selected phase.
+- No contributing selected-phase voxels is an error when presentation is
+  requested; numeric-only mode retains the existing all-zero behavior unless
+  otherwise validated by the computation contract.
+- Negative or non-finite ODF values are errors before rendering.
+- All-zero automatic presentation scale is an error.
+- A grid with no cell centers inside its Laue plotting limits is an error.
+- Missing, conflicting, or invalid units metadata is an internal contract error.
+- Output errors include complete paths and underlying writer diagnostics.
 
 ## Testing
 
-### EbsdLib tests
+### EbsdLib
 
-- Hand-derived Count-Density-to-MUD conversion and SO(3) normalization.
-- MUD passthrough.
-- Exact section-angle generation for every supported Laue class.
-- Expected rectangular Euler plotting limits for every Laue class.
-- Exact linear interpolation between cell-centered phi2 planes.
-- Exact periodic interpolation across 360 degrees to 0 degrees.
-- Automatic and manual scale behavior.
-- Endpoint color clipping and RGB control-point interpolation.
-- Deterministic layout dimensions and applied metadata.
-- Selected raw RGBA pixels covering panel data, background, axes, text regions,
-  and color-bar endpoints.
-- Invalid dimensions, spacing, units, symmetry, values, scale, section count,
-  row count, and image size.
+- Greek section-title and axis-title text helpers produce `φ₂`, `φ₁`, `Φ`, and
+  `°` exactly.
+- Tick interval selection chooses 10 degrees at or above 24 pixels per tick and
+  20 degrees below that threshold.
+- Tick values contain no unit suffix.
+- MUD and Count-Density render with `MUD` and
+  `MUD (from Count-Density)` color-bar titles, respectively.
+- Existing scientific preparation, axis-order, fractional-spacing, empty-crop,
+  scale, color, layout, and pixel tests remain green.
 
-Tests use small analytical grids so the expected section values are independent
-of the implementation.
+### MTRSim
 
-### MTRSim tests
+- Phase selection excludes all non-selected phases without requiring a phase
+  mask.
+- Optional mask further restricts the selected phase.
+- Create-New and Append modes create correct per-component units StringArrays.
+- Units metadata values are readable during preflight and survive
+  WriteDREAM3D/ReadDREAM3D round-trip.
+- Presentation uses the same execution's numeric-unit choice with no manual
+  units parameter.
+- Default color preset is `Rainbow Blended White`.
+- PNG-only, RGB-only, both, and numeric-only modes.
+- Conservative pure-pipeline preflight omits all phase-dependent updated values
+  and contains no `Deferred until execution` text.
+- Materialized preflight reports exact phase/Laue/angle values.
+- Count-Density presentation is labeled `MUD (from Count-Density)`.
+- Existing atomicity, cancellation, Float32/Float64, fractional-grid, and
+  pixel-parity tests remain green.
+- Filter list contains no standalone `WriteODFSectionsFilter`.
 
-- Preflight actions and updated values.
-- Full parameter-validation and error-path coverage.
-- Float32 and Float64 input paths.
-- Mathematically equivalent MUD and Count-Density inputs produce identical RGB
-  output.
-- Disk-only, geometry-only, and combined output modes.
-- PNG dimensions and decoded pixels match the RGB Image Geometry.
-- Atomic file behavior preserves an existing destination on failure.
-- End-to-end `ComputeODFFilter` to `WriteODFSectionsFilter` on a small,
-  deterministic HCP dataset.
+### Real-data validation
 
-### Validation dataset
+Use `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1.ang`:
 
-Use `/Users/Shared/Data/MTR_Data/RR_MTR_Examples/1.ang` for repository-external
-validation. Retain the generated EbsdLib/MTRSim montage, the MTEX 6.1.0 montage,
-the pipeline, logs, and comparison notes outside the repository. The 324 MB ANG
-file is not added to unit-test data.
-
-The validation checks:
-
-- Matching indexed-point population.
-- Expected section angles and plotting limits.
-- MUD color-scale values.
-- Visual agreement of feature locations with MTEX.
-- PNG and Image Geometry pixel agreement for the MTRSim output.
+- Phase 1 contributes 2,493,822 indexed points.
+- Six Hexagonal High sections are 0 through 50 degrees.
+- PNG and RGB Image Geometry are byte-identical in RGB channels.
+- ODF/presentation values are finite.
+- Applied MUD maximum matches independent section extraction.
+- Panel feature correlations against MTEX remain in the established
+  0.9730–0.9783 range.
+- Regenerate the documentation montage using `Rainbow Blended White` and the
+  corrected typography/ticks.
 
 ## Documentation
 
-- Add the `WriteODFSectionsFilter` user-facing filter document.
-- Add a canonical montage generated from the validation dataset.
-- Document axis mapping, full-grid requirements, unit conversion, phase
-  provenance, symmetry plotting regions, section interpolation, color scaling,
-  and both output modes.
-- Cross-link the new filter from `ComputeODFFilter` documentation.
-- Add Doxygen documentation for the new public EbsdLib configuration, result,
-  utilities, and compositor.
+- Expand `ComputeODFFilter.md` with phase selection, units metadata,
+  presentation parameters, images, and unit-label semantics.
+- Remove `WriteODFSectionsFilter.md`.
+- Replace the canonical montage with the final combined-filter output.
+- Update example/validation pipelines to contain the combined filter only.
 
-## Cross-repository delivery sequence
+## Cross-repository delivery
 
-1. Implement and test the EbsdLib utilities and public compositor on the
-   EbsdLib feature branch.
-2. Implement and test the MTRSim filter against the local EbsdLib source using
-   DREAM3D-NX preset `NX-Com-Qt69-Vtk96-Rel-EbsdLib`.
-3. Run the external `1.ang` validation and review the generated montage against
-   MTEX.
-4. Once an EbsdLib release containing the public API is available, verify the
-   normal `NX-Com-Qt69-Vtk96-Rel` dependency path.
+1. Update EbsdLib chrome/tests for Greek typography, adaptive ticks, and
+   unit-aware color-bar titles.
+2. Refactor MTRSim to the single public filter and add persisted units metadata.
+3. Build with `NX-Com-Qt69-Vtk96-Rel-EbsdLib` and run all EbsdLib/MTRSim tests.
+4. Rerun the external `1.ang` validation and update documentation artifacts.
+5. Publish an EbsdLib release containing the final renderer API before testing
+   the normal `NX-Com-Qt69-Vtk96-Rel` dependency path.
 
-No simplnx OrientationAnalysis source changes are required for v1.
+No simplnx OrientationAnalysis source changes are required.
