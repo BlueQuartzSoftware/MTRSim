@@ -504,6 +504,51 @@ TEST_CASE("MTRSim::ComputeODFFilter: Deferred metadata omits unavailable values 
   UnitTest::CheckArraysInheritTupleDims(data);
 }
 
+TEST_CASE("MTRSim::ComputeODFFilter: Placeholder Material Names preserves known crystal previews", "[MTRSim][ComputeODFFilter][Presentation]")
+{
+  auto data = CreateValidDataStructure();
+  const auto args = ExecutionArguments();
+  const auto known = ComputeODFFilter{}.preflight(data, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(known.outputActions);
+  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(names != nullptr);
+  names->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  IFilter::PreflightResult preflight;
+  REQUIRE_NOTHROW(preflight = ComputeODFFilter{}.preflight(data, args));
+  SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+  for(const auto& value : preflight.outputValues)
+  {
+    REQUIRE(value.name != "Material");
+    REQUIRE(value.value.find("Deferred until execution") == std::string::npos);
+  }
+  REQUIRE(GetPreflightValue(preflight, "Section Angles") == "0, 10, 20, 30, 40, 50 degrees");
+  REQUIRE(GetPreflightValue(preflight, "Laue Class") == "Hexagonal 6/mmm (D6h)");
+  REQUIRE(GetPreflightValue(preflight, "Euler Plot Limits") == GetPreflightValue(known, "Euler Plot Limits"));
+  REQUIRE(GetPreflightValue(preflight, "Composite Dimensions") == GetPreflightValue(known, "Composite Dimensions"));
+  REQUIRE(preflight.outputActions.value().actions.size() == known.outputActions.value().actions.size());
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Placeholder Material Names returns a contextual execution error", "[MTRSim][ComputeODFFilter][Presentation]")
+{
+  auto data = CreateValidDataStructure();
+  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(names != nullptr);
+  names->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  auto args = ExecutionArguments();
+  TemporaryOutput output;
+  args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, true);
+  args.insertOrAssign(ComputeODFFilter::k_OutputPngPath_Key, output.png);
+  IFilter::ExecuteResult result;
+  REQUIRE_NOTHROW(result = ComputeODFFilter{}.execute(data, args));
+  SIMPLNX_RESULT_REQUIRE_INVALID(result.result);
+  REQUIRE(result.result.errors().front().code == -12323);
+  const auto& message = result.result.errors().front().message;
+  REQUIRE(message.find(k_MaterialNamesPath.toString()) != std::string::npos);
+  REQUIRE(message.find("phase 1") != std::string::npos);
+  REQUIRE(message.find("not available") != std::string::npos);
+  REQUIRE_FALSE(std::filesystem::exists(output.png));
+}
+
 TEST_CASE("MTRSim::ComputeODFFilter: Internal presentation adapts Float32 and Float64 identically", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   auto data32 = ComputeNumericData();

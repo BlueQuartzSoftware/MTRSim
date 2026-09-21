@@ -491,6 +491,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
 
   const bool deferredMetadata = crystalStructures.getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty;
+  const bool hasMaterialName = !deferredMetadata && !materialNames->isPlaceholder();
   // Empty ensemble stores provide no values. Triclinic limits reserve the largest presentation page.
   const uint32 crystalStructure = deferredMetadata ? ebsdlib::CrystalStructure::Triclinic : crystalStructures[static_cast<usize>(selectedPhase)];
   const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
@@ -535,7 +536,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   config.manualMaximumMUD = manualMaximum;
   config.colorControlPoints = std::move(colorControls.value());
   config.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
-  if(!deferredMetadata)
+  if(hasMaterialName)
   {
     config.materialName = (*materialNames)[static_cast<usize>(selectedPhase)];
   }
@@ -562,7 +563,10 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   {
     const auto sectionAngles = ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
     preflightUpdatedValues.push_back({"Section Angles", fmt::format("{} degrees", fmt::join(sectionAngles, ", "))});
-    preflightUpdatedValues.push_back({"Material", config.materialName});
+    if(hasMaterialName)
+    {
+      preflightUpdatedValues.push_back({"Material", config.materialName});
+    }
     preflightUpdatedValues.push_back({"Laue Class", ebsdlib::LaueOps::GetLaueNames()[crystalStructure]});
     preflightUpdatedValues.push_back({"Euler Plot Limits", fmt::format("phi1 < {}, PHI < {}, phi2 < {} degrees", limits.phi1MaxDeg, limits.phiMaxDeg, limits.phi2MaxDeg)});
   }
@@ -633,13 +637,22 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
     return result;
   }
 
+  const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNames_Key);
+  const auto& materialNames = dataStructure.getDataRefAs<StringArray>(materialNamesPath);
+  if(materialNames.isPlaceholder())
+  {
+    return MergeResults(std::move(result),
+                        MakeErrorResult(-12323, fmt::format("Material Names '{}' values for phase {} are not available during ODF presentation. Execute the upstream material-data reader first.",
+                                                            materialNamesPath.toString(), inputValues.selectedPhase)));
+  }
+
   GenerateODFSectionsInputValues presentationValues;
   presentationValues.inputImageGeometryPath = inputValues.outputImageGeometry;
   presentationValues.odfArrayPath = inputValues.outputImageGeometry.createChildPath(inputValues.cellAttrMatName).createChildPath(inputValues.componentName);
   presentationValues.units = inputValues.outputUnits == 0 ? ebsdlib::ODFValueUnits::CountDensity : ebsdlib::ODFValueUnits::MUD;
   presentationValues.phaseIndex = inputValues.selectedPhase;
   presentationValues.crystalStructure = dataStructure.getDataRefAs<UInt32Array>(inputValues.crystalStructuresPath)[static_cast<usize>(inputValues.selectedPhase)];
-  presentationValues.materialName = dataStructure.getDataRefAs<StringArray>(filterArgs.value<DataPath>(k_MaterialNames_Key))[static_cast<usize>(inputValues.selectedPhase)];
+  presentationValues.materialName = materialNames[static_cast<usize>(inputValues.selectedPhase)];
   presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
   presentationValues.numberOfSections = filterArgs.value<int32>(k_NumSections_Key);
   presentationValues.sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
