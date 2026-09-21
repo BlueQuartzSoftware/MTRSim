@@ -591,6 +591,8 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
   const bool isAppendMode = (pOutputMode == 1ULL);
 
   ComputeODFInputValues inputValues;
+  usize contributingVoxelCount = 0;
+  inputValues.contributingVoxelCount = &contributingVoxelCount;
 
   inputValues.selectedPhase = filterArgs.value<int32>(k_PhaseIndex_Key);
   inputValues.applySmoothing = filterArgs.value<bool>(k_ApplySmoothing_Key);
@@ -635,6 +637,14 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
   if(result.invalid() || shouldCancel || (!filterArgs.value<bool>(k_WritePng_Key) && !filterArgs.value<bool>(k_SaveAsImageGeometry_Key)))
   {
     return result;
+  }
+
+  if(contributingVoxelCount == 0)
+  {
+    return MergeResults(
+        std::move(result),
+        MakeErrorResult(-12324, fmt::format("Cannot create ODF presentation for phase {}: no voxels contributed. Check the phase labels and mask, or disable both presentation outputs.",
+                                            inputValues.selectedPhase)));
   }
 
   const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNames_Key);

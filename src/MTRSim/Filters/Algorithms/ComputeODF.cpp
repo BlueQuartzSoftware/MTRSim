@@ -208,6 +208,10 @@ ComputeODF::~ComputeODF() noexcept = default;
 // -----------------------------------------------------------------------------
 Result<> ComputeODF::operator()()
 {
+  if(m_InputValues->contributingVoxelCount != nullptr)
+  {
+    *m_InputValues->contributingVoxelCount = 0;
+  }
   const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32Array>(m_InputValues->eulerAnglesPath);
   const auto& phases = m_DataStructure.getDataRefAs<Int32Array>(m_InputValues->phasesPath);
   const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(m_InputValues->crystalStructuresPath);
@@ -296,6 +300,11 @@ Result<> ComputeODF::operator()()
   if(m_ShouldCancel)
   {
     return {};
+  }
+
+  if(m_InputValues->contributingVoxelCount != nullptr)
+  {
+    *m_InputValues->contributingVoxelCount = masterContributingCount;
   }
 
   // Normalize by the total count of symmetric-equivalent orientation deposits

@@ -38,6 +38,11 @@ struct MTRSIM_EXPORT ComputeODFInputValues
   //                    are density on SO(3) divided by uniform density;
   //                    matches MTEX's plot(odf) MUD convention).
   uint64_t outputUnits;
+  /**
+   * @brief Receives the contributing voxel count when non-null.
+   * The caller owns the storage, which must remain valid until operator() returns.
+   */
+  usize* contributingVoxelCount = nullptr;
 };
 
 /**

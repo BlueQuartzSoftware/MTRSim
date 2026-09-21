@@ -611,53 +611,74 @@ TEST_CASE("MTRSim::ComputeODFFilter: Invalid presentation values preserve an exi
   REQUIRE(std::distance(std::filesystem::directory_iterator(output.directory), std::filesystem::directory_iterator{}) == 1);
 }
 
-TEST_CASE("MTRSim::ComputeODFFilter: Zero ODF requires manual presentation scale", "[MTRSim][ComputeODFFilter][Presentation]")
+TEST_CASE("MTRSim::ComputeODFFilter: Empty selected phase rejects presentation", "[MTRSim][ComputeODFFilter][Presentation]")
 {
+  UnitTest::LoadPlugins();
+  const bool masked = GENERATE(false, true);
+  const auto scale = GENERATE(ChoicesParameter::ValueType{0}, ChoicesParameter::ValueType{1});
+  const auto mode = GENERATE(std::pair{false, false}, std::pair{false, true}, std::pair{true, false}, std::pair{true, true});
+  const auto units = GENERATE(ChoicesParameter::ValueType{0}, ChoicesParameter::ValueType{1});
+  CAPTURE(masked, scale, mode.first, mode.second, units);
   auto data = CreateValidDataStructure();
   auto* phases = data.getDataAs<Int32Array>(DataPath({"Input Cells", "Phases"}));
   REQUIRE(phases != nullptr);
-  std::fill(phases->begin(), phases->end(), 0);
   auto args = ExecutionArguments();
-  SECTION("Automatic presentation failure preserves destination")
+  if(masked)
   {
-    TemporaryOutput output;
-    const std::string original = "Existing PNG destination";
-    {
-      std::ofstream stream(output.png);
-      stream << original;
-      REQUIRE(stream.good());
-    }
-    args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, true);
-    args.insertOrAssign(ComputeODFFilter::k_OutputPngPath_Key, output.png);
-    const auto result = ComputeODFFilter{}.execute(data, args);
-    SIMPLNX_RESULT_REQUIRE_INVALID(result.result);
-    REQUIRE(result.result.errors().front().message.find("maximum is 0") != std::string::npos);
-    std::ifstream stream(output.png);
-    REQUIRE(std::string(std::istreambuf_iterator<char>(stream), {}) == original);
-    REQUIRE(std::distance(std::filesystem::directory_iterator(output.directory), std::filesystem::directory_iterator{}) == 1);
+    const DataPath maskPath({"Input Cells", "Mask"});
+    auto* mask = BoolArray::Create(data, "Mask", DataStoreUtilities::CreateDataStore<bool>(data, maskPath, {8}, {1}), phases->getParentIds().front());
+    REQUIRE(mask != nullptr);
+    std::fill(mask->begin(), mask->end(), false);
+    args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, true);
+    args.insertOrAssign(ComputeODFFilter::k_Mask_Key, maskPath);
   }
-  SECTION("Manual range uses the first preset color")
+  else
   {
-    args.insertOrAssign(ComputeODFFilter::k_ColorTablePreset_Key, std::string{"Grayscale"});
-    args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
-    args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, 0.25);
-    args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, 2.5);
-    const auto result = ComputeODFFilter{}.execute(data, args);
-    SIMPLNX_RESULT_REQUIRE_VALID(result.result);
+    std::fill(phases->begin(), phases->end(), 0);
+  }
+  TemporaryOutput output;
+  const std::string original = "Existing PNG destination";
+  {
+    std::ofstream stream(output.png, std::ios::binary);
+    stream << original;
+    REQUIRE(stream.good());
+  }
+  args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, scale);
+  args.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, units);
+  args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, 0.25);
+  args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, 2.5);
+  args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, mode.first);
+  args.insertOrAssign(ComputeODFFilter::k_SaveAsImageGeometry_Key, mode.second);
+  args.insertOrAssign(ComputeODFFilter::k_OutputPngPath_Key, output.png);
+  const auto result = ComputeODFFilter{}.execute(data, args);
+  if(mode.first || mode.second)
+  {
+    CHECK(result.result.invalid());
+    if(result.result.invalid())
+    {
+      CHECK(result.result.errors().front().message.find("phase 1") != std::string::npos);
+      CHECK(result.result.errors().front().message.find("no voxels contributed") != std::string::npos);
+    }
     const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-    REQUIRE(rgb != nullptr);
-    ebsdlib::ODFSectionConfiguration config;
-    config.grid.laueOpsIndex = ebsdlib::CrystalStructure::Hexagonal_High;
-    config.sectionWidth = 128;
-    const auto layout = ebsdlib::ComputeODFSectionLayout(config);
-    for(usize sectionIndex = 0; sectionIndex < 6; ++sectionIndex)
-    {
-      const auto origin = ebsdlib::GetODFSectionPanelOrigin(layout, sectionIndex);
-      const usize pixelIndex = (static_cast<usize>(origin[1]) + static_cast<usize>(layout.panelHeight / 2)) * layout.pageWidth + static_cast<usize>(origin[0]) + 64;
-      for(usize compIdx = 0; compIdx < 3; ++compIdx)
-      {
-        REQUIRE((*rgb)[pixelIndex * 3 + compIdx] == 0);
-      }
-    }
+    CHECK((rgb == nullptr || std::all_of(rgb->begin(), rgb->end(), [](uint8 value) { return value == 0; })));
   }
+  else
+  {
+    SIMPLNX_RESULT_REQUIRE_VALID(result.result);
+    const auto* odf = data.getDataAs<Float64Array>(k_OdfArrayPath);
+    REQUIRE(odf != nullptr);
+    CHECK(std::all_of(odf->begin(), odf->end(), [](float64 value) { return value == 0.0; }));
+    TemporaryOutput persistence;
+    const auto numericFile = persistence.directory / "empty_phase.dream3d";
+    UnitTest::WriteTestDataStructure(data, numericFile);
+    const auto restored = UnitTest::LoadDataStructure(numericFile);
+    const auto* metadata = restored.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "ODF Values Units"}));
+    REQUIRE(metadata != nullptr);
+    CHECK((*metadata)[0] == (units == 0 ? "Count-Density" : "MUD"));
+    CHECK(data.getDataAs<UInt8Array>(k_RgbPath) == nullptr);
+  }
+  std::ifstream stream(output.png, std::ios::binary);
+  CHECK(std::string(std::istreambuf_iterator<char>(stream), {}) == original);
+  CHECK(std::distance(std::filesystem::directory_iterator(output.directory), std::filesystem::directory_iterator{}) == 1);
+  UnitTest::CheckArraysInheritTupleDims(data);
 }

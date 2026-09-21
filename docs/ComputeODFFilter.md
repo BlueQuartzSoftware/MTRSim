@@ -87,6 +87,8 @@ Presentation is optional. With both **Write PNG** and **Save as Image Geometry**
 
 **Number of Sections** (at least two) and **Sections Per Row** (between one and the number of sections) set the panel count and layout. **Section Width** must be at least 128 pixels; panel height follows the Euler-angle aspect ratio. **Figure Title** labels the whole montage. The default **Color Table Preset** is *Rainbow Blended White*. **Scale Mode** defaults to *Automatic* and shares `[0, maximum displayed MUD]` across all panels; *Manual* requires finite `0 <= minimum < maximum` in MUD. Negative or non-finite ODF values and an all-zero automatic scale are errors.
 
+If no voxels of the selected phase contribute, either presentation output returns an error under both scale modes. Check the phase labels and mask. With both presentation outputs disabled, the filter succeeds with an all-zero quantitative ODF and its units metadata.
+
 Each panel shows `phi1` horizontally from 0° to 360° and `PHI` vertically to the selected Laue class's rectangular limit. The sections sample `phi2Section(s) = s * phi2Max / N` for `s = 0 ... N-1`: the symmetry-equivalent endpoint is omitted. Hexagonal High (`6/mmm`) has `PHI < 90°` and `phi2 < 60°`, giving the default six sections at 0°, 10°, 20°, 30°, 40°, and 50°. Sections are linearly interpolated between neighboring cell-centered `phi2` planes and wrap periodically across the full 360° grid; `phi1` and `PHI` are not interpolated. Cubic rectangular limits bound, rather than exactly trace, their nonrectangular fundamental zones.
 
 The labeled phase and material come from the selected input ensemble tuple. Keep the full Bunge ODF grid for presentation: the symmetry limits affect the displayed region, not the stored numerical grid. The image color bar always reports the rendered MUD range.
@@ -187,9 +189,10 @@ tools.
 
 If the input scan contains multiple phases with different Laue classes
 (e.g., an HCP `alpha` + BCC `beta` titanium alloy), no single rectangular
-crop is optimal for both phases. In that case either compute one ODF per
-phase (writing each into a separate ImageGeom) and crop each to its own
-FZ, or leave the multiphase ODF uncropped.
+crop is optimal for both phases. Run this filter once per phase. Use
+**Append** to keep the phase components on a common full Euler grid for
+comparison. To crop each phase to its own Laue limits, compute the phase
+components in separate Image Geometries and crop each geometry separately.
 
 ### Preflight Preview
 
