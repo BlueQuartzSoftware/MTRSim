@@ -6,7 +6,9 @@ MTRSim (Compute)
 
 ## Description
 
-This **Filter** builds a discretized Orientation Distribution Function (ODF) on a regular Bunge-Euler-space grid from per-voxel EBSD data. It mirrors the algorithm in the MTRSim research code's MATLAB implementation (`matlab/calc_ODF.m`) and produces a single `Float64`, single-component **Cell** **Data Array** on a (new or existing) ODF **Image Geometry**.
+This **Filter** builds a discretized Orientation Distribution Function (ODF) on a regular Bunge-Euler-space grid from per-voxel EBSD data. It mirrors the algorithm in the MTRSim research code's MATLAB implementation (`matlab/calc_ODF.m`) and produces a single `Float64`, single-component **Cell** **Data Array** on a (new or existing) ODF **Image Geometry**. It can also render standard constant-`phi2` sections directly from the just-computed ODF, without a separate presentation filter.
+
+**Phase Index** selects one positive ensemble tuple. Only voxels whose **Cell Phases** equal that index contribute; phase zero and all other phases are excluded even if their mask values are true. If **Use Mask Array** is enabled, a voxel must also have a true **Mask** value. **Crystal Structures** and **Material Names** must each contain the selected ensemble tuple. The selected crystal structure supplies symmetric variants and the section plotting limits; the material name labels the montage. This prevents a mixed-phase ODF from being presented as though it belonged to one phase.
 
 There are two output modes:
 
@@ -29,10 +31,10 @@ Standard ODF plots ("phi1-PHI plane at fixed phi2") correspond to the **YZ image
 
 ## Algorithm
 
-For every voxel `i` where `phases[i] != 0` and (mask is unused OR `mask[i] == true`):
+For every voxel `i` where `phases[i] == Phase Index` and (mask is unused OR `mask[i] == true`):
 
 1. Read the Bunge Euler triple `(phi1, PHI, phi2)` (radians).
-2. Look up the crystal structure with `crystal_structures[phases[i]]` (an EbsdLib `CrystalStructure::*` code, e.g. `Hexagonal_High = 0`, `Cubic_High = 1`).
+2. Look up the selected phase's crystal structure (an EbsdLib `CrystalStructure::*` code, e.g. `Hexagonal_High = 0`, `Cubic_High = 1`).
 3. Expand to all symmetrically-equivalent Bunge tuples using EbsdLib symmetry operators (12 for HCP, 24 for cubic).
 4. Each symmetric tuple is converted to integer bin indices and deposited into the ODF grid:
    - **Smoothing off:** the entire deposit (1.0) goes into the center bin.
@@ -56,6 +58,8 @@ The **Filter** offers two output modes via the **Output Units** parameter. Both 
 MUD[i, j, k] = CountDensity[i, j, k] * 8 * pi^2 / (step_rad^3 * sin(PHI_center(j)))
 ```
 
+For either choice, the filter creates a one-tuple `StringArray` at `<ODF geometry>/ODF Metadata/<component name> Units`, containing exactly `Count-Density` or `MUD`. Each appended component has its own units entry, which also survives export to a DREAM3D-NX file. The optional montage always displays MUD; Count-Density is converted internally before rendering, without a manual input-unit choice. Its legend reads `MUD (from Count-Density)`; a MUD component renders as `MUD`.
+
 where `step_rad = binSizeDeg * pi / 180` and `PHI_center(j) = (j + 0.5) * step_rad`. The factor amplifies low-Φ bins (which cover much less SO(3) volume) and shrinks equatorial bins, removing the gimbal-pole compression that makes a count-density plot look "empty" near `PHI = 0` and `PHI = pi` even when those orientations are physically present. For HCP α-Ti scans this typically converts a "blue at the top of the φ₁-Φ panel" Count-Density rendering into the MTEX-style "peaks visible at all Φ" view.
 
 Without this Jacobian, a global linear colormap suppresses sub-peak features because Bunge bins near the Φ poles cover orders of magnitude less orientation space than equatorial bins -- equal counts represent very different physical densities.
@@ -72,7 +76,20 @@ Per-voxel work runs under SIMPLNX's `ParallelDataAlgorithm`. Each thread accumul
 
 A single `Float64`, single-component **Cell** **Data Array** of size `nphi1 * nPHI * nphi2` (e.g., `72 * 36 * 72 = 186,624` at 5 deg spacing) on the target ODF **Image Geometry**, named per the **Component Name** parameter (default `Component 1`).
 
-In **Create New** mode the **Filter** also creates the **Image Geometry** and the cell **Attribute Matrix** at the user-supplied paths. In **Append** mode the existing geometry's cell **Attribute Matrix** is reused, and the proposed component name must not collide with an existing array on it.
+In **Create New** mode the **Filter** also creates the **Image Geometry** and the cell **Attribute Matrix** at the user-supplied paths. In **Append** mode the existing geometry's cell **Attribute Matrix** is reused, and the proposed component name must not collide with an existing array on it. The corresponding `ODF Metadata/<component name> Units` path must also be available.
+
+## Constant-`phi2` Section Presentation
+
+Presentation is optional. With both **Write PNG** and **Save as Image Geometry** disabled, the filter writes only the numerical ODF and its units metadata. Enable either output or both to render a montage directly from that component:
+
+- **Write PNG** writes an annotated `.png` atomically to **Output PNG**. A previous file is not replaced unless encoding succeeds.
+- **Save as Image Geometry** creates **Output Image Geometry** with `Cell Data/ODF Sections RGB`, a three-component `UInt8` array. When both outputs are enabled, its RGB bytes equal the decoded PNG's RGB pixels.
+
+**Number of Sections** (at least two) and **Sections Per Row** (between one and the number of sections) set the panel count and layout. **Section Width** must be at least 128 pixels; panel height follows the Euler-angle aspect ratio. **Figure Title** labels the whole montage. The default **Color Table Preset** is *Rainbow Blended White*. **Scale Mode** defaults to *Automatic* and shares `[0, maximum displayed MUD]` across all panels; *Manual* requires finite `0 <= minimum < maximum` in MUD. Negative or non-finite ODF values and an all-zero automatic scale are errors.
+
+Each panel shows `phi1` horizontally from 0° to 360° and `PHI` vertically to the selected Laue class's rectangular limit. The sections sample `phi2Section(s) = s * phi2Max / N` for `s = 0 ... N-1`: the symmetry-equivalent endpoint is omitted. Hexagonal High (`6/mmm`) has `PHI < 90°` and `phi2 < 60°`, giving the default six sections at 0°, 10°, 20°, 30°, 40°, and 50°. Sections are linearly interpolated between neighboring cell-centered `phi2` planes and wrap periodically across the full 360° grid; `phi1` and `PHI` are not interpolated. Cubic rectangular limits bound, rather than exactly trace, their nonrectangular fundamental zones.
+
+The labeled phase and material come from the selected input ensemble tuple. Keep the full Bunge ODF grid for presentation: the symmetry limits affect the displayed region, not the stored numerical grid. The image color bar always reports the rendered MUD range.
 
 ## Cropping the ODF to its Fundamental Zone
 
@@ -187,6 +204,10 @@ The UI shows the following before the user clicks Apply:
 - Smoothing (enabled / disabled)
 - Output Units (Count-Density / MUD)
 - Mask (none / path)
+- Selected Phase
+- For enabled presentation: input/rendered units, phase and available material, Laue class, Euler limits and exact section angles, layout and composite dimensions, scale mode
+
+Preflight creates the numerical ODF and units actions even when presentation is disabled. With presentation enabled, it also checks the section settings, color preset, scale limits, and PNG extension and plans the optional RGB geometry. When an upstream reader has only placeholder ensemble values during pure pipeline preflight, the material and symmetry details cannot yet be known; the composite dimensions are a conservative estimate, and execution uses the actual selected phase to size the final RGB geometry. The completed `1.ang` pipeline preflight reports no `Deferred until execution` marker.
 
 
 % Auto generated parameter table will be inserted here
@@ -197,11 +218,11 @@ The UI shows the following before the user clicks Apply:
 
 ## Example Pipelines
 
-(Example pipelines will be added in a future release.)
+For the original `1.ang` EBSD scan: Read EDAX EBSD Data (.ang) → Multi-Threshold Objects (`Confidence Index > 0`, Boolean `Indexed Mask`) → Compute ODF From Euler Angles (phase 1, 5° bins, smoothing, MUD, mask, six sections, three per row, *Rainbow Blended White*, automatic scale, PNG and RGB geometry) → Write DREAM3D-NX File. The companion validation pipeline and independent checks are retained outside this repository under `RR_MTR_Examples/1/odf_section_validation`.
 
-## See Also
+![Six constant-phi2 sections computed directly from the phase-1 ODF of 1.ang](Images/odf_phi2_sections.png)
 
-To create a conventional constant-`phi2` montage, compute a phase-isolated full-grid **MUD** or **Count-Density** array and pass it to the [Write ODF Sections](WriteODFSectionsFilter.md) **Filter**. For multiphase input, use a phase-specific mask so that the selected ODF contains only the phase identified by the renderer's ensemble metadata.
+*Original `1.ang` EBSD dataset, phase 1 Titanium (Alpha); 5° full-Bunge grid rendered in MUD at φ₂ = 0°, 10°, 20°, 30°, 40°, and 50° with the default Rainbow Blended White color preset.*
 
 ## License & Copyright
 
