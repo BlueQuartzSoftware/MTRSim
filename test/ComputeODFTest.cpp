@@ -157,6 +157,7 @@ EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
 Arguments makeBaseArgs(const EbsdInputs& inputs, bool applySmoothing, float32 binSizeDeg)
 {
   Arguments args;
+  args.insertOrAssign(ComputeODFFilter::k_SaveAsImageGeometry_Key, false);
   args.insertOrAssign(ComputeODFFilter::k_ApplySmoothing_Key, std::make_any<bool>(applySmoothing));
   args.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, std::make_any<float32>(binSizeDeg));
   args.insertOrAssign(ComputeODFFilter::k_EulerAngles_Key, std::make_any<DataPath>(inputs.eulerAnglesPath));

@@ -1,4 +1,4 @@
-#include "WriteODFSections.hpp"
+#include "GenerateODFSections.hpp"
 
 #include "EbsdLib/Utilities/ODFSectionCompositor.h"
 #include "EbsdLib/Utilities/PngWriter.h"
@@ -8,7 +8,6 @@
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/IDataStore.hpp"
-#include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Utilities/ColorTableUtilities.hpp"
 #include "simplnx/Utilities/FilterUtilities.hpp"
 
@@ -44,7 +43,8 @@ struct CopyODFToDouble
 };
 } // namespace
 
-WriteODFSections::WriteODFSections(DataStructure& dataStructure, const IFilter::MessageHandler& messageHandler, const std::atomic_bool& shouldCancel, const WriteODFSectionsInputValues* inputValues)
+GenerateODFSections::GenerateODFSections(DataStructure& dataStructure, const IFilter::MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
+                                         const GenerateODFSectionsInputValues* inputValues)
 : m_DataStructure(dataStructure)
 , m_MessageHandler(messageHandler)
 , m_ShouldCancel(shouldCancel)
@@ -52,41 +52,15 @@ WriteODFSections::WriteODFSections(DataStructure& dataStructure, const IFilter::
 {
 }
 
-WriteODFSections::~WriteODFSections() noexcept = default;
+GenerateODFSections::~GenerateODFSections() noexcept = default;
 
-Result<> WriteODFSections::operator()()
+Result<> GenerateODFSections::operator()()
 {
   if(m_ShouldCancel)
   {
     return {};
   }
   const auto& values = *m_InputValues;
-  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(values.crystalStructuresPath);
-  const auto& materialNames = m_DataStructure.getDataRefAs<StringArray>(values.materialNamesPath);
-  const usize ensembleTupleCount = crystalStructures.getNumberOfTuples();
-  if(ensembleTupleCount != materialNames.getNumberOfTuples())
-  {
-    return MakeErrorResult(-12306, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. The ensemble tuple counts must match.",
-                                               values.crystalStructuresPath.toString(), ensembleTupleCount, values.materialNamesPath.toString(), materialNames.getNumberOfTuples()));
-  }
-  if(values.phaseIndex <= 0 || static_cast<usize>(values.phaseIndex) >= ensembleTupleCount)
-  {
-    return MakeErrorResult(-12307, fmt::format("Phase Index ({}) must be in [1, {}] for Crystal Structures '{}' and Material Names '{}'.", values.phaseIndex,
-                                               ensembleTupleCount == 0 ? 0 : ensembleTupleCount - 1, values.crystalStructuresPath.toString(), values.materialNamesPath.toString()));
-  }
-  const auto metadataStoreType = crystalStructures.getIDataStoreRef().getStoreType();
-  if(metadataStoreType == IDataStore::StoreType::Empty)
-  {
-    return MakeErrorResult(-12323, fmt::format("Crystal Structures '{}' values for phase {} are not available during execution of ODF '{}'. Execute the upstream phase-data reader first.",
-                                               values.crystalStructuresPath.toString(), values.phaseIndex, values.odfArrayPath.toString()));
-  }
-  const uint32 crystalStructure = crystalStructures[static_cast<usize>(values.phaseIndex)];
-  const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
-  if(limits.phi1MaxDeg <= 0.0 || limits.phiMaxDeg <= 0.0 || limits.phi2MaxDeg <= 0.0)
-  {
-    return MakeErrorResult(-12308, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase index {}.", values.crystalStructuresPath.toString(), crystalStructure,
-                                               values.phaseIndex));
-  }
   // Synchronous phase messages let the handler request cancellation before the next stage starts.
   m_MessageHandler("Converting ODF values");
   if(m_ShouldCancel)
@@ -117,12 +91,12 @@ Result<> WriteODFSections::operator()()
   config.grid.dimensions = {imageGeom.getNumZCells(), imageGeom.getNumYCells(), imageGeom.getNumXCells()};
   config.grid.originDeg = {origin[2], origin[1], origin[0]};
   config.grid.spacingDeg = {spacing[2], spacing[1], spacing[0]};
-  config.grid.units = values.inputUnits == 0 ? ebsdlib::ODFValueUnits::MUD : ebsdlib::ODFValueUnits::CountDensity;
-  config.grid.laueOpsIndex = crystalStructure;
+  config.grid.units = values.units;
+  config.grid.laueOpsIndex = values.crystalStructure;
   config.sectionCount = static_cast<usize>(values.numberOfSections);
   config.sectionsPerRow = static_cast<usize>(values.sectionsPerRow);
   config.sectionWidth = values.sectionWidth;
-  config.scaleMode = values.scaleMode == 0 ? ebsdlib::ODFScaleMode::Automatic : ebsdlib::ODFScaleMode::Manual;
+  config.scaleMode = values.scaleMode;
   config.manualMinimumMUD = values.manualMinimumMUD;
   config.manualMaximumMUD = values.manualMaximumMUD;
   // SIMPLNX presets can use arbitrary scalar positions; EbsdLib accepts normalized positions.
@@ -133,7 +107,7 @@ Result<> WriteODFSections::operator()()
     config.colorControlPoints[colorIndex * 4] = binPoints[colorIndex];
   }
   config.title = values.title;
-  config.materialName = materialNames[static_cast<usize>(values.phaseIndex)];
+  config.materialName = values.materialName;
   config.phaseNumber = values.phaseIndex;
 
   m_MessageHandler("Composing ODF sections");

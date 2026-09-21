@@ -7,9 +7,9 @@
 # Define the list of unit test source files
 set(${PLUGIN_NAME}UnitTest_SRCS
     ComputeODFTest.cpp
+    ComputeODFPresentationTest.cpp
     MTRSimTest.cpp
     ReadMTRSimODFTest.cpp
-    WriteODFSectionsTest.cpp
     WriteMTRSimODFTest.cpp
 )
 
@@ -82,4 +82,3 @@ set(TEST_PIPELINE_LIST_FILE ${${PLUGIN_NAME}_BINARY_DIR}/PrebuiltPipelineTests/n
 FILE(WRITE ${TEST_PIPELINE_LIST_FILE} "Prebuilt Pipeline Tests\n")
 get_target_property(PIPELINE_RUNNER_NAME nxrunner NAME)
 get_target_property(PIPELINE_RUNNER_DEBUG nxrunner DEBUG_POSTFIX)
-

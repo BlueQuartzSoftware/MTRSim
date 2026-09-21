@@ -1,8 +1,11 @@
 #include "ComputeODFFilter.hpp"
 
 #include "MTRSim/Filters/Algorithms/ComputeODF.hpp"
+#include "MTRSim/Filters/Algorithms/GenerateODFSections.hpp"
 #include "MTRSim/Filters/ODFMetadata.hpp"
 
+#include "EbsdLib/Utilities/ODFSectionCompositor.h"
+#include "fmt/ranges.h"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/DataGroup.hpp"
 #include "simplnx/DataStructure/DataPath.hpp"
@@ -17,11 +20,15 @@
 #include "simplnx/Parameters/ArraySelectionParameter.hpp"
 #include "simplnx/Parameters/BoolParameter.hpp"
 #include "simplnx/Parameters/ChoicesParameter.hpp"
+#include "simplnx/Parameters/CreateColorMapParameter.hpp"
 #include "simplnx/Parameters/DataGroupCreationParameter.hpp"
 #include "simplnx/Parameters/DataObjectNameParameter.hpp"
 #include "simplnx/Parameters/DataPathSelectionParameter.hpp"
+#include "simplnx/Parameters/FileSystemPathParameter.hpp"
 #include "simplnx/Parameters/GeometrySelectionParameter.hpp"
 #include "simplnx/Parameters/NumberParameter.hpp"
+#include "simplnx/Parameters/StringParameter.hpp"
+#include "simplnx/Utilities/ColorTableUtilities.hpp"
 
 #include <EbsdLib/LaueOps/LaueOps.h>
 
@@ -155,13 +162,35 @@ Parameters ComputeODFFilter::parameters() const
   params.linkParameters(k_OutputMode_Key, k_BinSizeDeg_Key, std::make_any<ChoicesParameter::ValueType>(0ULL));
   params.linkParameters(k_OutputMode_Key, k_ExistingOdfGeometry_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
 
+  params.insertSeparator(Parameters::Separator{"Presentation"});
+  params.insert(std::make_unique<StringParameter>(k_Title_Key, "Figure Title", "Title drawn above the ODF section montage.", "ODF Sections"));
+  params.insert(std::make_unique<Int32Parameter>(k_NumSections_Key, "Number of Sections", "Number of constant-phi2 sections.", 6));
+  params.insert(std::make_unique<Int32Parameter>(k_SectionsPerRow_Key, "Sections Per Row", "Number of section panels in each row.", 3));
+  params.insert(std::make_unique<Int32Parameter>(k_SectionWidth_Key, "Section Width", "Width of each ODF section panel in pixels.", 512));
+  params.insert(std::make_unique<CreateColorMapParameter>(k_ColorTablePreset_Key, "Color Table Preset", "RGB preset for the shared MUD color scale.", "Rainbow Blended White"));
+  params.insertLinkableParameter(
+      std::make_unique<ChoicesParameter>(k_ScaleMode_Key, "Scale Mode", "Selects an automatic or manual shared MUD range.", 0ULL, ChoicesParameter::Choices{"Automatic", "Manual"}));
+  params.insert(std::make_unique<Float64Parameter>(k_ManualMinimum_Key, "Manual Minimum MUD", "Minimum value for manual MUD scaling.", 0.0));
+  params.insert(std::make_unique<Float64Parameter>(k_ManualMaximum_Key, "Manual Maximum MUD", "Maximum value for manual MUD scaling.", 1.0));
+  params.linkParameters(k_ScaleMode_Key, k_ManualMinimum_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
+  params.linkParameters(k_ScaleMode_Key, k_ManualMaximum_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
+
+  params.insertSeparator(Parameters::Separator{"Output"});
+  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_WritePng_Key, "Write PNG", "Writes the annotated montage to a PNG file.", false));
+  params.insert(std::make_unique<FileSystemPathParameter>(k_OutputPngPath_Key, "Output PNG", "Output file for the annotated montage.", std::filesystem::path{},
+                                                          FileSystemPathParameter::ExtensionsType{".png"}, FileSystemPathParameter::PathType::OutputFile));
+  params.linkParameters(k_WritePng_Key, k_OutputPngPath_Key, true);
+  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_SaveAsImageGeometry_Key, "Save as Image Geometry", "Creates an RGB Image Geometry for the montage.", true));
+  params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputPresentationGeometry_Key, "Output Image Geometry", "Path for the RGB montage geometry.", DataPath({"ODF Sections"})));
+  params.linkParameters(k_SaveAsImageGeometry_Key, k_OutputPresentationGeometry_Key, true);
+
   return params;
 }
 
 //------------------------------------------------------------------------------
 IFilter::VersionType ComputeODFFilter::parametersVersion() const
 {
-  return 4;
+  return 5;
 }
 
 //------------------------------------------------------------------------------
@@ -445,6 +474,108 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   preflightUpdatedValues.push_back({"Mask", pUseMask ? pMaskPath.toString() : std::string{"(none)"}});
   preflightUpdatedValues.push_back({"Selected Phase", std::to_string(selectedPhase)});
 
+  const bool writePng = filterArgs.value<bool>(k_WritePng_Key);
+  const bool saveAsImageGeometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
+  if(!writePng && !saveAsImageGeometry)
+  {
+    return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  }
+  const int32 sectionCount = filterArgs.value<int32>(k_NumSections_Key);
+  const int32 sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
+  const int32 sectionWidth = filterArgs.value<int32>(k_SectionWidth_Key);
+  const auto colorTablePreset = filterArgs.value<CreateColorMapParameter::ValueType>(k_ColorTablePreset_Key);
+  const auto scaleMode = filterArgs.value<ChoicesParameter::ValueType>(k_ScaleMode_Key);
+  const float64 manualMinimum = filterArgs.value<float64>(k_ManualMinimum_Key);
+  const float64 manualMaximum = filterArgs.value<float64>(k_ManualMaximum_Key);
+  const auto outputPngPath = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputPngPath_Key);
+  const auto outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
+
+  const bool deferredMetadata = crystalStructures.getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty;
+  // Empty ensemble stores provide no values. Triclinic limits reserve the largest presentation page.
+  const uint32 crystalStructure = deferredMetadata ? ebsdlib::CrystalStructure::Triclinic : crystalStructures[static_cast<usize>(selectedPhase)];
+  const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
+  if(sectionCount < 2)
+  {
+    return {MakeErrorResult<OutputActions>(-12309, fmt::format("Number of Sections ({}) must be at least 2.", sectionCount))};
+  }
+  if(sectionsPerRow < 1 || sectionsPerRow > sectionCount)
+  {
+    return {MakeErrorResult<OutputActions>(-12310, fmt::format("Sections Per Row ({}) must be in [1, Number of Sections ({})].", sectionsPerRow, sectionCount))};
+  }
+  if(sectionWidth < 128)
+  {
+    return {MakeErrorResult<OutputActions>(-12311, fmt::format("Section Width ({}) pixels must be at least 128 pixels.", sectionWidth))};
+  }
+
+  auto colorControls = ColorTableUtilities::ExtractControlPoints(colorTablePreset);
+  if(colorControls.invalid())
+  {
+    return {MakeErrorResult<OutputActions>(-12312, fmt::format("Color Table Preset '{}' is not a valid RGB preset.", colorTablePreset))};
+  }
+  if(scaleMode == 1 && (!std::isfinite(manualMinimum) || !std::isfinite(manualMaximum) || manualMinimum < 0.0 || manualMinimum >= manualMaximum))
+  {
+    return {MakeErrorResult<OutputActions>(-12313, fmt::format("Manual MUD range must have finite endpoints and satisfy 0 <= minimum < maximum; received [{}, {}].", manualMinimum, manualMaximum))};
+  }
+  if(writePng && outputPngPath.extension() != ".png")
+  {
+    return {MakeErrorResult<OutputActions>(-12314, fmt::format("Output PNG file '{}' has extension '{}'; use the '.png' extension.", outputPngPath.string(), outputPngPath.extension().string()))};
+  }
+
+  ebsdlib::ODFSectionConfiguration config;
+  // Image geometry XYZ corresponds to phi2, PHI, phi1; the borrowed values retain phi2-fastest storage.
+  config.grid.dimensions = {static_cast<usize>(nphi1), static_cast<usize>(nPHI), static_cast<usize>(nphi2)};
+  config.grid.originDeg = {0.0, 0.0, 0.0};
+  config.grid.spacingDeg = {binSize, binSize, binSize};
+  config.grid.laueOpsIndex = crystalStructure;
+  config.sectionCount = static_cast<usize>(sectionCount);
+  config.sectionsPerRow = static_cast<usize>(sectionsPerRow);
+  config.sectionWidth = sectionWidth;
+  config.scaleMode = scaleMode == 0 ? ebsdlib::ODFScaleMode::Automatic : ebsdlib::ODFScaleMode::Manual;
+  config.manualMinimumMUD = manualMinimum;
+  config.manualMaximumMUD = manualMaximum;
+  config.colorControlPoints = std::move(colorControls.value());
+  config.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
+  if(!deferredMetadata)
+  {
+    config.materialName = (*materialNames)[static_cast<usize>(selectedPhase)];
+  }
+  config.phaseNumber = selectedPhase;
+
+  const auto layout = ebsdlib::ComputeODFSectionLayout(config);
+  if(layout.pageWidth <= 0 || layout.pageHeight <= 0)
+  {
+    return {MakeErrorResult<OutputActions>(
+        -12315, fmt::format("ODF section layout is not representable for Section Width {}, Number of Sections {}, and Sections Per Row {}.", sectionWidth, sectionCount, sectionsPerRow))};
+  }
+
+  if(saveAsImageGeometry)
+  {
+    resultOutputActions.value().appendAction(
+        std::make_unique<CreateImageGeometryAction>(outputImageGeometryPath, CreateImageGeometryAction::DimensionType{static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1},
+                                                    CreateImageGeometryAction::OriginType{0.0F, 0.0F, 0.0F}, CreateImageGeometryAction::SpacingType{1.0F, 1.0F, 1.0F}, std::string{"Cell Data"}));
+    const DataPath rgbArrayPath = outputImageGeometryPath.createChildPath(std::string{"Cell Data"}).createChildPath(std::string{"ODF Sections RGB"});
+    resultOutputActions.value().appendAction(
+        std::make_unique<CreateArrayAction>(DataType::uint8, ShapeType{1, static_cast<usize>(layout.pageHeight), static_cast<usize>(layout.pageWidth)}, ShapeType{3}, rgbArrayPath));
+  }
+
+  if(!deferredMetadata)
+  {
+    const auto sectionAngles = ebsdlib::GenerateODFSectionAngles(crystalStructure, config.sectionCount);
+    preflightUpdatedValues.push_back({"Section Angles", fmt::format("{} degrees", fmt::join(sectionAngles, ", "))});
+    preflightUpdatedValues.push_back({"Material", config.materialName});
+    preflightUpdatedValues.push_back({"Laue Class", ebsdlib::LaueOps::GetLaueNames()[crystalStructure]});
+    preflightUpdatedValues.push_back({"Euler Plot Limits", fmt::format("phi1 < {}, PHI < {}, phi2 < {} degrees", limits.phi1MaxDeg, limits.phiMaxDeg, limits.phi2MaxDeg)});
+  }
+  preflightUpdatedValues.push_back({"Input Units", mtrsim::odf_metadata::UnitsToString(pOutputUnits)});
+  preflightUpdatedValues.push_back({"Rendered Units", "MUD"});
+  preflightUpdatedValues.push_back({"Full Grid Dimensions (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", nphi1, nPHI, nphi2)});
+  preflightUpdatedValues.push_back({"Full Grid Spacing (phi1, PHI, phi2)", fmt::format("{0}, {0}, {0} degrees", binSize)});
+  preflightUpdatedValues.push_back({"Section Layout", fmt::format("{} columns x {} rows", layout.columns, layout.rows)});
+  preflightUpdatedValues.push_back(
+      {"Composite Dimensions", deferredMetadata ? fmt::format("{} x {} pixels (conservative maximum estimate; exact dimensions are set during execution).", layout.pageWidth, layout.pageHeight) :
+                                                  fmt::format("{} x {} pixels", layout.pageWidth, layout.pageHeight)});
+  preflightUpdatedValues.push_back({"Scale Mode", scaleMode == 0 ? std::string{"Automatic"} : fmt::format("Manual: [{}, {}] MUD", manualMinimum, manualMaximum)});
+
   return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
 }
 
@@ -496,7 +627,33 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
     inputValues.nphi1 = static_cast<int32_t>(existingGeom.getNumZCells());
   }
 
-  return ComputeODF(dataStructure, messageHandler, shouldCancel, &inputValues)();
+  auto result = ComputeODF(dataStructure, messageHandler, shouldCancel, &inputValues)();
+  if(result.invalid() || shouldCancel || (!filterArgs.value<bool>(k_WritePng_Key) && !filterArgs.value<bool>(k_SaveAsImageGeometry_Key)))
+  {
+    return result;
+  }
+
+  GenerateODFSectionsInputValues presentationValues;
+  presentationValues.inputImageGeometryPath = inputValues.outputImageGeometry;
+  presentationValues.odfArrayPath = inputValues.outputImageGeometry.createChildPath(inputValues.cellAttrMatName).createChildPath(inputValues.componentName);
+  presentationValues.units = inputValues.outputUnits == 0 ? ebsdlib::ODFValueUnits::CountDensity : ebsdlib::ODFValueUnits::MUD;
+  presentationValues.phaseIndex = inputValues.selectedPhase;
+  presentationValues.crystalStructure = dataStructure.getDataRefAs<UInt32Array>(inputValues.crystalStructuresPath)[static_cast<usize>(inputValues.selectedPhase)];
+  presentationValues.materialName = dataStructure.getDataRefAs<StringArray>(filterArgs.value<DataPath>(k_MaterialNames_Key))[static_cast<usize>(inputValues.selectedPhase)];
+  presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
+  presentationValues.numberOfSections = filterArgs.value<int32>(k_NumSections_Key);
+  presentationValues.sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
+  presentationValues.sectionWidth = filterArgs.value<int32>(k_SectionWidth_Key);
+  presentationValues.colorTablePreset = filterArgs.value<CreateColorMapParameter::ValueType>(k_ColorTablePreset_Key);
+  presentationValues.scaleMode = filterArgs.value<ChoicesParameter::ValueType>(k_ScaleMode_Key) == 0 ? ebsdlib::ODFScaleMode::Automatic : ebsdlib::ODFScaleMode::Manual;
+  presentationValues.manualMinimumMUD = filterArgs.value<float64>(k_ManualMinimum_Key);
+  presentationValues.manualMaximumMUD = filterArgs.value<float64>(k_ManualMaximum_Key);
+  presentationValues.writePng = filterArgs.value<bool>(k_WritePng_Key);
+  presentationValues.outputPngPath = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputPngPath_Key);
+  presentationValues.saveAsImageGeometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
+  presentationValues.outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
+
+  return MergeResults(std::move(result), GenerateODFSections(dataStructure, messageHandler, shouldCancel, &presentationValues)());
 }
 
 //------------------------------------------------------------------------------

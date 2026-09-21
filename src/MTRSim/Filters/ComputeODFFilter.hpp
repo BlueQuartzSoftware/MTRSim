@@ -23,6 +23,9 @@ namespace nx::core
  * component to a user-selected existing ImageGeom's cell AttributeMatrix. In
  * this mode the bin size is derived from the existing geometry's (uniform)
  * spacing.
+ *
+ * Optional presentation creates standard constant-phi2 sections as an RGB geometry or an atomic PNG file.
+ * Both presentation outputs use MUD, with conversion from Count-Density when necessary.
  */
 class MTRSIM_EXPORT ComputeODFFilter : public IFilter
 {
@@ -58,6 +61,55 @@ public:
   static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
   static constexpr StringLiteral k_ExistingOdfGeometry_Key = "existing_odf_geometry_path";
   static constexpr StringLiteral k_ComponentName_Key = "component_name";
+
+  /**
+   * @brief Defines the optional section presentation title.
+   */
+  static constexpr StringLiteral k_Title_Key = "title";
+  /**
+   * @brief Selects the number of constant-phi2 panels.
+   */
+  static constexpr StringLiteral k_NumSections_Key = "number_of_sections";
+  /**
+   * @brief Selects the panel count in each row.
+   */
+  static constexpr StringLiteral k_SectionsPerRow_Key = "sections_per_row";
+  /**
+   * @brief Selects each panel width in pixels.
+   */
+  static constexpr StringLiteral k_SectionWidth_Key = "section_width";
+  /**
+   * @brief Selects the RGB preset for the shared MUD scale.
+   */
+  static constexpr StringLiteral k_ColorTablePreset_Key = "color_table_preset";
+  /**
+   * @brief Selects automatic or manual MUD limits.
+   */
+  static constexpr StringLiteral k_ScaleMode_Key = "scale_mode_index";
+  /**
+   * @brief Sets the lower manual MUD limit.
+   */
+  static constexpr StringLiteral k_ManualMinimum_Key = "manual_minimum_mud";
+  /**
+   * @brief Sets the upper manual MUD limit.
+   */
+  static constexpr StringLiteral k_ManualMaximum_Key = "manual_maximum_mud";
+  /**
+   * @brief Enables atomic PNG output.
+   */
+  static constexpr StringLiteral k_WritePng_Key = "write_png";
+  /**
+   * @brief Selects the PNG destination.
+   */
+  static constexpr StringLiteral k_OutputPngPath_Key = "output_png_file";
+  /**
+   * @brief Enables RGB presentation geometry output.
+   */
+  static constexpr StringLiteral k_SaveAsImageGeometry_Key = "save_as_image_geometry";
+  /**
+   * @brief Selects the RGB presentation geometry path.
+   */
+  static constexpr StringLiteral k_OutputPresentationGeometry_Key = "output_presentation_geometry";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -97,7 +149,7 @@ public:
   std::vector<std::string> defaultTags() const override;
 
   /**
-   * @brief Defines the selected phase, input arrays, and ODF output settings.
+   * @brief Defines the selected phase, input arrays, and numeric and presentation outputs.
    * @return Parameters and their visibility links.
    */
   Parameters parameters() const override;
