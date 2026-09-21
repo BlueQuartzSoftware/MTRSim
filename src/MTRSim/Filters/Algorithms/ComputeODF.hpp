@@ -12,8 +12,13 @@
 namespace nx::core
 {
 
+/**
+ * @struct ComputeODFInputValues
+ * @brief Supplies the selected phase, input paths, and full Euler-grid settings.
+ */
 struct MTRSIM_EXPORT ComputeODFInputValues
 {
+  int32_t selectedPhase = 1;
   bool applySmoothing;
   double binSizeDeg;
   bool useMask;
@@ -51,6 +56,10 @@ public:
   ComputeODF& operator=(const ComputeODF&) = delete;
   ComputeODF& operator=(ComputeODF&&) noexcept = delete;
 
+  /**
+   * @brief Accumulates the selected phase and writes the normalized full-grid ODF.
+   * @return Error for invalid selected crystal metadata or output shape; warning for failed orientation expansions.
+   */
   Result<> operator()();
 
 private:

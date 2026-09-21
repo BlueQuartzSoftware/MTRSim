@@ -250,7 +250,8 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Float32 fractional spacing agrees wit
   REQUIRE(geometry != nullptr);
   geometry->setDimensions({2 * phiCount, phiCount, 2 * phiCount});
   geometry->setSpacing({spacing, spacing, spacing});
-  geometry->getCellData()->resizeTuples({2 * phiCount, phiCount, 2 * phiCount});
+  const auto resized = geometry->getCellData()->resizeTuples({2 * phiCount, phiCount, 2 * phiCount});
+  SIMPLNX_RESULT_REQUIRE_VALID(resized);
   WriteODFSectionsFilter filter;
   const auto valid = filter.preflight(data, ExecutionArguments());
   SIMPLNX_RESULT_REQUIRE_VALID(valid.outputActions);
@@ -784,6 +785,8 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Compute ODF produces six HCP sections
   computeArgs.insertOrAssign(ComputeODFFilter::k_EulerAngles_Key, DataPath({"Input Cells", "Euler Angles"}));
   computeArgs.insertOrAssign(ComputeODFFilter::k_Phases_Key, DataPath({"Input Cells", "Phases"}));
   computeArgs.insertOrAssign(ComputeODFFilter::k_CrystalStructures_Key, k_CrystalStructuresPath);
+  computeArgs.insertOrAssign(ComputeODFFilter::k_MaterialNames_Key, k_MaterialNamesPath);
+  computeArgs.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
   computeArgs.insertOrAssign(ComputeODFFilter::k_UseMask_Key, false);
   computeArgs.insertOrAssign(ComputeODFFilter::k_ApplySmoothing_Key, true);
   computeArgs.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, binSize);
@@ -833,10 +836,13 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata preflight uses a co
   SECTION("Empty in-memory store")
   {
   }
-  SECTION("Empty out-of-core store")
+  SECTION("Explicit empty store")
   {
-    crystals->setDataStore(std::make_shared<EmptyDataStore<uint32>>(ShapeType{2}, ShapeType{1}, "deferred-test"));
-    REQUIRE(crystals->getIDataStoreRef().getStoreType() == IDataStore::StoreType::EmptyOutOfCore);
+    auto emptyStore = EmptyDataStore<uint32>::Create(ShapeType{2}, ShapeType{1}, "");
+    SIMPLNX_RESULT_REQUIRE_VALID(emptyStore);
+    const auto replaced = crystals->setDataStore(std::move(emptyStore.value()));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
+    REQUIRE(crystals->getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty);
   }
   IFilter::PreflightResult preflight;
   REQUIRE_NOTHROW(preflight = WriteODFSectionsFilter{}.preflight(data, ExecutionArguments()));
@@ -873,7 +879,8 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata execution shrinks t
   REQUIRE(geometry->getDimensions() == SizeVec3{628, 270, 1});
   auto* crystals = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
   REQUIRE(crystals != nullptr);
-  crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::UnknownCrystalStructure));
+  const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::UnknownCrystalStructure));
+  SIMPLNX_RESULT_REQUIRE_VALID(replaced);
   (*crystals)[1] = ebsdlib::CrystalStructure::Hexagonal_High;
   auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
   REQUIRE(names != nullptr);
@@ -920,31 +927,38 @@ TEST_CASE("MTRSim::WriteODFSectionsFilter: Deferred metadata execution rejects m
   {
     expectedFragment = "not available";
   }
-  SECTION("Still empty out-of-core")
+  SECTION("Still explicitly empty")
   {
-    crystals->setDataStore(std::make_shared<EmptyDataStore<uint32>>(ShapeType{2}, ShapeType{1}, "deferred-test"));
+    auto emptyStore = EmptyDataStore<uint32>::Create(ShapeType{2}, ShapeType{1}, "");
+    SIMPLNX_RESULT_REQUIRE_VALID(emptyStore);
+    const auto replaced = crystals->setDataStore(std::move(emptyStore.value()));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
     expectedFragment = "not available";
   }
   SECTION("Unknown crystal structure after materialization")
   {
-    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, uint32{999}));
+    const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, uint32{999}));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
     expectedFragment = "999";
   }
   SECTION("Phase zero after materialization")
   {
-    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
     values.phaseIndex = 0;
     expectedFragment = "Phase Index (0)";
   }
   SECTION("Phase outside materialized tuple range")
   {
-    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
     values.phaseIndex = 2;
     expectedFragment = "Phase Index (2)";
   }
   SECTION("Materialized ensemble tuple counts differ")
   {
-    crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{3}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{3}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+    SIMPLNX_RESULT_REQUIRE_VALID(replaced);
     expectedFragment = "contains 3 tuples";
   }
   const std::atomic_bool cancel = false;

@@ -210,7 +210,7 @@ IFilter::PreflightResult WriteODFSectionsFilter::preflightImpl(const DataStructu
   }
 
   const auto metadataStoreType = crystalStructures.getIDataStoreRef().getStoreType();
-  const bool deferredMetadata = metadataStoreType == IDataStore::StoreType::Empty || metadataStoreType == IDataStore::StoreType::EmptyOutOfCore;
+  const bool deferredMetadata = metadataStoreType == IDataStore::StoreType::Empty;
   // Upstream preflight actions provide tuple shapes but no phase values. Triclinic bounds give the largest page.
   const uint32 crystalStructure = deferredMetadata ? ebsdlib::CrystalStructure::Triclinic : crystalStructures[static_cast<usize>(phaseIndex)];
   const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);

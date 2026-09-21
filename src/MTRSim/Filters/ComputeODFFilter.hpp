@@ -11,14 +11,15 @@ namespace nx::core
 /**
  * @class ComputeODFFilter
  * @brief Builds an Orientation Distribution Function (ODF) from per-voxel EBSD
- * Euler angles, phase labels, and per-phase crystal-structure codes. The result
+ * Euler angles for one selected phase and its crystal-structure code. The result
  * is a Float64 single-component cell-data array on an ImageGeom whose (X, Y, Z)
  * axes map to (phi2, PHI, phi1) in degrees.
  *
- * Supports two output modes (Milestone AJ, Task 7):
- *   - "Create New ODF Geometry" (T7a): create a new ImageGeom + cell
+ * Each component has a one-tuple StringArray under the geometry's ODF Metadata group that records its units.
+ * Supports two output modes:
+ *   - "Create New ODF Geometry": create a new ImageGeom + cell
  * AttributeMatrix + Float64 ODF component.
- *   - "Append to Existing ODF Geometry" (T7b): append a new Float64 ODF
+ *   - "Append to Existing ODF Geometry": append a new Float64 ODF
  * component to a user-selected existing ImageGeom's cell AttributeMatrix. In
  * this mode the bin size is derived from the existing geometry's (uniform)
  * spacing.
@@ -41,6 +42,14 @@ public:
   static constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
   static constexpr StringLiteral k_Phases_Key = "phases_path";
   static constexpr StringLiteral k_CrystalStructures_Key = "crystal_structures_path";
+  /**
+   * @brief Selects the ensemble StringArray with one material name per phase.
+   */
+  static constexpr StringLiteral k_MaterialNames_Key = "material_names_path";
+  /**
+   * @brief Selects the positive ensemble index that contributes to the ODF.
+   */
+  static constexpr StringLiteral k_PhaseIndex_Key = "phase_index";
   static constexpr StringLiteral k_UseMask_Key = "use_mask";
   static constexpr StringLiteral k_Mask_Key = "mask_path";
   static constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
@@ -88,16 +97,14 @@ public:
   std::vector<std::string> defaultTags() const override;
 
   /**
-   * @brief Returns the parameters of the filter (i.e. its inputs)
-   * @return
+   * @brief Defines the selected phase, input arrays, and ODF output settings.
+   * @return Parameters and their visibility links.
    */
   Parameters parameters() const override;
 
   /**
-   * @brief Returns parameters version integer.
-   * Initial version should always be 1.
-   * Should be incremented everytime the parameters change.
-   * @return VersionType
+   * @brief Identifies the serialized parameter schema.
+   * @return Current schema version.
    */
   VersionType parametersVersion() const override;
 
@@ -120,8 +127,7 @@ protected:
    * @param messageHandler The MessageHandler object
    * @param shouldCancel Atomic boolean value that can be checked to cancel the
    * filter
-   * @param executionContext The ExecutionContext that can be used to determine
-   * the correct absolute path from a relative path
+   * @param executionContext Resolves relative paths for the pipeline.
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */
@@ -139,8 +145,7 @@ protected:
    * @param messageHandler The MessageHandler object
    * @param shouldCancel Atomic boolean value that can be checked to cancel the
    * filter
-   * @param executionContext The ExecutionContext that can be used to determine
-   * the correct absolute path from a relative path
+   * @param executionContext Resolves relative paths for the pipeline.
    * @return Returns a Result object with error or warning values if any of
    * those occurred during execution of this function
    */

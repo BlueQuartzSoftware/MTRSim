@@ -75,7 +75,7 @@ Result<> WriteODFSections::operator()()
                                                ensembleTupleCount == 0 ? 0 : ensembleTupleCount - 1, values.crystalStructuresPath.toString(), values.materialNamesPath.toString()));
   }
   const auto metadataStoreType = crystalStructures.getIDataStoreRef().getStoreType();
-  if(metadataStoreType == IDataStore::StoreType::Empty || metadataStoreType == IDataStore::StoreType::EmptyOutOfCore)
+  if(metadataStoreType == IDataStore::StoreType::Empty)
   {
     return MakeErrorResult(-12323, fmt::format("Crystal Structures '{}' values for phase {} are not available during execution of ODF '{}'. Execute the upstream phase-data reader first.",
                                                values.crystalStructuresPath.toString(), values.phaseIndex, values.odfArrayPath.toString()));
@@ -167,7 +167,11 @@ Result<> WriteODFSections::operator()()
     const ShapeType tupleShape = {1, static_cast<usize>(result.height), static_cast<usize>(result.width)};
     if(cellData.getShape() != tupleShape)
     {
-      cellData.resizeTuples(tupleShape);
+      auto resizeResult = cellData.resizeTuples(tupleShape);
+      if(resizeResult.invalid())
+      {
+        return resizeResult;
+      }
     }
     const auto rgbPath = values.outputImageGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
     auto& outputRgb = m_DataStructure.getDataRefAs<UInt8Array>(rgbPath);

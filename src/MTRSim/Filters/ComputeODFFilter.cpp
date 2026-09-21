@@ -1,20 +1,29 @@
 #include "ComputeODFFilter.hpp"
 
 #include "MTRSim/Filters/Algorithms/ComputeODF.hpp"
+#include "MTRSim/Filters/ODFMetadata.hpp"
 
+#include "simplnx/DataStructure/DataArray.hpp"
+#include "simplnx/DataStructure/DataGroup.hpp"
 #include "simplnx/DataStructure/DataPath.hpp"
 #include "simplnx/DataStructure/Geometry/IGeometry.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/IDataArray.hpp"
+#include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Filter/Actions/CreateArrayAction.hpp"
+#include "simplnx/Filter/Actions/CreateDataGroupAction.hpp"
 #include "simplnx/Filter/Actions/CreateImageGeometryAction.hpp"
+#include "simplnx/Filter/Actions/CreateStringArrayAction.hpp"
 #include "simplnx/Parameters/ArraySelectionParameter.hpp"
 #include "simplnx/Parameters/BoolParameter.hpp"
 #include "simplnx/Parameters/ChoicesParameter.hpp"
 #include "simplnx/Parameters/DataGroupCreationParameter.hpp"
 #include "simplnx/Parameters/DataObjectNameParameter.hpp"
+#include "simplnx/Parameters/DataPathSelectionParameter.hpp"
 #include "simplnx/Parameters/GeometrySelectionParameter.hpp"
 #include "simplnx/Parameters/NumberParameter.hpp"
+
+#include <EbsdLib/LaueOps/LaueOps.h>
 
 #include <fmt/format.h>
 
@@ -62,6 +71,7 @@ Parameters ComputeODFFilter::parameters() const
   Parameters params;
 
   params.insertSeparator(Parameters::Separator{"Input Parameter(s)"});
+  params.insert(std::make_unique<Int32Parameter>(k_PhaseIndex_Key, "Phase Index", "Positive ensemble index of the phase to include in the ODF. All other phase labels are excluded.", 1));
   params.insert(std::make_unique<BoolParameter>(k_ApplySmoothing_Key, "Apply Smoothing",
                                                 "When true, each symmetric Euler tuple is distributed across 27 bins (1 "
                                                 "center + 6 faces + 12 edges + 8 corners) using "
@@ -95,10 +105,8 @@ Parameters ComputeODFFilter::parameters() const
                                                           DataPath{}, ArraySelectionParameter::AllowedTypes{DataType::int32}, ArraySelectionParameter::AllowedComponentShapes{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Optional Input Cell Data"});
-  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_UseMask_Key, "Use Mask Array",
-                                                                 "When enabled, only voxels where the selected mask is true (and phase != "
-                                                                 "0) contribute to the ODF.",
-                                                                 false));
+  params.insertLinkableParameter(
+      std::make_unique<BoolParameter>(k_UseMask_Key, "Use Mask Array", "When enabled, only voxels of the selected phase where the mask is true contribute to the ODF.", false));
   params.insert(std::make_unique<ArraySelectionParameter>(k_Mask_Key, "Mask",
                                                           "Per-voxel boolean mask. Must be a 1-component Bool array on the same "
                                                           "AttributeMatrix as the Euler angles. Only "
@@ -106,6 +114,7 @@ Parameters ComputeODFFilter::parameters() const
                                                           DataPath{}, ArraySelectionParameter::AllowedTypes{DataType::boolean, DataType::uint8}, ArraySelectionParameter::AllowedComponentShapes{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Required Input Ensemble Data"});
+  params.insert(std::make_unique<DataPathSelectionParameter>(k_MaterialNames_Key, "Material Names", "StringArray with one material name per ensemble tuple, indexed by phase label.", DataPath{}));
   params.insert(std::make_unique<ArraySelectionParameter>(k_CrystalStructures_Key, "Crystal Structures",
                                                           "Per-phase EbsdLib crystal-structure code (e.g. 0 = Hexagonal_High, 1 = "
                                                           "Cubic_High). Must be a 1-component "
@@ -152,7 +161,7 @@ Parameters ComputeODFFilter::parameters() const
 //------------------------------------------------------------------------------
 IFilter::VersionType ComputeODFFilter::parametersVersion() const
 {
-  return 3;
+  return 4;
 }
 
 //------------------------------------------------------------------------------
@@ -172,6 +181,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   auto pEulerAnglesPath = filterArgs.value<DataPath>(k_EulerAngles_Key);
   auto pPhasesPath = filterArgs.value<DataPath>(k_Phases_Key);
   auto pCrystalStructuresPath = filterArgs.value<DataPath>(k_CrystalStructures_Key);
+  const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNames_Key);
+  const int32 selectedPhase = filterArgs.value<int32>(k_PhaseIndex_Key);
   auto pUseMask = filterArgs.value<bool>(k_UseMask_Key);
   auto pMaskPath = filterArgs.value<DataPath>(k_Mask_Key);
   auto pOutputImageGeomPath = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
@@ -184,10 +195,37 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   nx::core::Result<OutputActions> resultOutputActions;
   std::vector<PreflightValue> preflightUpdatedValues;
 
-  // 1. Determine bin size (& derived dims). In Create New mode we validate the
-  // user's input;
-  //    in Append mode we derive from the existing geometry's (uniform) spacing
-  //    and silently ignore the user's bin_size_deg input.
+  const auto& crystalStructures = dataStructure.getDataRefAs<UInt32Array>(pCrystalStructuresPath);
+  const auto* materialNames = dataStructure.getDataAs<StringArray>(materialNamesPath);
+  if(materialNames == nullptr)
+  {
+    return {MakeErrorResult<OutputActions>(-12214, fmt::format("Material Names path '{}' must select a StringArray; the selected object has a different type.", materialNamesPath.toString()))};
+  }
+  const usize ensembleCount = crystalStructures.getNumberOfTuples();
+  if(materialNames->getNumberOfTuples() != ensembleCount)
+  {
+    return {
+        MakeErrorResult<OutputActions>(-12215, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. Select arrays with equal ensemble tuple counts.",
+                                                           pCrystalStructuresPath.toString(), ensembleCount, materialNamesPath.toString(), materialNames->getNumberOfTuples()))};
+  }
+  if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= ensembleCount)
+  {
+    return {MakeErrorResult<OutputActions>(-12216, fmt::format("Phase Index ({}) must be positive and less than the ensemble tuple count ({}) in '{}' and '{}'.", selectedPhase, ensembleCount,
+                                                               pCrystalStructuresPath.toString(), materialNamesPath.toString()))};
+  }
+  // Preflight placeholders expose tuple counts but do not provide crystal values.
+  if(crystalStructures.getIDataStoreRef().getStoreType() != IDataStore::StoreType::Empty)
+  {
+    const uint32 crystalCode = crystalStructures[static_cast<usize>(selectedPhase)];
+    const auto allOps = ebsdlib::LaueOps::GetAllOrientationOps();
+    if(crystalCode >= allOps.size() || allOps[crystalCode] == nullptr)
+    {
+      return {MakeErrorResult<OutputActions>(-12217, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase {}. Select a code from 0 through {}.",
+                                                                 pCrystalStructuresPath.toString(), crystalCode, selectedPhase, allOps.size() - 1))};
+    }
+  }
+
+  // Create mode uses the requested bin size. Append mode derives the bin size from the existing geometry's uniform spacing.
   double binSize = 0.0;
   int32_t nphi1 = 0;
   int32_t nPHI = 0;
@@ -249,7 +287,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     nPHI = static_cast<int32_t>(existingGeom->getNumYCells());
     nphi1 = static_cast<int32_t>(existingGeom->getNumZCells());
 
-    // Defense-in-depth: reject existing geometries whose dims don't match the
+    // Defense-in-depth: reject existing geometries whose dims do not match the
     // 360/binSize (phi1, phi2) and 180/binSize (PHI) integer-divisor
     // constraints. Catches both zero-sized axes and mismatched shape/spacing
     // combinations (e.g. dims 100x50x100 with spacing 5.0 deg).
@@ -332,7 +370,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   else
   {
     // Append mode: discover the existing geometry's cell AttributeMatrix via
-    // getCellData()/getCellDataPath(). getCellDataPath() throws if there's no
+    // getCellData()/getCellDataPath(). getCellDataPath() throws if there is no
     // cell-data AttributeMatrix assigned, so use the nullable accessor first
     // and fail gracefully with an error code instead.
     const auto& existingGeom = dataStructure.getDataRefAs<ImageGeom>(pExistingOdfGeomPath);
@@ -356,6 +394,19 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     }
   }
 
+  const DataPath metadataGroupPath = targetImageGeomPath.createChildPath(mtrsim::odf_metadata::k_GroupName.str());
+  const DataPath unitsPath = mtrsim::odf_metadata::CreateUnitsPath(targetImageGeomPath, pComponentName);
+  const auto* metadataObject = dataStructure.getData(metadataGroupPath);
+  if((!isAppendMode && cellAttrMatPath == metadataGroupPath) || (metadataObject != nullptr && dataStructure.getDataAs<DataGroup>(metadataGroupPath) == nullptr))
+  {
+    return {MakeErrorResult<OutputActions>(
+        -12218, fmt::format("ODF metadata path '{}' must be a DataGroup. Choose a different cell Attribute Matrix name or remove the conflicting object.", metadataGroupPath.toString()))};
+  }
+  if(dataStructure.getData(unitsPath) != nullptr)
+  {
+    return {MakeErrorResult<OutputActions>(-12219, fmt::format("ODF units metadata '{}' already exists. Choose a different component name.", unitsPath.toString()))};
+  }
+
   // 5. Output actions.
   if(!isAppendMode)
   {
@@ -375,6 +426,12 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     resultOutputActions.value().appendAction(std::move(createArrayAction));
   }
 
+  if(metadataObject == nullptr)
+  {
+    resultOutputActions.value().appendAction(std::make_unique<CreateDataGroupAction>(metadataGroupPath));
+  }
+  resultOutputActions.value().appendAction(std::make_unique<CreateStringArrayAction>(std::vector<usize>{1}, unitsPath, mtrsim::odf_metadata::UnitsToString(pOutputUnits)));
+
   // 6. PreflightUpdatedValues so the UI can preview the dims/settings.
   const std::string binSizeLabel = binSizeIsDerived ? fmt::format("{:.4f} (derived from existing geometry; user input ignored)", binSize) : fmt::format("{:.4f}", binSize);
   preflightUpdatedValues.push_back({"Output Mode", isAppendMode ? std::string{"Append to Existing ODF Geometry"} : std::string{"Create New ODF Geometry"}});
@@ -386,6 +443,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   preflightUpdatedValues.push_back({"Smoothing", pApplySmoothing ? std::string{"enabled"} : std::string{"disabled"}});
   preflightUpdatedValues.push_back({"Output Units", (pOutputUnits == 1ULL) ? std::string{"MUD (Jacobian sin(PHI) applied)"} : std::string{"Count-Density (raw histogram)"}});
   preflightUpdatedValues.push_back({"Mask", pUseMask ? pMaskPath.toString() : std::string{"(none)"}});
+  preflightUpdatedValues.push_back({"Selected Phase", std::to_string(selectedPhase)});
 
   return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
 }
@@ -399,6 +457,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
 
   ComputeODFInputValues inputValues;
 
+  inputValues.selectedPhase = filterArgs.value<int32>(k_PhaseIndex_Key);
   inputValues.applySmoothing = filterArgs.value<bool>(k_ApplySmoothing_Key);
   inputValues.outputUnits = filterArgs.value<ChoicesParameter::ValueType>(k_OutputUnits_Key);
   inputValues.useMask = filterArgs.value<bool>(k_UseMask_Key);
@@ -414,7 +473,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
     inputValues.outputImageGeometry = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
     inputValues.cellAttrMatName = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
 
-    // Pre-compute axis dims here so the algorithm doesn't have to repeat it.
+    // Pre-compute axis dims here so the algorithm does not have to repeat it.
     // Preflight has already validated that binSizeDeg cleanly divides 360 and
     // 180, so std::round is exact.
     inputValues.nphi1 = static_cast<int32_t>(std::round(360.0 / inputValues.binSizeDeg));
