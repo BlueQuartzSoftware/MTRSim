@@ -36,12 +36,12 @@ public:
   void updateProgress(int64_t done, int64_t total, const std::string& message) override
   {
     const int32 progress = (total > 0) ? static_cast<int32>(done * 100 / total) : 0;
-    m_MessageHandler(IFilter::Message::Type::Progress, message, progress);
+    m_MessageHandler.sendProgressMessage(message, progress);
   }
 
   void info(const std::string& message) override
   {
-    m_MessageHandler(IFilter::Message::Type::Info, message);
+    m_MessageHandler.sendInfoMessage(message);
   }
 
   [[nodiscard]] bool shouldCancel() const override
@@ -70,7 +70,7 @@ MTRSim::~MTRSim() noexcept = default;
 // -----------------------------------------------------------------------------
 Result<> MTRSim::operator()()
 {
-  m_MessageHandler(IFilter::Message::Type::Info, "Reading ODF geometry...");
+  m_MessageHandler.sendInfoMessage("Reading ODF geometry...");
 
   // 1. ODF grid geometry (degrees) from the input ODF ImageGeom.
   const auto& odfGeom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputOdfGeometryPath);
@@ -115,7 +115,7 @@ Result<> MTRSim::operator()()
   }
 
   // 4. Run simulation (SIMPLNX z,y,x order out).
-  m_MessageHandler(IFilter::Message::Type::Info, "Running MTR simulation (this may take a while for large volumes)...");
+  m_MessageHandler.sendInfoMessage("Running MTR simulation (this may take a while for large volumes)...");
   std::mt19937_64 rng(m_InputValues->seed);
   FilterObserver observer{m_MessageHandler, m_ShouldCancel};
   mtrsim::MTRSimResult sim;
@@ -148,11 +148,11 @@ Result<> MTRSim::operator()()
     eulerStore[i * 3 + 2] = static_cast<float>(sim.phi2[i]);
   }
 
-  m_MessageHandler(IFilter::Message::Type::Info, "MTR simulation complete.");
+  m_MessageHandler.sendInfoMessage("MTR simulation complete.");
 
   if(m_InputValues->generatePolarColoring)
   {
-    m_MessageHandler(IFilter::Message::Type::Info, "Computing polar coloring...");
+    m_MessageHandler.sendInfoMessage("Computing polar coloring...");
     auto colorResult = applyPolarColoring(sim, cellAm);
     if(colorResult.invalid())
     {

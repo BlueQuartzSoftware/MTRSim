@@ -2,8 +2,8 @@
 
 #include "MTRSim/Filters/Algorithms/GenerateODFSections.hpp"
 #include "MTRSim/Filters/ComputeODFFilter.hpp"
-#include "SimplnxCore/Filters/ReadImageFilter.hpp"
-#include "simplnx/DataStructure/EmptyStringStore.hpp"
+
+#include "ImageProcessing/Filters/ReadImageFilter.hpp"
 
 #include "EbsdLib/Core/EbsdLibConstants.h"
 #include "EbsdLib/Utilities/ODFSectionChrome.h"
@@ -12,6 +12,7 @@
 #include "simplnx/DataStructure/AttributeMatrix.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/DataStore.hpp"
+#include "simplnx/DataStructure/EmptyStringStore.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Filter/Actions/CreateArrayAction.hpp"
@@ -19,7 +20,6 @@
 #include "simplnx/Parameters/ChoicesParameter.hpp"
 #include "simplnx/Parameters/CreateColorMapParameter.hpp"
 #include "simplnx/Parameters/FileSystemPathParameter.hpp"
-
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 #include "simplnx/Utilities/DataStoreUtilities.hpp"
 

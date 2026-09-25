@@ -25,12 +25,14 @@ create_simplnx_plugin_unit_test(PLUGIN_NAME ${PLUGIN_NAME}
 # can use the target_link_libraries() cmake call
 # target_link_libraries(${PLUGIN_NAME}UnitTest PUBLIC [name of library])
 
-# Realistic-data validation test (ComputeODFTest.cpp's [validation]-tagged
-# test) loads data/real_world_microtexture_data.dream3d through SimplnxCore's
-# ReadDREAM3DFilter, so we need its headers + link.
-target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore ${PLUGIN_NAME})
+# ComputeODFTest uses SimplnxCore's ReadDREAM3DFilter for validation data.
+# ComputeODFPresentationTest uses ImageProcessing's ReadImageFilter to verify PNG output.
+target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore ImageProcessing ${PLUGIN_NAME})
 target_include_directories(${PLUGIN_NAME}UnitTest PRIVATE
   ${simplnx_SOURCE_DIR}/src/Plugins/SimplnxCore/src
+  ${simplnx_BINARY_DIR}/Plugins/SimplnxCore/generated
+  ${simplnx_SOURCE_DIR}/src/Plugins/ImageProcessing/src
+  ${simplnx_BINARY_DIR}/Plugins/ImageProcessing/generated
 )
 
 # ------------------------------------------------------------------------------

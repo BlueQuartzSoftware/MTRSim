@@ -25,6 +25,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -161,8 +162,15 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   auto preflightResult = filter.preflight(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
 
-  auto executeResult = filter.execute(dataStructure, args);
+  std::vector<IFilter::Message> messages;
+  const IFilter::MessageHandler handler{[&](const IFilter::Message& message) { messages.push_back(message); }};
+  auto executeResult = filter.execute(dataStructure, args, nullptr, handler);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  const auto progressMessage = std::find_if(messages.cbegin(), messages.cend(), [](const IFilter::Message& message) { return message.type == IFilter::Message::Type::Progress; });
+  REQUIRE(progressMessage != messages.cend());
+  REQUIRE(progressMessage->progress >= 0);
+  REQUIRE(progressMessage->progress <= 100);
 
   // Output ImageGeom exists.
   const DataPath outGeomPath({"MTR Microstructure"});

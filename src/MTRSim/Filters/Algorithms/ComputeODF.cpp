@@ -3,7 +3,6 @@
 #include "simplnx/Common/Range.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/Utilities/MaskCompareUtilities.hpp"
-#include "simplnx/Utilities/MessageHelper.hpp"
 #include "simplnx/Utilities/ParallelDataAlgorithm.hpp"
 
 #include "LibMTRSim/ODFBuilder.hpp"
@@ -19,7 +18,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <exception>
@@ -45,7 +43,7 @@ class AccumulateWorker
 public:
   AccumulateWorker(const Float32Array& eulers, const Int32Array& phases, const UInt32Array& crystalStructures, int32 selectedPhase, const MaskCompareUtilities::MaskCompare* mask,
                    const mtrsim::ODFBuildParams& params, std::vector<double>& masterValues, std::size_t& masterContributingCount, std::size_t& masterTotalDeposits, std::size_t& masterFailureCount,
-                   std::mutex& mergeMutex, const std::atomic_bool& shouldCancel, ProgressMessageHelper& progressHelper)
+                   std::mutex& mergeMutex, const std::atomic_bool& shouldCancel, ComputeODF* algorithm)
   : m_Eulers(eulers)
   , m_Phases(phases)
   , m_CrystalStructures(crystalStructures)
@@ -58,7 +56,7 @@ public:
   , m_MasterFailureCount(masterFailureCount)
   , m_MergeMutex(mergeMutex)
   , m_ShouldCancel(shouldCancel)
-  , m_ProgressHelper(progressHelper)
+  , m_Algorithm(algorithm)
   {
   }
 
@@ -75,7 +73,16 @@ public:
     std::size_t localTotalDeposits = 0;
     std::size_t localFailures = 0;
 
-    auto progressMessenger = m_ProgressHelper.createProgressMessenger(std::chrono::milliseconds(500));
+    const std::size_t progressIncrement = std::max((range.max() - range.min()) / 100, std::size_t{1});
+    std::size_t pendingProgress = 0;
+    const auto reportProgress = [&]() {
+      pendingProgress++;
+      if(pendingProgress >= progressIncrement)
+      {
+        m_Algorithm->sendThreadSafeProgressMessage(pendingProgress);
+        pendingProgress = 0;
+      }
+    };
     const std::size_t crystalStructTuples = m_CrystalStructures.getNumberOfTuples();
 
     // Per-thread cache of EbsdLib's LaueOps table. The vector is cheap to copy
@@ -99,12 +106,12 @@ public:
       const int32 phase = m_Phases[i];
       if(phase != m_SelectedPhase || (m_Mask != nullptr && !m_Mask->isTrue(i)))
       {
-        progressMessenger.sendProgressMessage(1);
+        reportProgress();
         continue;
       }
       if(phase <= 0 || static_cast<std::size_t>(phase) >= crystalStructTuples)
       {
-        progressMessenger.sendProgressMessage(1);
+        reportProgress();
         continue;
       }
 
@@ -112,7 +119,7 @@ public:
       if(code >= allOps.size() || allOps[code] == nullptr)
       {
         ++localFailures;
-        progressMessenger.sendProgressMessage(1);
+        reportProgress();
         continue;
       }
       const ebsdlib::LaueOps::Pointer laueOps = allOps[code];
@@ -154,12 +161,16 @@ public:
         // mode). Counted but skipped — the master merger surfaces a warning if
         // any failures occurred.
         ++localFailures;
-        progressMessenger.sendProgressMessage(1);
+        reportProgress();
         continue;
       }
       ++localContributing;
       localTotalDeposits += deposits;
-      progressMessenger.sendProgressMessage(1);
+      reportProgress();
+    }
+    if(pendingProgress > 0)
+    {
+      m_Algorithm->sendThreadSafeProgressMessage(pendingProgress);
     }
 
     // Merge into master under a mutex.
@@ -188,7 +199,7 @@ private:
   std::size_t& m_MasterFailureCount;
   std::mutex& m_MergeMutex;
   const std::atomic_bool& m_ShouldCancel;
-  ProgressMessageHelper& m_ProgressHelper;
+  ComputeODF* m_Algorithm = nullptr;
 };
 
 } // namespace
@@ -199,11 +210,18 @@ ComputeODF::ComputeODF(DataStructure& dataStructure, const IFilter::MessageHandl
 , m_InputValues(inputValues)
 , m_ShouldCancel(shouldCancel)
 , m_MessageHandler(mesgHandler)
+, m_ProgressThrottle(m_MessageHandler)
 {
 }
 
 // -----------------------------------------------------------------------------
 ComputeODF::~ComputeODF() noexcept = default;
+
+void ComputeODF::sendThreadSafeProgressMessage(usize completedVoxels)
+{
+  const std::lock_guard<std::mutex> guard(m_ProgressMessageMutex);
+  m_ProgressThrottle.incrementPercent(completedVoxels, 1);
+}
 
 // -----------------------------------------------------------------------------
 Result<> ComputeODF::operator()()
@@ -264,18 +282,12 @@ Result<> ComputeODF::operator()()
 
   const std::size_t numVoxels = eulerAngles.getNumberOfTuples();
 
-  m_MessageHandler(IFilter::Message::Type::Info,
-                   fmt::format("Computing ODF for phase {} over {} voxels into {} bins ({} x {} x {}); "
-                               "smoothing = {}.",
-                               selectedPhase, numVoxels, binCount, m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2, m_InputValues->applySmoothing ? "enabled" : "disabled"));
+  m_MessageHandler.sendInfoMessage(fmt::format("Computing ODF for phase {} over {} voxels into {} bins ({} x {} x {}); "
+                                               "smoothing = {}.",
+                                               selectedPhase, numVoxels, binCount, m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2,
+                                               m_InputValues->applySmoothing ? "enabled" : "disabled"));
 
-  // Set up the message helper / progress messenger BEFORE the parallel section
-  // so the worker can stamp throttled per-voxel progress through its private
-  // ProgressMessenger.
-  MessageHelper messageHelper(m_MessageHandler);
-  auto progressHelper = messageHelper.createProgressMessageHelper();
-  progressHelper.setMaxProgresss(numVoxels);
-  progressHelper.setProgressMessageTemplate(fmt::format("Compute ODF for phase {}: {{:.1f}}%", selectedPhase));
+  m_ProgressThrottle.reset(numVoxels, fmt::format("Compute ODF for phase {}", selectedPhase));
 
   std::vector<double> masterValues(binCount, 0.0);
   std::size_t masterContributingCount = 0;
@@ -287,7 +299,7 @@ Result<> ComputeODF::operator()()
 
   if(numVoxels == 0)
   {
-    m_MessageHandler(IFilter::Message::Type::Info, "No input voxels — output ODF array left at all zeros.");
+    m_MessageHandler.sendInfoMessage("No input voxels — output ODF array left at all zeros.");
     std::copy(masterValues.begin(), masterValues.end(), outStore.begin());
     return {};
   }
@@ -295,7 +307,7 @@ Result<> ComputeODF::operator()()
   ParallelDataAlgorithm parallelAlgorithm;
   parallelAlgorithm.setRange(0, numVoxels);
   parallelAlgorithm.execute(AccumulateWorker(eulerAngles, phases, crystalStructures, selectedPhase, maskArray.get(), params, masterValues, masterContributingCount, masterTotalDeposits,
-                                             masterFailureCount, mergeMutex, m_ShouldCancel, progressHelper));
+                                             masterFailureCount, mergeMutex, m_ShouldCancel, this));
 
   if(m_ShouldCancel)
   {
@@ -315,7 +327,7 @@ Result<> ComputeODF::operator()()
   // guard for the "no voxels contributed" early-return path.
   if(masterContributingCount == 0)
   {
-    m_MessageHandler(IFilter::Message::Type::Warning, fmt::format("No unmasked voxels of phase {} contributed to the ODF. Output ODF values are all zero.", selectedPhase));
+    m_MessageHandler.sendWarningMessage(fmt::format("No unmasked voxels of phase {} contributed to the ODF. Output ODF values are all zero.", selectedPhase));
   }
   else
   {
@@ -345,16 +357,16 @@ Result<> ComputeODF::operator()()
         }
       }
     }
-    m_MessageHandler(IFilter::Message::Type::Info, "Output units: MUD (per-PHI-row sin(PHI) Jacobian applied).");
+    m_MessageHandler.sendInfoMessage("Output units: MUD (per-PHI-row sin(PHI) Jacobian applied).");
   }
   else
   {
-    m_MessageHandler(IFilter::Message::Type::Info, "Output units: Count-Density (raw normalized histogram).");
+    m_MessageHandler.sendInfoMessage("Output units: Count-Density (raw normalized histogram).");
   }
 
-  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("ODF accumulation for phase {} complete: {} voxel(s) "
-                                                             "contributed; copying values to output array.",
-                                                             selectedPhase, masterContributingCount));
+  m_MessageHandler.sendInfoMessage(fmt::format("ODF accumulation for phase {} complete: {} voxel(s) "
+                                               "contributed; copying values to output array.",
+                                               selectedPhase, masterContributingCount));
 
   // Bulk copy into the output Float64 store via iterators (matches the T2
   // polish convention).

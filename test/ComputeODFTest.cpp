@@ -41,6 +41,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
 #include <numbers>
 #include <optional>
 #include <string>
@@ -437,6 +438,37 @@ TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFF
   const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
   REQUIRE(sum == Approx(1.0).margin(1.0e-9));
   REQUIRE(nonZero >= 1);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Progress messages drive the numeric progress field", "[MTRSim][ComputeODFFilter][Messages]")
+{
+  std::vector<std::array<float32, 3>> eulers(4096, {10.0F, 20.0F, 30.0F});
+  std::vector<int32> phases(eulers.size(), 1);
+  EbsdInputs inputs = buildSyntheticEbsd(eulers, phases, k_HexagonalHigh);
+  Arguments args = makeBaseArgs(inputs, false, 5.0F);
+
+  std::mutex messagesMutex;
+  std::vector<IFilter::Message> messages;
+  const IFilter::MessageHandler handler{[&](const IFilter::Message& message) {
+    const std::lock_guard<std::mutex> lock(messagesMutex);
+    messages.push_back(message);
+  }};
+
+  ComputeODFFilter filter;
+  const auto executeResult = filter.execute(inputs.dataStructure, args, nullptr, handler);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  std::vector<IFilter::Message> progressMessages;
+  for(const auto& message : messages)
+  {
+    if(message.type == IFilter::Message::Type::Progress)
+    {
+      progressMessages.push_back(message);
+    }
+  }
+  REQUIRE_FALSE(progressMessages.empty());
+  REQUIRE(progressMessages.back().progress == 100);
+  REQUIRE(progressMessages.back().message.find("Compute ODF for phase 1") != std::string::npos);
 }
 
 TEST_CASE("MTRSim::ComputeODFFilter: Phase 0 voxels are skipped", "[MTRSim][ComputeODFFilter]")

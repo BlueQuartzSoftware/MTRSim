@@ -62,7 +62,7 @@ Result<> GenerateODFSections::operator()()
   }
   const auto& values = *m_InputValues;
   // Synchronous phase messages let the handler request cancellation before the next stage starts.
-  m_MessageHandler("Converting ODF values");
+  m_MessageHandler.sendInfoMessage("Converting ODF values");
   if(m_ShouldCancel)
   {
     return {};
@@ -110,7 +110,7 @@ Result<> GenerateODFSections::operator()()
   config.materialName = values.materialName;
   config.phaseNumber = values.phaseIndex;
 
-  m_MessageHandler("Composing ODF sections");
+  m_MessageHandler.sendInfoMessage("Composing ODF sections");
   if(m_ShouldCancel)
   {
     return {};
@@ -121,7 +121,7 @@ Result<> GenerateODFSections::operator()()
     return MakeErrorResult(-12321,
                            fmt::format("Could not render ODF '{}' for phase {}: {} (EbsdLib code {}).", values.odfArrayPath.toString(), values.phaseIndex, result.errorMessage, result.errorCode));
   }
-  m_MessageHandler(fmt::format("ODF section scale: minimum MUD = {}, maximum MUD = {}.", result.appliedMinimumMUD, result.appliedMaximumMUD));
+  m_MessageHandler.sendInfoMessage(fmt::format("ODF section scale: minimum MUD = {}, maximum MUD = {}.", result.appliedMinimumMUD, result.appliedMaximumMUD));
   if(m_ShouldCancel)
   {
     return {};
@@ -129,7 +129,7 @@ Result<> GenerateODFSections::operator()()
 
   if(values.saveAsImageGeometry)
   {
-    m_MessageHandler("Copying ODF section RGB pixels");
+    m_MessageHandler.sendInfoMessage("Copying ODF section RGB pixels");
     if(m_ShouldCancel)
     {
       return {};
@@ -168,7 +168,7 @@ Result<> GenerateODFSections::operator()()
   }
   if(values.writePng)
   {
-    m_MessageHandler("Writing ODF section PNG");
+    m_MessageHandler.sendInfoMessage("Writing ODF section PNG");
     if(m_ShouldCancel)
     {
       return {};

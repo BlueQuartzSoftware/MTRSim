@@ -27,7 +27,7 @@ ReadMTRSimODF::~ReadMTRSimODF() noexcept = default;
 // -----------------------------------------------------------------------------
 Result<> ReadMTRSimODF::operator()()
 {
-  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Reading MTRSim ODF file: {}", m_InputValues->inputFile.string()));
+  m_MessageHandler.sendInfoMessage(fmt::format("Reading MTRSim ODF file: {}", m_InputValues->inputFile.string()));
 
   std::vector<mtrsim::ODFFileComponent> components;
   try
@@ -62,7 +62,7 @@ Result<> ReadMTRSimODF::operator()()
                                                  c, store.getSize(), srcValues.size()));
     }
 
-    m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Copying component_{} ({} values)", c, srcValues.size()));
+    m_MessageHandler.sendInfoMessage(fmt::format("Copying component_{} ({} values)", c, srcValues.size()));
 
     std::copy(srcValues.begin(), srcValues.end(), store.begin());
   }

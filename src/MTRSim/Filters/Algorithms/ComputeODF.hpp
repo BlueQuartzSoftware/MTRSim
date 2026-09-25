@@ -5,8 +5,10 @@
 #include "simplnx/DataStructure/DataPath.hpp"
 #include "simplnx/DataStructure/DataStructure.hpp"
 #include "simplnx/Filter/IFilter.hpp"
+#include "simplnx/Utilities/ThrottledMessageHandler.hpp"
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 
 namespace nx::core
@@ -67,11 +69,21 @@ public:
    */
   Result<> operator()();
 
+  /**
+   * @brief Reports completed voxels through the shared progress throttle.
+   * @param completedVoxels Number of voxels completed since the previous call.
+   *
+   * The mutex serializes throttle updates from parallel accumulation workers.
+   */
+  void sendThreadSafeProgressMessage(usize completedVoxels);
+
 private:
   DataStructure& m_DataStructure;
   const ComputeODFInputValues* m_InputValues = nullptr;
   const std::atomic_bool& m_ShouldCancel;
   const IFilter::MessageHandler& m_MessageHandler;
+  mutable std::mutex m_ProgressMessageMutex;
+  ThrottledMessageHandler m_ProgressThrottle;
 };
 
 } // namespace nx::core

@@ -29,7 +29,7 @@ WriteMTRSimODF::~WriteMTRSimODF() noexcept = default;
 // -----------------------------------------------------------------------------
 Result<> WriteMTRSimODF::operator()()
 {
-  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Writing MTRSim ODF file: {}", m_InputValues->outputFile.string()));
+  m_MessageHandler.sendInfoMessage(fmt::format("Writing MTRSim ODF file: {}", m_InputValues->outputFile.string()));
 
   const auto& geom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputImageGeometry);
 
@@ -56,7 +56,7 @@ Result<> WriteMTRSimODF::operator()()
     const auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(m_InputValues->odfComponents[c]);
     const auto& store = componentArray.getDataStoreRef();
 
-    m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));
+    m_MessageHandler.sendInfoMessage(fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));
 
     mtrsim::ODFFileComponent comp;
     comp.values.assign(store.begin(), store.end());
