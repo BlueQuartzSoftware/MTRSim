@@ -54,7 +54,7 @@ public:
    */
   static constexpr StringLiteral k_PhaseIndex_Key = "phase_index";
   static constexpr StringLiteral k_UseMask_Key = "use_mask";
-  static constexpr StringLiteral k_Mask_Key = "mask_path";
+  static constexpr StringLiteral k_MaskArrayPath_Key = "mask_path";
   static constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
   static constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
   static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
@@ -65,7 +65,7 @@ public:
   /**
    * @brief Defines the optional section presentation title.
    */
-  static constexpr StringLiteral k_Title_Key = "title";
+  static constexpr StringLiteral k_ODF_Image_Title_Key = "odf_title";
   /**
    * @brief Selects the number of constant-phi2 panels.
    */

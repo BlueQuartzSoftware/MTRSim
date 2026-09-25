@@ -166,7 +166,7 @@ Arguments makeBaseArgs(const EbsdInputs& inputs, bool applySmoothing, float32 bi
   args.insertOrAssign(ComputeODFFilter::k_MaterialNames_Key, inputs.materialNamesPath);
   args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(false));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(DataPath{}));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(DataPath{}));
   args.insertOrAssign(ComputeODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(k_OutputGeomPath));
   args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(k_CellAttrMatName));
   args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<DataObjectNameParameter::ValueType>(k_ComponentName));
@@ -426,7 +426,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFF
 
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(true));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(inputs.maskPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(inputs.maskPath));
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.dataStructure, args);
@@ -638,7 +638,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Selected phase controls symmetry and masked
   auto args = makeBaseArgs(inputs, false, 5.0F);
   args.insertOrAssign("phase_index", selectedPhase);
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, useMask);
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, inputs.maskPath);
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, inputs.maskPath);
   const auto result = ComputeODFFilter().execute(inputs.dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(result.result);
   const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
@@ -1317,7 +1317,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   args.insertOrAssign(ComputeODFFilter::k_MaterialNames_Key, geomPath.createChildPath("CellEnsembleData").createChildPath("MaterialName"));
   args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(true));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(maskBoolPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(maskBoolPath));
   args.insertOrAssign(ComputeODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
   args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Cell Data"}));
   args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Component 1"}));

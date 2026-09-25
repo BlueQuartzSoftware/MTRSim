@@ -111,10 +111,10 @@ Parameters ComputeODFFilter::parameters() const
                                                           "AttributeMatrix as the Euler angles.",
                                                           DataPath{}, ArraySelectionParameter::AllowedTypes{DataType::int32}, ArraySelectionParameter::AllowedComponentShapes{{1}}));
 
-  params.insertSeparator(Parameters::Separator{"Optional Input Cell Data"});
+  params.insertSeparator(Parameters::Separator{"Optional Data Mask"});
   params.insertLinkableParameter(
       std::make_unique<BoolParameter>(k_UseMask_Key, "Use Mask Array", "When enabled, only voxels of the selected phase where the mask is true contribute to the ODF.", false));
-  params.insert(std::make_unique<ArraySelectionParameter>(k_Mask_Key, "Mask",
+  params.insert(std::make_unique<ArraySelectionParameter>(k_MaskArrayPath_Key, "Mask Array",
                                                           "Per-voxel boolean mask. Must be a 1-component Bool array on the same "
                                                           "AttributeMatrix as the Euler angles. Only "
                                                           "consulted when 'Use Mask Array' is enabled.",
@@ -156,17 +156,26 @@ Parameters ComputeODFFilter::parameters() const
                                                           "cell AttributeMatrix.",
                                                           "Component 1"));
 
-  params.linkParameters(k_UseMask_Key, k_Mask_Key, true);
+  params.linkParameters(k_UseMask_Key, k_MaskArrayPath_Key, true);
   params.linkParameters(k_OutputMode_Key, k_OutputImageGeometry_Key, std::make_any<ChoicesParameter::ValueType>(0ULL));
   params.linkParameters(k_OutputMode_Key, k_CellAttrMatName_Key, std::make_any<ChoicesParameter::ValueType>(0ULL));
   params.linkParameters(k_OutputMode_Key, k_BinSizeDeg_Key, std::make_any<ChoicesParameter::ValueType>(0ULL));
   params.linkParameters(k_OutputMode_Key, k_ExistingOdfGeometry_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
 
+  params.insertSeparator(Parameters::Separator{"Output Image Generation"});
+  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_WritePng_Key, "Write PNG", "Writes the ODF to a PNG file.", false));
+  params.insert(std::make_unique<FileSystemPathParameter>(k_OutputPngPath_Key, "Output PNG", "Output file for the ODF image.", std::filesystem::path{}, FileSystemPathParameter::ExtensionsType{".png"},
+                                                          FileSystemPathParameter::PathType::OutputFile));
+  params.linkParameters(k_WritePng_Key, k_OutputPngPath_Key, true);
+
+  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_SaveAsImageGeometry_Key, "Save as Image Geometry", "Creates an RGB Image Geometry for the montage.", true));
+  params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputPresentationGeometry_Key, "Output Image Geometry", "Path for the RGB montage geometry.", DataPath({"ODF Sections"})));
+
   params.insertSeparator(Parameters::Separator{"Presentation"});
-  params.insert(std::make_unique<StringParameter>(k_Title_Key, "Figure Title", "Title drawn above the ODF section montage.", "ODF Sections"));
+  params.insert(std::make_unique<StringParameter>(k_ODF_Image_Title_Key, "ODF Figure Title", "Title drawn above the ODF section montage.", "ODF Sections"));
   params.insert(std::make_unique<Int32Parameter>(k_NumSections_Key, "Number of Sections", "Number of constant-phi2 sections.", 6));
-  params.insert(std::make_unique<Int32Parameter>(k_SectionsPerRow_Key, "Sections Per Row", "Number of section panels in each row.", 3));
-  params.insert(std::make_unique<Int32Parameter>(k_SectionWidth_Key, "Section Width", "Width of each ODF section panel in pixels.", 512));
+  params.insert(std::make_unique<Int32Parameter>(k_SectionsPerRow_Key, "Sections Per Row", "Number of section panels in each row.", 2));
+  params.insert(std::make_unique<Int32Parameter>(k_SectionWidth_Key, "Section Width (pixels)", "Width of each ODF section panel in pixels.", 768));
   params.insert(std::make_unique<CreateColorMapParameter>(k_ColorTablePreset_Key, "Color Table Preset", "RGB preset for the shared MUD color scale.", "Rainbow Blended White"));
   params.insertLinkableParameter(
       std::make_unique<ChoicesParameter>(k_ScaleMode_Key, "Scale Mode", "Selects an automatic or manual shared MUD range.", 0ULL, ChoicesParameter::Choices{"Automatic", "Manual"}));
@@ -175,13 +184,6 @@ Parameters ComputeODFFilter::parameters() const
   params.linkParameters(k_ScaleMode_Key, k_ManualMinimum_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
   params.linkParameters(k_ScaleMode_Key, k_ManualMaximum_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
 
-  params.insertSeparator(Parameters::Separator{"Output"});
-  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_WritePng_Key, "Write PNG", "Writes the annotated montage to a PNG file.", false));
-  params.insert(std::make_unique<FileSystemPathParameter>(k_OutputPngPath_Key, "Output PNG", "Output file for the annotated montage.", std::filesystem::path{},
-                                                          FileSystemPathParameter::ExtensionsType{".png"}, FileSystemPathParameter::PathType::OutputFile));
-  params.linkParameters(k_WritePng_Key, k_OutputPngPath_Key, true);
-  params.insertLinkableParameter(std::make_unique<BoolParameter>(k_SaveAsImageGeometry_Key, "Save as Image Geometry", "Creates an RGB Image Geometry for the montage.", true));
-  params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputPresentationGeometry_Key, "Output Image Geometry", "Path for the RGB montage geometry.", DataPath({"ODF Sections"})));
   params.linkParameters(k_SaveAsImageGeometry_Key, k_OutputPresentationGeometry_Key, true);
 
   return params;
@@ -213,7 +215,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNames_Key);
   const int32 selectedPhase = filterArgs.value<int32>(k_PhaseIndex_Key);
   auto pUseMask = filterArgs.value<bool>(k_UseMask_Key);
-  auto pMaskPath = filterArgs.value<DataPath>(k_Mask_Key);
+  auto pMaskPath = filterArgs.value<DataPath>(k_MaskArrayPath_Key);
   auto pOutputImageGeomPath = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
   auto pCellAttrMatName = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
   auto pExistingOdfGeomPath = filterArgs.value<DataPath>(k_ExistingOdfGeometry_Key);
@@ -535,7 +537,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   config.manualMinimumMUD = manualMinimum;
   config.manualMaximumMUD = manualMaximum;
   config.colorControlPoints = std::move(colorControls.value());
-  config.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
+  config.title = filterArgs.value<StringParameter::ValueType>(k_ODF_Image_Title_Key);
   if(hasMaterialName)
   {
     config.materialName = (*materialNames)[static_cast<usize>(selectedPhase)];
@@ -601,7 +603,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
   inputValues.eulerAnglesPath = filterArgs.value<DataPath>(k_EulerAngles_Key);
   inputValues.phasesPath = filterArgs.value<DataPath>(k_Phases_Key);
   inputValues.crystalStructuresPath = filterArgs.value<DataPath>(k_CrystalStructures_Key);
-  inputValues.maskPath = filterArgs.value<DataPath>(k_Mask_Key);
+  inputValues.maskPath = filterArgs.value<DataPath>(k_MaskArrayPath_Key);
   inputValues.componentName = filterArgs.value<DataObjectNameParameter::ValueType>(k_ComponentName_Key);
 
   if(!isAppendMode)
@@ -663,7 +665,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
   presentationValues.phaseIndex = inputValues.selectedPhase;
   presentationValues.crystalStructure = dataStructure.getDataRefAs<UInt32Array>(inputValues.crystalStructuresPath)[static_cast<usize>(inputValues.selectedPhase)];
   presentationValues.materialName = materialNames[static_cast<usize>(inputValues.selectedPhase)];
-  presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_Title_Key);
+  presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_ODF_Image_Title_Key);
   presentationValues.numberOfSections = filterArgs.value<int32>(k_NumSections_Key);
   presentationValues.sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
   presentationValues.sectionWidth = filterArgs.value<int32>(k_SectionWidth_Key);

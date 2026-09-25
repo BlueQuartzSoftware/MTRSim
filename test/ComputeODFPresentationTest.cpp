@@ -12,26 +12,18 @@
 #include "simplnx/DataStructure/AttributeMatrix.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/DataStore.hpp"
-#include "simplnx/DataStructure/EmptyDataStore.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
 #include "simplnx/DataStructure/StringArray.hpp"
 #include "simplnx/Filter/Actions/CreateArrayAction.hpp"
 #include "simplnx/Filter/Actions/CreateImageGeometryAction.hpp"
-#include "simplnx/Parameters/BoolParameter.hpp"
 #include "simplnx/Parameters/ChoicesParameter.hpp"
 #include "simplnx/Parameters/CreateColorMapParameter.hpp"
-#include "simplnx/Parameters/DataGroupCreationParameter.hpp"
-#include "simplnx/Parameters/DataPathSelectionParameter.hpp"
 #include "simplnx/Parameters/FileSystemPathParameter.hpp"
-#include "simplnx/Parameters/GeometrySelectionParameter.hpp"
-#include "simplnx/Parameters/NumberParameter.hpp"
-#include "simplnx/Parameters/StringParameter.hpp"
+
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 #include "simplnx/Utilities/DataStoreUtilities.hpp"
 
 #include <algorithm>
-#include <chrono>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -630,7 +622,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Empty selected phase rejects presentation",
     REQUIRE(mask != nullptr);
     std::fill(mask->begin(), mask->end(), false);
     args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, true);
-    args.insertOrAssign(ComputeODFFilter::k_Mask_Key, maskPath);
+    args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, maskPath);
   }
   else
   {
