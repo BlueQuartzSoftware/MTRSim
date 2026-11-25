@@ -135,7 +135,8 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   const std::vector<usize> componentShape = {1};
 
   {
-    auto createImageGeomAction = std::make_unique<CreateImageGeometryAction>(pOutputImageGeomPath, imageGeomDimsXYZ, imageGeomOrigin, imageGeomSpacingXYZ, pCellAttrMatName);
+    auto createImageGeomAction =
+        std::make_unique<CreateImageGeometryAction>(pOutputImageGeomPath, imageGeomDimsXYZ, imageGeomOrigin, imageGeomSpacingXYZ, pCellAttrMatName, IGeometry::LengthUnit::Unspecified);
     resultOutputActions.value().appendAction(std::move(createImageGeomAction));
   }
 

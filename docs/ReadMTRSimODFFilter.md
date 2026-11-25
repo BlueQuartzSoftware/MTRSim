@@ -20,7 +20,7 @@ The file stores the ODF on a regular grid in Bunge-Euler space (`phi1`, `PHI`, `
 | `PHI`       | middle                | **Y**      |
 | `phi1`      | slowest-varying       | **Z**      |
 
-The **Image Geometry**'s spacing is set in **degrees** on every axis and is equal to the bin width.
+The **Image Geometry**'s spacing is set in **degrees** on every axis and is equal to the bin width. Its length unit is **Unspecified** because these axes measure angles.
 
 **UX consequence:** the standard ODF plot ("phi1-PHI plane at fixed phi2") corresponds to DREAM3D-NX's **YZ image-slicing plane** at a chosen X slice. If you are used to seeing phi1-PHI sections in MATLAB, slice along X in the visualization, not along Z.
 

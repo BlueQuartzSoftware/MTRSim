@@ -87,6 +87,7 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
   REQUIRE_NOTHROW(dataStructure.getDataRefAs<ImageGeom>(imageGeomPath));
   const auto& imageGeom = dataStructure.getDataRefAs<ImageGeom>(imageGeomPath);
 
+  CHECK(imageGeom.getUnits() == IGeometry::LengthUnit::Unspecified);
   const auto dims = imageGeom.getDimensions();
   REQUIRE(dims[0] == k_ExpectedNPhi2); // X <- phi2
   REQUIRE(dims[1] == k_ExpectedNPHI);  // Y <- PHI

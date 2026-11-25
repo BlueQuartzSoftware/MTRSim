@@ -27,6 +27,8 @@ The **Image Geometry** dimensions follow the same convention as the Read / Write
 
 Spacing on every axis is in **degrees** and equal to the bin width. With the default 5 deg bin size, the grid is `(X, Y, Z) = (72, 36, 72)` for a total of `186,624` bins.
 
+A newly created ODF grid has length unit **Unspecified** because its axes measure angles. The optional RGB section image also uses **Unspecified** because its coordinates measure pixels.
+
 Standard ODF plots ("phi1-PHI plane at fixed phi2") correspond to the **YZ image-slicing plane** in DREAM3D-NX.
 
 ## Algorithm

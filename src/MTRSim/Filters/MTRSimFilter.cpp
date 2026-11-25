@@ -270,7 +270,8 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   const std::vector<float32> spacingXYZ = {pSpacing[0], pSpacing[1], pSpacing[2]};
   const std::vector<usize> tupleShapeZYX = {nz, ny, nx};
 
-  resultOutputActions.value().appendAction(std::make_unique<CreateImageGeometryAction>(pOutGeomPath, imageGeomDimsXYZ, origin, spacingXYZ, pCellAttrMatName));
+  const auto lengthUnit = useConfig ? IGeometry::LengthUnit::Millimeter : IGeometry::LengthUnit::Micrometer;
+  resultOutputActions.value().appendAction(std::make_unique<CreateImageGeometryAction>(pOutGeomPath, imageGeomDimsXYZ, origin, spacingXYZ, pCellAttrMatName, lengthUnit));
 
   const DataPath cellAttrMatPath = pOutGeomPath.createChildPath(pCellAttrMatName);
   resultOutputActions.value().appendAction(std::make_unique<CreateArrayAction>(DataType::int32, tupleShapeZYX, std::vector<usize>{1}, cellAttrMatPath.createChildPath(pMtrIdsName)));
