@@ -446,7 +446,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const std::vector<usize> imageGeomDimsXYZ = {static_cast<usize>(nphi2), static_cast<usize>(nPHI), static_cast<usize>(nphi1)};
     const std::vector<float32> imageGeomOrigin = {0.0f, 0.0f, 0.0f};
     const std::vector<float32> imageGeomSpacingXYZ = {static_cast<float32>(binSize), static_cast<float32>(binSize), static_cast<float32>(binSize)};
-    auto createImageGeomAction = std::make_unique<CreateImageGeometryAction>(pOutputImageGeomPath, imageGeomDimsXYZ, imageGeomOrigin, imageGeomSpacingXYZ, pCellAttrMatName);
+    auto createImageGeomAction =
+        std::make_unique<CreateImageGeometryAction>(pOutputImageGeomPath, imageGeomDimsXYZ, imageGeomOrigin, imageGeomSpacingXYZ, pCellAttrMatName, IGeometry::LengthUnit::Unspecified);
     resultOutputActions.value().appendAction(std::move(createImageGeomAction));
   }
   {
@@ -553,9 +554,9 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
 
   if(saveAsImageGeometry)
   {
-    resultOutputActions.value().appendAction(
-        std::make_unique<CreateImageGeometryAction>(outputImageGeometryPath, CreateImageGeometryAction::DimensionType{static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1},
-                                                    CreateImageGeometryAction::OriginType{0.0F, 0.0F, 0.0F}, CreateImageGeometryAction::SpacingType{1.0F, 1.0F, 1.0F}, std::string{"Cell Data"}));
+    resultOutputActions.value().appendAction(std::make_unique<CreateImageGeometryAction>(
+        outputImageGeometryPath, CreateImageGeometryAction::DimensionType{static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1},
+        CreateImageGeometryAction::OriginType{0.0F, 0.0F, 0.0F}, CreateImageGeometryAction::SpacingType{1.0F, 1.0F, 1.0F}, std::string{"Cell Data"}, IGeometry::LengthUnit::Unspecified));
     const DataPath rgbArrayPath = outputImageGeometryPath.createChildPath(std::string{"Cell Data"}).createChildPath(std::string{"ODF Sections RGB"});
     resultOutputActions.value().appendAction(
         std::make_unique<CreateArrayAction>(DataType::uint8, ShapeType{1, static_cast<usize>(layout.pageHeight), static_cast<usize>(layout.pageWidth)}, ShapeType{3}, rgbArrayPath));

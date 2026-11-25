@@ -174,7 +174,8 @@ Result<> RenderExisting(DataStructure& data, const GenerateODFSectionsInputValue
     config.sectionsPerRow = static_cast<usize>(values.sectionsPerRow);
     config.sectionWidth = values.sectionWidth;
     const auto layout = ebsdlib::ComputeODFSectionLayout(config);
-    const CreateImageGeometryAction geometryAction(values.outputImageGeometryPath, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1}, "Cell Data");
+    const CreateImageGeometryAction geometryAction(values.outputImageGeometryPath, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1}, "Cell Data",
+                                                   IGeometry::LengthUnit::Unspecified);
     const auto geometryCreated = geometryAction.apply(data, IDataAction::Mode::Execute);
     SIMPLNX_RESULT_REQUIRE_VALID(geometryCreated);
     const CreateArrayAction arrayAction(DataType::uint8, {1, static_cast<usize>(layout.pageHeight), static_cast<usize>(layout.pageWidth)}, {3}, k_RgbPath);
@@ -208,6 +209,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Output modes preserve PNG and RGB pixels", 
       REQUIRE((rgb != nullptr) == mode.second);
       if(mode.second)
       {
+        CHECK(geom->getUnits() == IGeometry::LengthUnit::Unspecified);
         REQUIRE(rgb->getNumberOfComponents() == 3);
         REQUIRE(std::any_of(rgb->begin(), rgb->end(), [](uint8 value) { return value != 0; }));
       }

@@ -51,8 +51,10 @@ const std::string k_CellAttrMatName = "Cell Data";
 std::vector<DataPath> BuildOdfDataStructure(DataStructure& dataStructure, usize numComponents)
 {
   ImageGeom* imageGeom = ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
-  imageGeom->setSpacing({5.0f, 5.0f, 5.0f});
-  imageGeom->setOrigin({0.0f, 0.0f, 0.0f});
+  const auto spacingResult = imageGeom->setSpacing({5.0f, 5.0f, 5.0f});
+  SIMPLNX_RESULT_REQUIRE_VALID(spacingResult);
+  const auto originResult = imageGeom->setOrigin({0.0f, 0.0f, 0.0f});
+  SIMPLNX_RESULT_REQUIRE_VALID(originResult);
   imageGeom->setDimensions({k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
 
   // ZYX tuple shape (slowest to fastest)
@@ -175,6 +177,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   // Output ImageGeom exists.
   const DataPath outGeomPath({"MTR Microstructure"});
   REQUIRE_NOTHROW(dataStructure.getDataRefAs<ImageGeom>(outGeomPath));
+  CHECK(dataStructure.getDataRefAs<ImageGeom>(outGeomPath).getUnits() == IGeometry::LengthUnit::Micrometer);
 
   const DataPath cellAm = outGeomPath.createChildPath("Cell Data");
   const usize expectedTuples = 100 * 100;
@@ -393,7 +396,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Config-mode preflight VALID and grid size from 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
-  const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
+  const DataPath outGeomPath({"MTR Microstructure"});
+  REQUIRE_NOTHROW(dataStructure.getDataRefAs<ImageGeom>(outGeomPath));
+  const auto& geometry = dataStructure.getDataRefAs<ImageGeom>(outGeomPath);
+  CHECK(geometry.getUnits() == IGeometry::LengthUnit::Millimeter);
+  CHECK(geometry.getSpacing() == FloatVec3{0.02F, 0.02F, 0.02F});
+  const DataPath cellAm = outGeomPath.createChildPath("Cell Data");
   auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
   REQUIRE(mtrIds.getNumberOfTuples() == 1500);
 

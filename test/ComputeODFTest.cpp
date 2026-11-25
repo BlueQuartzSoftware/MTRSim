@@ -221,6 +221,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Single HCP voxel, no smoothing, produces "
   auto executeResult = filter.execute(inputs.dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
+  REQUIRE_NOTHROW(inputs.dataStructure.getDataRefAs<ImageGeom>(k_OutputGeomPath));
+  CHECK(inputs.dataStructure.getDataRefAs<ImageGeom>(k_OutputGeomPath).getUnits() == IGeometry::LengthUnit::Unspecified);
   const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
   REQUIRE(sum == Approx(1.0).margin(1.0e-9));
   // Some symmetric variants may map to the same bin, so >=1 and <=12 nonzero
@@ -616,8 +618,10 @@ ExistingOdfGeom buildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
   ExistingOdfGeom out;
   ImageGeom* geom = ImageGeom::Create(ds, "ODF");
   geom->setDimensions({dimsXYZ[0], dimsXYZ[1], dimsXYZ[2]});
-  geom->setSpacing({spacingXYZ[0], spacingXYZ[1], spacingXYZ[2]});
-  geom->setOrigin({0.0f, 0.0f, 0.0f});
+  const auto spacingResult = geom->setSpacing({spacingXYZ[0], spacingXYZ[1], spacingXYZ[2]});
+  SIMPLNX_RESULT_REQUIRE_VALID(spacingResult);
+  const auto originResult = geom->setOrigin({0.0f, 0.0f, 0.0f});
+  SIMPLNX_RESULT_REQUIRE_VALID(originResult);
   out.geomPath = DataPath({"ODF"});
 
   // Tuple shape is ZYX for cell-data arrays — match the convention used by
@@ -1063,8 +1067,10 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects ImageGeom with no cell-
   auto* geom = ImageGeom::Create(inputs.dataStructure, "ODF");
   REQUIRE(geom != nullptr);
   geom->setDimensions({72, 36, 72});
-  geom->setSpacing({5.0f, 5.0f, 5.0f});
-  geom->setOrigin({0.0f, 0.0f, 0.0f});
+  const auto spacingResult = geom->setSpacing({5.0f, 5.0f, 5.0f});
+  SIMPLNX_RESULT_REQUIRE_VALID(spacingResult);
+  const auto originResult = geom->setOrigin({0.0f, 0.0f, 0.0f});
+  SIMPLNX_RESULT_REQUIRE_VALID(originResult);
   // Intentionally skip setCellData — leaves getCellData() == nullptr.
 
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);

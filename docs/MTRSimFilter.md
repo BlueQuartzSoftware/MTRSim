@@ -30,7 +30,7 @@ When config-file mode is active:
 - The `odfInputPath` and `nuggetVariance` keys in the JSON are ignored; the ODF always comes from the **Input ODF Geometry** / **ODF Component Arrays** selection in the UI.
 - All output array names and paths (output geometry, cell attribute matrix, array names) always come from the UI regardless of mode.
 - If the config contains no `seed` key, or `seed: 0`, a time-based random seed is generated automatically — the same behavior as leaving **Use Seed for Random Generation** off in manual mode.
-- The **Units Note** below still applies: `xLen`/`yLen`/`zLen`/`dx`/`dy`/`dz` and the theta values in the JSON must all be in a consistent length unit.
+- The JSON schema expresses `xLen`, `yLen`, `zLen`, `dx`, `dy`, `dz`, and the theta values in millimeters.
 
 ### Algorithm Overview
 
@@ -48,7 +48,7 @@ The simulation proceeds in the following steps:
 
 ### Units Note (Important)
 
-**Physical Size**, **Physical Spacing**, and the **Theta List** correlation lengths must all use the **same length unit**. Only the dimensionless ratio (lag / theta) enters the Gaussian covariance calculation, so mixing units (e.g., microns for size but millimeters for theta) will produce physically incorrect correlation lengths. The original MATLAB MTRSim defaults used millimeter-scale values; if you import those defaults directly into this filter with micron-scale size/spacing, scale the theta values by 1000 to match.
+The output **Image Geometry** uses **Micrometer** with manual parameters and **Millimeter** with a JSON configuration file. Spacing keeps its numeric value in the selected input mode. When entering a millimeter configuration by hand, multiply the size, spacing, and theta values by 1000 to express them all in micrometers.
 
 ### Preflight Preview
 
