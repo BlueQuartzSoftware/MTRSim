@@ -20,7 +20,8 @@
 #include <numbers>
 #include <stdexcept>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // compute — port of calc_ODF.m (always-executed vectorised branch,
@@ -39,24 +40,21 @@ namespace mtrsim {
 // Wrapping: periodic in phi1 and phi2; PHI also wraps for the smoothing
 // neighbours (matching MATLAB behaviour).
 
-ODFComponent ODFCalculator::compute(const Eigen::VectorXd &phi1in,
-                                    const Eigen::VectorXd &phiIn,
-                                    const Eigen::VectorXd &phi2in,
-                                    double degSpacing) {
-  if (phi1in.size() != phiIn.size() || phi1in.size() != phi2in.size()) {
-    throw std::invalid_argument(
-        "ODFCalculator::compute — phi1, phi, phi2 must have the same length");
+ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::VectorXd& phiIn, const Eigen::VectorXd& phi2in, double degSpacing)
+{
+  if(phi1in.size() != phiIn.size() || phi1in.size() != phi2in.size())
+  {
+    throw std::invalid_argument("ODFCalculator::compute — phi1, phi, phi2 must have the same length");
   }
 
   // ── Grid constants ────────────────────────────────────────────────────────
   const int nBins1 = static_cast<int>(std::round(360.0 / degSpacing)); // 72
   const int nBinsPHI = nBins1 / 2;                                     // 36
   const int nBins2 = nBins1;                                           // 72
-  const int nTotal = nBins1 * nBinsPHI * nBins2; // 186 624
+  const int nTotal = nBins1 * nBinsPHI * nBins2;                       // 186 624
 
   const double radSpacing = degSpacing * std::numbers::pi / 180.0;
-  const double k_TwoPiOver =
-      2.0 * std::numbers::pi / static_cast<double>(nBins1);
+  const double k_TwoPiOver = 2.0 * std::numbers::pi / static_cast<double>(nBins1);
   const double k_PiOver = std::numbers::pi / static_cast<double>(nBinsPHI);
 
   // ── Pre-compute bin centres for the output ODFComponent ──────────────────
@@ -64,7 +62,8 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd &phi1in,
   Eigen::VectorXd phiBins(nTotal);
   Eigen::VectorXd phi2Bins(nTotal);
 
-  for (int ix = 0; ix < nTotal; ++ix) {
+  for(int ix = 0; ix < nTotal; ++ix)
+  {
     const int i1 = ix / (nBinsPHI * nBins2);
     const int iPHI = (ix % (nBinsPHI * nBins2)) / nBins2;
     const int i2 = ix % nBins2;
@@ -77,10 +76,8 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd &phi1in,
   // Idiom mirrors `simplnx`'s OrientationAnalysis filters (e.g. ComputeGBCD,
   // ComputeGBCDMetricBased): construct an `EulerD`, transform to an
   // `OrientationMatrix<double>`, and compose with `LaueOps::getMatSymOpD(k)`.
-  const std::vector<ebsdlib::LaueOps::Pointer> allOps =
-      ebsdlib::LaueOps::GetAllOrientationOps();
-  const ebsdlib::LaueOps::Pointer laueOps =
-      allOps[ebsdlib::CrystalStructure::Hexagonal_High];
+  const std::vector<ebsdlib::LaueOps::Pointer> allOps = ebsdlib::LaueOps::GetAllOrientationOps();
+  const ebsdlib::LaueOps::Pointer laueOps = allOps[ebsdlib::CrystalStructure::Hexagonal_High];
   const std::size_t numOps = laueOps->getNumSymOps();
 
   const int N_input = static_cast<int>(phi1in.size());
@@ -96,31 +93,25 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd &phi1in,
   // ── Helper lambdas for periodic neighbour wrapping ────────────────────────
   // phi1 and phi2 are periodic over nBins1/nBins2 bins.
   // PHI also wraps for the smoothing kernel (matching MATLAB).
-  auto wrap1 = [nBins1](int idx) -> int {
-    return (idx % nBins1 + nBins1) % nBins1;
-  };
-  auto wrapPHI = [nBinsPHI](int idx) -> int {
-    return (idx % nBinsPHI + nBinsPHI) % nBinsPHI;
-  };
-  auto wrap2 = [nBins2](int idx) -> int {
-    return (idx % nBins2 + nBins2) % nBins2;
-  };
+  auto wrap1 = [nBins1](int idx) -> int { return (idx % nBins1 + nBins1) % nBins1; };
+  auto wrapPHI = [nBinsPHI](int idx) -> int { return (idx % nBinsPHI + nBinsPHI) % nBinsPHI; };
+  auto wrap2 = [nBins2](int idx) -> int { return (idx % nBins2 + nBins2) % nBins2; };
 
-  auto flatIdx = [nBinsPHI, nBins2](int i1, int iPHI, int i2) -> int {
-    return i1 * nBinsPHI * nBins2 + iPHI * nBins2 + i2;
-  };
+  auto flatIdx = [nBinsPHI, nBins2](int i1, int iPHI, int i2) -> int { return i1 * nBinsPHI * nBins2 + iPHI * nBins2 + i2; };
 
   // ── Accumulate ODF ────────────────────────────────────────────────────────
   Eigen::VectorXd odfVal = Eigen::VectorXd::Zero(nTotal);
 
-  for (int i = 0; i < N_input; ++i) {
+  for(int i = 0; i < N_input; ++i)
+  {
     // Build the passive G matrix for the input orientation. EbsdLib's
     // `Euler::toOrientationMatrix()` applies the |x|<1e-7 → 0 eps-snap
     // we want to match the MATLAB reference.
     const ebsdlib::EulerDType eu(phi1in[i], phiIn[i], phi2in[i]);
     const ebsdlib::Matrix3X3D Gpassive = eu.toOrientationMatrix().toGMatrix();
 
-    for (std::size_t k = 0; k < numOps; ++k) {
+    for(std::size_t k = 0; k < numOps; ++k)
+    {
       // `getMatSymOpD(k)` returns the ACTIVE form; transpose for passive.
       // Symmetric variant: R = O_passive * G_passive_input.
       const ebsdlib::Matrix3X3D Op_active = laueOps->getMatSymOpD(k);
@@ -128,17 +119,13 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd &phi1in,
 
       // Extract Euler back via canonical om2eu (handles degenerate-PHI
       // and the eps-snap correctly, matching MATLAB after commit 8bbd6e).
-      const ebsdlib::OrientationMatrixDType om(R[0], R[1], R[2], R[3], R[4],
-                                               R[5], R[6], R[7], R[8]);
+      const ebsdlib::OrientationMatrixDType om(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
       const ebsdlib::EulerDType outEu = om.toEuler();
 
       // Compute 0-based bin indices (clamp to valid range)
-      const int jf = std::min(
-          static_cast<int>(std::trunc(outEu[0] / radSpacing)), nBins1 - 1);
-      const int kf = std::min(
-          static_cast<int>(std::trunc(outEu[1] / radSpacing)), nBinsPHI - 1);
-      const int lf = std::min(
-          static_cast<int>(std::trunc(outEu[2] / radSpacing)), nBins2 - 1);
+      const int jf = std::min(static_cast<int>(std::trunc(outEu[0] / radSpacing)), nBins1 - 1);
+      const int kf = std::min(static_cast<int>(std::trunc(outEu[1] / radSpacing)), nBinsPHI - 1);
+      const int lf = std::min(static_cast<int>(std::trunc(outEu[2] / radSpacing)), nBins2 - 1);
 
       // Wrapped neighbour indices
       const int jm = wrap1(jf - 1);

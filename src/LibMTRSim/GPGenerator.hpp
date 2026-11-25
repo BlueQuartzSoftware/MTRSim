@@ -5,7 +5,8 @@
 #include <functional>
 #include <random>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief Generates a realization of a separable Gaussian random field via
@@ -21,7 +22,8 @@ namespace mtrsim {
  * where Rx, Ry, Rz are the Cholesky factors of the per-direction covariance
  * matrices.
  */
-class LIBMTRSIM_EXPORT GPGenerator {
+class LIBMTRSIM_EXPORT GPGenerator
+{
 public:
   using CorrelationFn = std::function<double(double lag, double theta)>;
 
@@ -30,7 +32,7 @@ public:
    *               caller controls the global RNG state).
    * @param corrFn Correlation function: rho(|lag|, theta) → [0, 1]
    */
-  explicit GPGenerator(std::mt19937_64 &rng, CorrelationFn corrFn);
+  explicit GPGenerator(std::mt19937_64& rng, CorrelationFn corrFn);
 
   /**
    * @brief Draw one realization of the GP on an nx × ny × nz grid.
@@ -44,15 +46,12 @@ public:
    * @param nz     Number of voxels in z
    * @return       Flattened field of length nx*ny*nz (z-major ordering)
    */
-  Eigen::VectorXd generate(double hx, double hy, double hz,
-                           const std::array<double, 3> &theta, int nx, int ny,
-                           int nz);
+  Eigen::VectorXd generate(double hx, double hy, double hz, const std::array<double, 3>& theta, int nx, int ny, int nz);
 
 private:
-  Eigen::MatrixXd buildCovarianceMatrix(int n, double spacing,
-                                        double theta) const;
+  Eigen::MatrixXd buildCovarianceMatrix(int n, double spacing, double theta) const;
 
-  std::mt19937_64 &m_Rng;
+  std::mt19937_64& m_Rng;
   CorrelationFn m_CorrFn;
 };
 

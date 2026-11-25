@@ -57,21 +57,28 @@ Parameters WriteMTRSimODFFilter::parameters() const
   Parameters params;
 
   params.insertSeparator(Parameters::Separator{"Output Parameter(s)"});
-  params.insert(std::make_unique<FileSystemPathParameter>(k_OutputFile_Key, "Output ODF File (HDF5)", "Path of the MATLAB-format MTRSim ODF HDF5 file to create. An existing file is overwritten.",
+  params.insert(std::make_unique<FileSystemPathParameter>(k_OutputFile_Key, "Output ODF File (HDF5)",
+                                                          "Path of the MATLAB-format MTRSim ODF HDF5 file to create. An existing "
+                                                          "file is overwritten.",
                                                           fs::path(""), FileSystemPathParameter::ExtensionsType{".h5", ".hdf5"}, FileSystemPathParameter::PathType::OutputFile));
   params.insert(std::make_unique<StringParameter>(k_Hdf5PathPrefix_Key, "HDF5 Path Prefix",
-                                                  "Internal HDF5 group path where the ODF data will be written. Defaults to "
-                                                  "'/ODF_best' to match the MATLAB on-disk convention. Change this if you want "
-                                                  "the data saved under a different top-level group name (e.g. '/my_sample_ODF').",
+                                                  "Internal HDF5 group path where the ODF data will be written. Defaults "
+                                                  "to "
+                                                  "'/ODF_best' to match the MATLAB on-disk convention. Change this if you "
+                                                  "want "
+                                                  "the data saved under a different top-level group name (e.g. "
+                                                  "'/my_sample_ODF').",
                                                   "/ODF_best"));
 
   params.insertSeparator(Parameters::Separator{"Input Data Objects"});
   params.insert(std::make_unique<GeometrySelectionParameter>(k_InputImageGeometry_Key, "Input Image Geometry",
-                                                             "ImageGeom whose (X,Y,Z) dimensions map to (phi2, PHI, phi1) on disk. The written axis ordering reverses this convention.",
+                                                             "ImageGeom whose (X,Y,Z) dimensions map to (phi2, PHI, phi1) on disk. "
+                                                             "The written axis ordering reverses this convention.",
                                                              DataPath{}, GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
 
   params.insert(std::make_unique<MultiArraySelectionParameter>(k_ODFComponents_Key, "ODF Component Arrays",
-                                                               "Float64 single-component cell-data arrays on the input ImageGeom. Each array becomes one ODF component in the output file.",
+                                                               "Float64 single-component cell-data arrays on the input ImageGeom. Each "
+                                                               "array becomes one ODF component in the output file.",
                                                                MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypes{IArray::ArrayType::DataArray},
                                                                MultiArraySelectionParameter::AllowedDataTypes{DataType::float64}, MultiArraySelectionParameter::AllowedComponentShapes{{1}}));
 
@@ -126,7 +133,8 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
 
   for(const auto& arrayPath : pODFComponents)
   {
-    // Verify the array lives under the selected ImageGeom (its path must start with geomPath).
+    // Verify the array lives under the selected ImageGeom (its path must start
+    // with geomPath).
     const auto arrayPathVec = arrayPath.getPathVector();
     bool onGeom = (arrayPathVec.size() > geomPathVec.size());
     if(onGeom)
@@ -142,7 +150,9 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     }
     if(!onGeom)
     {
-      return {MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input ImageGeom '{}'.", arrayPath.toString(), pInputImageGeomPath.toString()))};
+      return {MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
+                                                                 "ImageGeom '{}'.",
+                                                                 arrayPath.toString(), pInputImageGeomPath.toString()))};
     }
 
     const auto* arr = dataStructure.getDataAs<Float64Array>(arrayPath);
@@ -153,8 +163,9 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
 
     if(arr->getNumberOfTuples() != expectedTuples)
     {
-      return {MakeErrorResult<OutputActions>(-12104,
-                                             fmt::format("Selected array '{}' has {} tuples but the ImageGeom has {} cells.", arrayPath.toString(), arr->getNumberOfTuples(), expectedTuples))};
+      return {MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
+                                                                 "ImageGeom has {} cells.",
+                                                                 arrayPath.toString(), arr->getNumberOfTuples(), expectedTuples))};
     }
   }
 
@@ -168,9 +179,10 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
   preflightUpdatedValues.push_back({"Grid (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", numZ, numY, numX)});
   preflightUpdatedValues.push_back({"Spacing (phi1, PHI, phi2) [deg]", fmt::format("{:.4f}, {:.4f}, {:.4f}", spacing[2], spacing[1], spacing[0])});
 
-  // Estimate output size: N components * tuples * 8 bytes + some overhead for bin arrays
-  const std::size_t estBytes = static_cast<std::size_t>(pODFComponents.size()) * static_cast<std::size_t>(expectedTuples) * sizeof(double)
-      + static_cast<std::size_t>(numX + numY + numZ + 3) * sizeof(double);
+  // Estimate output size: N components * tuples * 8 bytes + some overhead for
+  // bin arrays
+  const std::size_t estBytes =
+      static_cast<std::size_t>(pODFComponents.size()) * static_cast<std::size_t>(expectedTuples) * sizeof(double) + static_cast<std::size_t>(numX + numY + numZ + 3) * sizeof(double);
   preflightUpdatedValues.push_back({"Estimated File Size [bytes]", std::to_string(estBytes)});
 
   return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};

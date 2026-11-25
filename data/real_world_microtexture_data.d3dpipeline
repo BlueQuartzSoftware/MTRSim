@@ -2159,7 +2159,7 @@
           "version": 1
         },
         "export_file_path": {
-          "value": "/Users/mjackson/Workspace7/DREAM3D_Plugins/MTRSim/data/real_world_microtexture_data.dream3d",
+          "value": "data/real_world_microtexture_data.dream3d",
           "version": 1
         },
         "parameters_version": 2,

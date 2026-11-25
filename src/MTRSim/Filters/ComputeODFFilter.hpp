@@ -11,16 +11,21 @@ namespace nx::core
 /**
  * @class ComputeODFFilter
  * @brief Builds an Orientation Distribution Function (ODF) from per-voxel EBSD
- * Euler angles, phase labels, and per-phase crystal-structure codes. The result
+ * Euler angles for one selected phase and its crystal-structure code. The result
  * is a Float64 single-component cell-data array on an ImageGeom whose (X, Y, Z)
  * axes map to (phi2, PHI, phi1) in degrees.
  *
- * Supports two output modes (Milestone AJ, Task 7):
- *   - "Create New ODF Geometry" (T7a): create a new ImageGeom + cell AttributeMatrix +
- *     Float64 ODF component.
- *   - "Append to Existing ODF Geometry" (T7b): append a new Float64 ODF component to
- *     a user-selected existing ImageGeom's cell AttributeMatrix. In this mode the
- *     bin size is derived from the existing geometry's (uniform) spacing.
+ * Each component has a one-tuple StringArray under the geometry's ODF Metadata group that records its units.
+ * Supports two output modes:
+ *   - "Create New ODF Geometry": create a new ImageGeom + cell
+ * AttributeMatrix + Float64 ODF component.
+ *   - "Append to Existing ODF Geometry": append a new Float64 ODF
+ * component to a user-selected existing ImageGeom's cell AttributeMatrix. In
+ * this mode the bin size is derived from the existing geometry's (uniform)
+ * spacing.
+ *
+ * Optional presentation creates standard constant-phi2 sections as an RGB geometry or an atomic PNG file.
+ * Both presentation outputs use MUD, with conversion from Count-Density when necessary.
  */
 class MTRSIM_EXPORT ComputeODFFilter : public IFilter
 {
@@ -35,19 +40,76 @@ public:
   ComputeODFFilter& operator=(ComputeODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static inline constexpr StringLiteral k_ApplySmoothing_Key = "apply_smoothing";
-  static inline constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
-  static inline constexpr StringLiteral k_EulerAngles_Key = "euler_angles";
-  static inline constexpr StringLiteral k_Phases_Key = "phases";
-  static inline constexpr StringLiteral k_CrystalStructures_Key = "crystal_structures";
-  static inline constexpr StringLiteral k_UseMask_Key = "use_mask";
-  static inline constexpr StringLiteral k_Mask_Key = "mask";
-  static inline constexpr StringLiteral k_OutputMode_Key = "output_mode";
-  static inline constexpr StringLiteral k_OutputUnits_Key = "output_units";
-  static inline constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry";
-  static inline constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
-  static inline constexpr StringLiteral k_ExistingOdfGeometry_Key = "existing_odf_geometry";
-  static inline constexpr StringLiteral k_ComponentName_Key = "component_name";
+  static constexpr StringLiteral k_ApplySmoothing_Key = "apply_smoothing";
+  static constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
+  static constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
+  static constexpr StringLiteral k_Phases_Key = "phases_path";
+  static constexpr StringLiteral k_CrystalStructures_Key = "crystal_structures_path";
+  /**
+   * @brief Selects the ensemble StringArray with one material name per phase.
+   */
+  static constexpr StringLiteral k_MaterialNames_Key = "material_names_path";
+  /**
+   * @brief Selects the positive ensemble index that contributes to the ODF.
+   */
+  static constexpr StringLiteral k_PhaseIndex_Key = "phase_index";
+  static constexpr StringLiteral k_UseMask_Key = "use_mask";
+  static constexpr StringLiteral k_MaskArrayPath_Key = "mask_path";
+  static constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
+  static constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
+  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteral k_ExistingOdfGeometry_Key = "existing_odf_geometry_path";
+  static constexpr StringLiteral k_ComponentName_Key = "component_name";
+
+  /**
+   * @brief Defines the optional section presentation title.
+   */
+  static constexpr StringLiteral k_ODF_Image_Title_Key = "odf_title";
+  /**
+   * @brief Selects the number of constant-phi2 panels.
+   */
+  static constexpr StringLiteral k_NumSections_Key = "number_of_sections";
+  /**
+   * @brief Selects the panel count in each row.
+   */
+  static constexpr StringLiteral k_SectionsPerRow_Key = "sections_per_row";
+  /**
+   * @brief Selects each panel width in pixels.
+   */
+  static constexpr StringLiteral k_SectionWidth_Key = "section_width";
+  /**
+   * @brief Selects the RGB preset for the shared MUD scale.
+   */
+  static constexpr StringLiteral k_ColorTablePreset_Key = "color_table_preset";
+  /**
+   * @brief Selects automatic or manual MUD limits.
+   */
+  static constexpr StringLiteral k_ScaleMode_Key = "scale_mode_index";
+  /**
+   * @brief Sets the lower manual MUD limit.
+   */
+  static constexpr StringLiteral k_ManualMinimum_Key = "manual_minimum_mud";
+  /**
+   * @brief Sets the upper manual MUD limit.
+   */
+  static constexpr StringLiteral k_ManualMaximum_Key = "manual_maximum_mud";
+  /**
+   * @brief Enables atomic PNG output.
+   */
+  static constexpr StringLiteral k_WritePng_Key = "write_png";
+  /**
+   * @brief Selects the PNG destination.
+   */
+  static constexpr StringLiteral k_OutputPngPath_Key = "output_png_file";
+  /**
+   * @brief Enables RGB presentation geometry output.
+   */
+  static constexpr StringLiteral k_SaveAsImageGeometry_Key = "save_as_image_geometry";
+  /**
+   * @brief Selects the RGB presentation geometry path.
+   */
+  static constexpr StringLiteral k_OutputPresentationGeometry_Key = "output_presentation_geometry";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -87,16 +149,14 @@ public:
   std::vector<std::string> defaultTags() const override;
 
   /**
-   * @brief Returns the parameters of the filter (i.e. its inputs)
-   * @return
+   * @brief Defines the selected phase, input arrays, and numeric and presentation outputs.
+   * @return Parameters and their visibility links.
    */
   Parameters parameters() const override;
 
   /**
-   * @brief Returns parameters version integer.
-   * Initial version should always be 1.
-   * Should be incremented everytime the parameters change.
-   * @return VersionType
+   * @brief Identifies the serialized parameter schema.
+   * @return Current schema version.
    */
   VersionType parametersVersion() const override;
 
@@ -108,29 +168,38 @@ public:
 
 protected:
   /**
-   * @brief Takes in a DataStructure and checks that the filter can be run on it with the given arguments.
-   * Returns any warnings/errors. Also returns the changes that would be applied to the DataStructure.
-   * Some parts of the actions may not be completely filled out if all the required information is not available at preflight time.
+   * @brief Takes in a DataStructure and checks that the filter can be run on it
+   * with the given arguments. Returns any warnings/errors. Also returns the
+   * changes that would be applied to the DataStructure. Some parts of the
+   * actions may not be completely filled out if all the required information is
+   * not available at preflight time.
    * @param dataStructure The input DataStructure instance
-   * @param filterArgs These are the input values for each parameter that is required for the filter
+   * @param filterArgs These are the input values for each parameter that is
+   * required for the filter
    * @param messageHandler The MessageHandler object
-   * @param shouldCancel Atomic boolean value that can be checked to cancel the filter
-   * @param executionContext The ExecutionContext that can be used to determine the correct absolute path from a relative path
-   * @return Returns a Result object with error or warning values if any of those occurred during execution of this function
+   * @param shouldCancel Atomic boolean value that can be checked to cancel the
+   * filter
+   * @param executionContext Resolves relative paths for the pipeline.
+   * @return Returns a Result object with error or warning values if any of
+   * those occurred during execution of this function
    */
   PreflightResult preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
                                 const ExecutionContext& executionContext) const override;
 
   /**
-   * @brief Applies the filter's algorithm to the DataStructure with the given arguments. Returns any warnings/errors.
-   * On failure, there is no guarantee that the DataStructure is in a correct state.
+   * @brief Applies the filter's algorithm to the DataStructure with the given
+   * arguments. Returns any warnings/errors. On failure, there is no guarantee
+   * that the DataStructure is in a correct state.
    * @param dataStructure The input DataStructure instance
-   * @param filterArgs These are the input values for each parameter that is required for the filter
+   * @param filterArgs These are the input values for each parameter that is
+   * required for the filter
    * @param pipelineNode The node in the pipeline that is being executed
    * @param messageHandler The MessageHandler object
-   * @param shouldCancel Atomic boolean value that can be checked to cancel the filter
-   * @param executionContext The ExecutionContext that can be used to determine the correct absolute path from a relative path
-   * @return Returns a Result object with error or warning values if any of those occurred during execution of this function
+   * @param shouldCancel Atomic boolean value that can be checked to cancel the
+   * filter
+   * @param executionContext Resolves relative paths for the pipeline.
+   * @return Returns a Result object with error or warning values if any of
+   * those occurred during execution of this function
    */
   Result<> executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
                        const ExecutionContext& executionContext) const override;

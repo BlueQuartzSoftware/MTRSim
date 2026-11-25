@@ -24,8 +24,7 @@ constexpr double k_CornerWeight = 0.06 / 8.0;
 constexpr int k_FaceOffsets[6][3] = {{-1, 0, 0}, {+1, 0, 0}, {0, -1, 0}, {0, +1, 0}, {0, 0, -1}, {0, 0, +1}};
 
 // 12 edge neighbors: +/-1 along exactly two axes.
-constexpr int k_EdgeOffsets[12][3] = {
-    {-1, -1, 0}, {-1, +1, 0}, {+1, -1, 0}, {+1, +1, 0}, {-1, 0, -1}, {-1, 0, +1}, {+1, 0, -1}, {+1, 0, +1}, {0, -1, -1}, {0, -1, +1}, {0, +1, -1}, {0, +1, +1}};
+constexpr int k_EdgeOffsets[12][3] = {{-1, -1, 0}, {-1, +1, 0}, {+1, -1, 0}, {+1, +1, 0}, {-1, 0, -1}, {-1, 0, +1}, {+1, 0, -1}, {+1, 0, +1}, {0, -1, -1}, {0, -1, +1}, {0, +1, -1}, {0, +1, +1}};
 
 /// Modulo wrap that handles negative dividends. Used unchanged for the
 /// +1/-1 smoothing-neighbor stencil on all three Bunge axes -- this matches
@@ -57,8 +56,8 @@ inline int32_t clampBin(int32_t i, int32_t n)
 /// Row-major linearization: i_phi1 * (nPHI * nphi2) + i_PHI * nphi2 + i_phi2.
 inline std::size_t linearize(int32_t iPhi1, int32_t iPHI, int32_t iPhi2, int32_t nPHI, int32_t nphi2)
 {
-  return static_cast<std::size_t>(iPhi1) * static_cast<std::size_t>(nPHI) * static_cast<std::size_t>(nphi2) + static_cast<std::size_t>(iPHI) * static_cast<std::size_t>(nphi2)
-         + static_cast<std::size_t>(iPhi2);
+  return static_cast<std::size_t>(iPhi1) * static_cast<std::size_t>(nPHI) * static_cast<std::size_t>(nphi2) + static_cast<std::size_t>(iPHI) * static_cast<std::size_t>(nphi2) +
+         static_cast<std::size_t>(iPhi2);
 }
 
 } // namespace
@@ -79,11 +78,12 @@ void accumulate(const std::vector<std::array<double, 3>>& eulersRad, const ODFBu
     const double PHIDeg = tuple[1] * k_RadToDeg;
     const double phi2Deg = tuple[2] * k_RadToDeg;
 
-    // MATLAB calc_ODF.m clamps at the upper bound for bin assignment (lines 43-48):
-    // an angle exactly equal to 2*pi (phi1/phi2) or pi (PHI) goes to the LAST bin,
-    // not wrap-around to bin 0. Smoothing-neighbor identification (below) still
-    // uses uniform modulo wrap on all three axes, matching calc_ODF.m's
-    // jf_minus/jf_plus/kf_minus/kf_plus/lf_minus/lf_plus logic (lines 95-113).
+    // MATLAB calc_ODF.m clamps at the upper bound for bin assignment (lines
+    // 43-48): an angle exactly equal to 2*pi (phi1/phi2) or pi (PHI) goes to
+    // the LAST bin, not wrap-around to bin 0. Smoothing-neighbor identification
+    // (below) still uses uniform modulo wrap on all three axes, matching
+    // calc_ODF.m's jf_minus/jf_plus/kf_minus/kf_plus/lf_minus/lf_plus logic
+    // (lines 95-113).
     const int32_t iPhi1 = clampBin(static_cast<int32_t>(std::floor(phi1Deg / params.binSizeDeg)), params.nphi1);
     const int32_t iPHI = clampBin(static_cast<int32_t>(std::floor(PHIDeg / params.binSizeDeg)), params.nPHI);
     const int32_t iPhi2 = clampBin(static_cast<int32_t>(std::floor(phi2Deg / params.binSizeDeg)), params.nphi2);

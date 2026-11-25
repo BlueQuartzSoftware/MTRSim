@@ -21,14 +21,16 @@
 #include <tbb/parallel_for.h>
 #endif
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Symmetry-operator Euler-angle tables (radians) — from MATLAB source.
 // Each row is { phi1, PHI, phi2 }.
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace {
+namespace
+{
 constexpr double k_Deg2Rad = std::numbers::pi / 180.0;
 
 // HCP — 12 operators
@@ -54,7 +56,8 @@ constexpr std::array<std::array<double, 3>, 12> k_HcpSymOps = {{
 //       | −c1s2−s1c2C  −s1s2+c1c2C   c2S  |
 //       |  s1S          −c1S          C    |
 // ─────────────────────────────────────────────────────────────────────────────
-inline Eigen::Matrix3d bungeRotationMatrix(double p1, double P, double p2) {
+inline Eigen::Matrix3d bungeRotationMatrix(double p1, double P, double p2)
+{
   const double c1 = std::cos(p1), s1 = std::sin(p1);
   const double C = std::cos(P), S = std::sin(P);
   const double c2 = std::cos(p2), s2 = std::sin(p2);
@@ -75,23 +78,24 @@ inline Eigen::Matrix3d bungeRotationMatrix(double p1, double P, double p2) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor
-IPFMapper::IPFMapper(CrystalSystem system) : m_System(system) {}
+IPFMapper::IPFMapper(CrystalSystem system)
+: m_System(system)
+{
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public dispatch — routes to the selected colour scheme.
 
-std::vector<RGBColor> IPFMapper::eulerToColors(const Eigen::VectorXd &phi1,
-                                               const Eigen::VectorXd &phi,
-                                               const Eigen::VectorXd &phi2,
-                                               std::array<double, 3> refDir,
-                                               IPFColorScheme scheme) const {
+std::vector<RGBColor> IPFMapper::eulerToColors(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir, IPFColorScheme scheme) const
+{
   const int N = static_cast<int>(phi1.size());
-  if (phi.size() != N || phi2.size() != N) {
-    throw std::invalid_argument(
-        "IPFMapper::eulerToColors — phi1, phi, phi2 must have the same length");
+  if(phi.size() != N || phi2.size() != N)
+  {
+    throw std::invalid_argument("IPFMapper::eulerToColors — phi1, phi, phi2 must have the same length");
   }
 
-  if (scheme == IPFColorScheme::MatLab) {
+  if(scheme == IPFColorScheme::MatLab)
+  {
     return eulerToColorsMatLab(phi1, phi, phi2);
   }
   return eulerToColorsEbsdLib(phi1, phi, phi2, refDir);
@@ -100,27 +104,29 @@ std::vector<RGBColor> IPFMapper::eulerToColors(const Eigen::VectorXd &phi1,
 // ─────────────────────────────────────────────────────────────────────────────
 // EbsdLib colour path — delegates to LaueOps::generateIPFColor().
 
-std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(
-    const Eigen::VectorXd &phi1, const Eigen::VectorXd &phi,
-    const Eigen::VectorXd &phi2, std::array<double, 3> refDir) const {
+std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir) const
+{
   const int N = static_cast<int>(phi1.size());
 
   std::shared_ptr<ebsdlib::LaueOps> ops;
-  if (m_System == CrystalSystem::HCP) {
+  if(m_System == CrystalSystem::HCP)
+  {
     ops = ebsdlib::HexagonalOps::New();
-  } else if (m_System == CrystalSystem::FCC) {
+  }
+  else if(m_System == CrystalSystem::FCC)
+  {
     ops = ebsdlib::CubicOps::New();
-  } else {
-    throw std::invalid_argument(
-        "IPFMapper::eulerToColorsEbsdLib — unsupported crystal system");
+  }
+  else
+  {
+    throw std::invalid_argument("IPFMapper::eulerToColorsEbsdLib — unsupported crystal system");
   }
 
   std::vector<RGBColor> colors(static_cast<std::size_t>(N));
 
   auto computeColor = [&](int i) {
     double eulers[3] = {phi1[i], phi[i], phi2[i]};
-    const ebsdlib::Rgb argb =
-        ops->generateIPFColor(eulers, refDir.data(), false);
+    const ebsdlib::Rgb argb = ops->generateIPFColor(eulers, refDir.data(), false);
     const std::size_t idx = static_cast<std::size_t>(i);
     colors[idx].r = static_cast<uint8_t>(ebsdlib::RgbColor::dRed(argb));
     colors[idx].g = static_cast<uint8_t>(ebsdlib::RgbColor::dGreen(argb));
@@ -130,7 +136,8 @@ std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(
 #if MTRSIM_HAS_TBB
   tbb::parallel_for(0, N, computeColor);
 #else
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     computeColor(i);
   }
 #endif
@@ -156,28 +163,24 @@ std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(
 //        green = r·(1 − β/(π/6))  /  max(…)
 //        blue  = r·β/(π/6)  /  max(…)
 
-std::vector<RGBColor>
-IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
-                               const Eigen::VectorXd &phi,
-                               const Eigen::VectorXd &phi2) const {
-  if (m_System != CrystalSystem::HCP) {
+std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2) const
+{
+  if(m_System != CrystalSystem::HCP)
+  {
     throw std::invalid_argument("IPFMapper::eulerToColorsMatLab — MatLab "
                                 "colour scheme currently supports HCP only");
   }
 
   const int N = static_cast<int>(phi1.size());
   constexpr int numOps = static_cast<int>(k_HcpSymOps.size());
-  constexpr double k_MaxAngle =
-      std::numbers::pi / 6.0; // 30° — HCP fundamental-zone arc
+  constexpr double k_MaxAngle = std::numbers::pi / 6.0; // 30° — HCP fundamental-zone arc
   const double tanMaxAngle = std::tan(k_MaxAngle);
 
   // Pre-compute symmetry-operator rotation matrices
   std::array<Eigen::Matrix3d, 12> symMats;
-  for (int k = 0; k < numOps; ++k) {
-    symMats[static_cast<std::size_t>(k)] =
-        bungeRotationMatrix(k_HcpSymOps[static_cast<std::size_t>(k)][0],
-                            k_HcpSymOps[static_cast<std::size_t>(k)][1],
-                            k_HcpSymOps[static_cast<std::size_t>(k)][2]);
+  for(int k = 0; k < numOps; ++k)
+  {
+    symMats[static_cast<std::size_t>(k)] = bungeRotationMatrix(k_HcpSymOps[static_cast<std::size_t>(k)][0], k_HcpSymOps[static_cast<std::size_t>(k)][1], k_HcpSymOps[static_cast<std::size_t>(k)][2]);
   }
 
   std::vector<RGBColor> colors(static_cast<std::size_t>(N));
@@ -185,7 +188,8 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
   auto computeColor = [&](int i) {
     // Replicate the MATLAB guard: nudge phi2 away from exact zero
     double p2 = phi2[i];
-    if (p2 == 0.0) {
+    if(p2 == 0.0)
+    {
       p2 += 1.0e-15;
     }
 
@@ -194,7 +198,8 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
     double xFund = 0.0;
     double yFund = 0.0;
 
-    for (int k = 0; k < numOps; ++k) {
+    for(int k = 0; k < numOps; ++k)
+    {
       // g_rot_symm = O_k * G   (matches MATLAB exactly)
       const Eigen::Matrix3d R = symMats[static_cast<std::size_t>(k)] * G;
 
@@ -204,7 +209,8 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
       double hz = R(2, 2);
 
       // Flip to lower hemisphere (MATLAB: h_rot_3 > 0 → negate)
-      if (hz > 0.0) {
+      if(hz > 0.0)
+      {
         hx = -hx;
         hy = -hy;
         hz = -hz;
@@ -216,7 +222,8 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
       const double Y = hy / denom;
 
       // Fundamental-zone check (HCP unit triangle)
-      if (X >= 0.0 && Y >= 0.0 && Y <= X * tanMaxAngle) {
+      if(X >= 0.0 && Y >= 0.0 && Y <= X * tanMaxAngle)
+      {
         xFund = X;
         yFund = Y;
         break;
@@ -233,25 +240,24 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
 
     // Normalise so that the brightest channel is 1.0
     const double maxC = std::max({cmap1, cmap2, cmap3});
-    if (maxC > 0.0) {
+    if(maxC > 0.0)
+    {
       cmap1 /= maxC;
       cmap2 /= maxC;
       cmap3 /= maxC;
     }
 
     const std::size_t idx = static_cast<std::size_t>(i);
-    colors[idx].r =
-        static_cast<uint8_t>(std::clamp(std::lround(cmap1 * 255.0), 0L, 255L));
-    colors[idx].g =
-        static_cast<uint8_t>(std::clamp(std::lround(cmap2 * 255.0), 0L, 255L));
-    colors[idx].b =
-        static_cast<uint8_t>(std::clamp(std::lround(cmap3 * 255.0), 0L, 255L));
+    colors[idx].r = static_cast<uint8_t>(std::clamp(std::lround(cmap1 * 255.0), 0L, 255L));
+    colors[idx].g = static_cast<uint8_t>(std::clamp(std::lround(cmap2 * 255.0), 0L, 255L));
+    colors[idx].b = static_cast<uint8_t>(std::clamp(std::lround(cmap3 * 255.0), 0L, 255L));
   };
 
 #if MTRSIM_HAS_TBB
   tbb::parallel_for(0, N, computeColor);
 #else
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     computeColor(i);
   }
 #endif
@@ -262,20 +268,16 @@ IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd &phi1,
 // ─────────────────────────────────────────────────────────────────────────────
 // writePNG — renders the IPF colour map to a PNG file.
 
-void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
-                         const Eigen::VectorXd &phi1_in,
-                         const Eigen::VectorXd &phi_in,
-                         const Eigen::VectorXd &phi2_in,
-                         const std::string &outputPath,
-                         IPFColorScheme scheme) const {
+void IPFMapper::writePNG(const Eigen::MatrixXd& spatialCoords, const Eigen::VectorXd& phi1_in, const Eigen::VectorXd& phi_in, const Eigen::VectorXd& phi2_in, const std::string& outputPath,
+                         IPFColorScheme scheme) const
+{
   const int N = static_cast<int>(phi1_in.size());
-  if (spatialCoords.rows() != N || spatialCoords.cols() < 2) {
-    throw std::invalid_argument(
-        "IPFMapper::writePNG — spatialCoords must have N rows and ≥ 2 columns");
+  if(spatialCoords.rows() != N || spatialCoords.cols() < 2)
+  {
+    throw std::invalid_argument("IPFMapper::writePNG — spatialCoords must have N rows and ≥ 2 columns");
   }
 
-  const std::vector<RGBColor> colors =
-      eulerToColors(phi1_in, phi_in, phi2_in, {0.0, 0.0, 1.0}, scheme);
+  const std::vector<RGBColor> colors = eulerToColors(phi1_in, phi_in, phi2_in, {0.0, 0.0, 1.0}, scheme);
 
   // ── Build sorted unique coordinate lists
   // ────────────────────────────────────
@@ -286,12 +288,14 @@ void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
   const double yRange = yCol.maxCoeff() - yCol.minCoeff();
   const double tol = 1.0e-6 * std::max({xRange, yRange, 1.0});
 
-  auto sortedUnique = [&](const Eigen::VectorXd &v) -> std::vector<double> {
+  auto sortedUnique = [&](const Eigen::VectorXd& v) -> std::vector<double> {
     std::vector<double> vals(v.data(), v.data() + v.size());
     std::sort(vals.begin(), vals.end());
     std::vector<double> unique;
-    for (const double val : vals) {
-      if (unique.empty() || std::abs(val - unique.back()) > tol) {
+    for(const double val : vals)
+    {
+      if(unique.empty() || std::abs(val - unique.back()) > tol)
+      {
         unique.push_back(val);
       }
     }
@@ -303,7 +307,8 @@ void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
   const int width = static_cast<int>(xUnique.size());
   const int height = static_cast<int>(yUnique.size());
 
-  if (width < 1 || height < 1) {
+  if(width < 1 || height < 1)
+  {
     throw std::runtime_error("IPFMapper::writePNG — could not determine image "
                              "dimensions from spatialCoords");
   }
@@ -312,15 +317,17 @@ void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
   // ──────────────────────────────
   std::vector<uint8_t> pixels(static_cast<std::size_t>(width * height * 3), 0u);
 
-  auto findRank = [&](const std::vector<double> &sorted, double val) -> int {
+  auto findRank = [&](const std::vector<double>& sorted, double val) -> int {
     const auto it = std::lower_bound(sorted.begin(), sorted.end(), val - tol);
     return static_cast<int>(std::distance(sorted.begin(), it));
   };
 
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     const int col = findRank(xUnique, xCol[i]);
     const int row = findRank(yUnique, yCol[i]);
-    if (col < 0 || col >= width || row < 0 || row >= height) {
+    if(col < 0 || col >= width || row < 0 || row >= height)
+    {
       continue;
     }
     const std::size_t px = static_cast<std::size_t>((row * width + col) * 3);
@@ -333,10 +340,9 @@ void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
   // ── Write PNG
   // ───────────────────────────────────────────────────────────────
   const int stride = width * 3;
-  if (stbi_write_png(outputPath.c_str(), width, height, 3, pixels.data(),
-                     stride) == 0) {
-    throw std::runtime_error("IPFMapper::writePNG — stbi_write_png failed: " +
-                             outputPath);
+  if(stbi_write_png(outputPath.c_str(), width, height, 3, pixels.data(), stride) == 0)
+  {
+    throw std::runtime_error("IPFMapper::writePNG — stbi_write_png failed: " + outputPath);
   }
 }
 
@@ -350,9 +356,10 @@ void IPFMapper::writePNG(const Eigen::MatrixXd &spatialCoords,
 //   • Y ≤ X·tan(π/6)   (upper edge:  [0001] → [10-10])
 //   • X² + Y² ≤ 1      (arc:         [2-1-10] → [10-10])
 
-void IPFMapper::writeIPFTriangleLegendMatLab(
-    int imageDim, const std::string &outputPath) const {
-  if (m_System != CrystalSystem::HCP) {
+void IPFMapper::writeIPFTriangleLegendMatLab(int imageDim, const std::string& outputPath) const
+{
+  if(m_System != CrystalSystem::HCP)
+  {
     throw std::invalid_argument("IPFMapper::writeIPFTriangleLegendMatLab — "
                                 "currently supports HCP only");
   }
@@ -371,22 +378,22 @@ void IPFMapper::writeIPFTriangleLegendMatLab(
   const double yRange = yMax - yMin;
 
   const int width = imageDim;
-  const int height =
-      std::max(1, static_cast<int>(std::round(imageDim * yRange / xRange)));
+  const int height = std::max(1, static_cast<int>(std::round(imageDim * yRange / xRange)));
 
   // White background
-  std::vector<uint8_t> pixels(static_cast<std::size_t>(width * height * 3),
-                              255u);
+  std::vector<uint8_t> pixels(static_cast<std::size_t>(width * height * 3), 255u);
 
-  for (int row = 0; row < height; ++row) {
-    for (int col = 0; col < width; ++col) {
+  for(int row = 0; row < height; ++row)
+  {
+    for(int col = 0; col < width; ++col)
+    {
       // Map pixel centre to stereographic coordinates (Y increases upward)
       const double X = xMin + (static_cast<double>(col) + 0.5) * xRange / width;
-      const double Y =
-          yMax - (static_cast<double>(row) + 0.5) * yRange / height;
+      const double Y = yMax - (static_cast<double>(row) + 0.5) * yRange / height;
 
       // Fundamental-zone test
-      if (X < 0.0 || Y < 0.0 || Y > X * tanMaxAngle || (X * X + Y * Y) > 1.0) {
+      if(X < 0.0 || Y < 0.0 || Y > X * tanMaxAngle || (X * X + Y * Y) > 1.0)
+      {
         continue;
       }
 
@@ -399,28 +406,24 @@ void IPFMapper::writeIPFTriangleLegendMatLab(
       double cmap3 = r * (beta / k_MaxAngle);
 
       const double maxC = std::max({cmap1, cmap2, cmap3});
-      if (maxC > 0.0) {
+      if(maxC > 0.0)
+      {
         cmap1 /= maxC;
         cmap2 /= maxC;
         cmap3 /= maxC;
       }
 
       const std::size_t px = static_cast<std::size_t>((row * width + col) * 3);
-      pixels[px] = static_cast<uint8_t>(
-          std::clamp(std::lround(cmap1 * 255.0), 0L, 255L));
-      pixels[px + 1] = static_cast<uint8_t>(
-          std::clamp(std::lround(cmap2 * 255.0), 0L, 255L));
-      pixels[px + 2] = static_cast<uint8_t>(
-          std::clamp(std::lround(cmap3 * 255.0), 0L, 255L));
+      pixels[px] = static_cast<uint8_t>(std::clamp(std::lround(cmap1 * 255.0), 0L, 255L));
+      pixels[px + 1] = static_cast<uint8_t>(std::clamp(std::lround(cmap2 * 255.0), 0L, 255L));
+      pixels[px + 2] = static_cast<uint8_t>(std::clamp(std::lround(cmap3 * 255.0), 0L, 255L));
     }
   }
 
   const int stride = width * 3;
-  if (stbi_write_png(outputPath.c_str(), width, height, 3, pixels.data(),
-                     stride) == 0) {
-    throw std::runtime_error(
-        "IPFMapper::writeIPFTriangleLegendMatLab — stbi_write_png failed: " +
-        outputPath);
+  if(stbi_write_png(outputPath.c_str(), width, height, 3, pixels.data(), stride) == 0)
+  {
+    throw std::runtime_error("IPFMapper::writeIPFTriangleLegendMatLab — stbi_write_png failed: " + outputPath);
   }
 }
 

@@ -15,35 +15,35 @@ using namespace mtrsim;
 // IPFMapper tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-TEST_CASE("IPFMapper::eulerToColors: output size equals input size",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper::eulerToColors: output size equals input size", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   const int N = 15;
-  Eigen::VectorXd phi1 =
-      Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
+  Eigen::VectorXd phi1 = Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
   Eigen::VectorXd phi = Eigen::VectorXd::LinSpaced(N, 0.0, std::numbers::pi);
-  Eigen::VectorXd phi2 =
-      Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
+  Eigen::VectorXd phi2 = Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
 
   const auto colors = mapper.eulerToColors(phi1, phi, phi2);
   CHECK(static_cast<int>(colors.size()) == N);
 }
 
-TEST_CASE("IPFMapper::eulerToColors: all channel values in [0, 255]",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper::eulerToColors: all channel values in [0, 255]", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   const int N = 20;
   Eigen::VectorXd phi1(N), phi(N), phi2(N);
-  for (int i = 0; i < N; ++i) {
+  for(int i = 0; i < N; ++i)
+  {
     phi1[i] = 0.314159 * i;
     phi[i] = 0.157080 * i;
     phi2[i] = 0.628318 * i;
   }
 
   const auto colors = mapper.eulerToColors(phi1, phi, phi2);
-  for (std::size_t k = 0; k < colors.size(); ++k) {
+  for(std::size_t k = 0; k < colors.size(); ++k)
+  {
     // uint8_t is already [0,255] by type — this just forces the check to show
     // up in test output
     CHECK(colors[k].r >= 0);
@@ -54,7 +54,8 @@ TEST_CASE("IPFMapper::eulerToColors: all channel values in [0, 255]",
 
 TEST_CASE("IPFMapper::eulerToColors: identity orientation [0001] maps to red "
           "(EbsdLib)",
-          "[ipfmapper]") {
+          "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   Eigen::VectorXd phi1(1), phi(1), phi2(1);
@@ -68,8 +69,8 @@ TEST_CASE("IPFMapper::eulerToColors: identity orientation [0001] maps to red "
   CHECK(colors[0].b == 0);
 }
 
-TEST_CASE("IPFMapper MatLab scheme: identity orientation [0001] maps to red",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper MatLab scheme: identity orientation [0001] maps to red", "[ipfmapper]")
+{
   // phi1=0, PHI=0, phi2=0 → G=I → specimen normal [0,0,1] in crystal frame =
   // c-axis. Stereographic projection places [0001] at (X=0, Y=0), so r=0:
   //   cmap1 = 1, cmap2 = 0, cmap3 = 0  →  RGB = (255, 0, 0).
@@ -80,31 +81,27 @@ TEST_CASE("IPFMapper MatLab scheme: identity orientation [0001] maps to red",
   phi[0] = 0.0;
   phi2[0] = 1.0e-15;
 
-  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0},
-                                           IPFColorScheme::MatLab);
+  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab);
   CHECK(colors[0].r == 255);
   CHECK(colors[0].g == 0);
   CHECK(colors[0].b == 0);
 }
 
-TEST_CASE("IPFMapper MatLab scheme: output size equals input size",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper MatLab scheme: output size equals input size", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   const int N = 15;
-  Eigen::VectorXd phi1 =
-      Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
+  Eigen::VectorXd phi1 = Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
   Eigen::VectorXd phi = Eigen::VectorXd::LinSpaced(N, 0.0, std::numbers::pi);
-  Eigen::VectorXd phi2 =
-      Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
+  Eigen::VectorXd phi2 = Eigen::VectorXd::LinSpaced(N, 0.0, 2.0 * std::numbers::pi);
 
-  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0},
-                                           IPFColorScheme::MatLab);
+  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab);
   CHECK(static_cast<int>(colors.size()) == N);
 }
 
-TEST_CASE("IPFMapper MatLab scheme: same orientation gives identical colours",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper MatLab scheme: same orientation gives identical colours", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   const double p1 = 0.7;
@@ -116,8 +113,7 @@ TEST_CASE("IPFMapper MatLab scheme: same orientation gives identical colours",
   phi << ph, ph, ph;
   phi2 << p2, p2, p2;
 
-  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0},
-                                           IPFColorScheme::MatLab);
+  const auto colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab);
   CHECK(colors[0].r == colors[1].r);
   CHECK(colors[0].g == colors[1].g);
   CHECK(colors[0].b == colors[1].b);
@@ -126,7 +122,8 @@ TEST_CASE("IPFMapper MatLab scheme: same orientation gives identical colours",
   CHECK(colors[0].b == colors[2].b);
 }
 
-TEST_CASE("IPFMapper MatLab scheme: FCC throws", "[ipfmapper]") {
+TEST_CASE("IPFMapper MatLab scheme: FCC throws", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::FCC};
 
   Eigen::VectorXd phi1(1), phi(1), phi2(1);
@@ -134,13 +131,11 @@ TEST_CASE("IPFMapper MatLab scheme: FCC throws", "[ipfmapper]") {
   phi[0] = 0.0;
   phi2[0] = 0.1;
 
-  CHECK_THROWS_AS(mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0},
-                                       IPFColorScheme::MatLab),
-                  std::invalid_argument);
+  CHECK_THROWS_AS(mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab), std::invalid_argument);
 }
 
-TEST_CASE("IPFMapper::writeIPFTriangleLegendMatLab: creates file on disk",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper::writeIPFTriangleLegendMatLab: creates file on disk", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
   const std::string outPath = "/tmp/test_ipf_triangle_legend.png";
 
@@ -152,23 +147,22 @@ TEST_CASE("IPFMapper::writeIPFTriangleLegendMatLab: creates file on disk",
   std::filesystem::remove(outPath);
 }
 
-TEST_CASE("IPFMapper::writeIPFTriangleLegendMatLab: FCC throws",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper::writeIPFTriangleLegendMatLab: FCC throws", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::FCC};
-  CHECK_THROWS_AS(
-      mapper.writeIPFTriangleLegendMatLab(256, "/tmp/should_not_exist.png"),
-      std::invalid_argument);
+  CHECK_THROWS_AS(mapper.writeIPFTriangleLegendMatLab(256, "/tmp/should_not_exist.png"), std::invalid_argument);
   CHECK_FALSE(std::filesystem::exists("/tmp/should_not_exist.png"));
 }
 
-TEST_CASE("IPFMapper: compare EbsdLib vs MatLab colours",
-          "[ipfmapper][.print]") {
+TEST_CASE("IPFMapper: compare EbsdLib vs MatLab colours", "[ipfmapper][.print]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   // Representative Euler angles (radians) spanning different orientations
-  struct EulerSet {
+  struct EulerSet
+  {
     double phi1, phi, phi2;
-    const char *label;
+    const char* label;
   };
 
   // clang-format off
@@ -184,33 +178,29 @@ TEST_CASE("IPFMapper: compare EbsdLib vs MatLab colours",
   }};
   // clang-format on
 
-  std::printf("\n%-30s | %-17s | %-17s\n", "Orientation", "EbsdLib (R,G,B)",
-              "MatLab  (R,G,B)");
+  std::printf("\n%-30s | %-17s | %-17s\n", "Orientation", "EbsdLib (R,G,B)", "MatLab  (R,G,B)");
   std::printf("-------------------------------+-------------------+------------"
               "------\n");
 
-  for (const auto &a : angles) {
+  for(const auto& a : angles)
+  {
     Eigen::VectorXd p1(1), p(1), p2(1);
     p1[0] = a.phi1;
     p[0] = a.phi;
     p2[0] = a.phi2;
 
-    const auto ebsd = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0},
-                                           IPFColorScheme::EbsdLib);
-    const auto matlab = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0},
-                                             IPFColorScheme::MatLab);
+    const auto ebsd = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0}, IPFColorScheme::EbsdLib);
+    const auto matlab = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab);
 
-    std::printf("%-30s | (%3d, %3d, %3d)   | (%3d, %3d, %3d)\n", a.label,
-                ebsd[0].r, ebsd[0].g, ebsd[0].b, matlab[0].r, matlab[0].g,
-                matlab[0].b);
+    std::printf("%-30s | (%3d, %3d, %3d)   | (%3d, %3d, %3d)\n", a.label, ebsd[0].r, ebsd[0].g, ebsd[0].b, matlab[0].r, matlab[0].g, matlab[0].b);
   }
 
   std::printf("\n");
   CHECK(true); // keep Catch2 happy
 }
 
-TEST_CASE("IPFMapper: [0001] to [2-1-10] sweep (PHI 0-90 by 1 deg)",
-          "[ipfmapper][.print]") {
+TEST_CASE("IPFMapper: [0001] to [2-1-10] sweep (PHI 0-90 by 1 deg)", "[ipfmapper][.print]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   // Walking from [0001] to [2-1-10]:
@@ -222,29 +212,25 @@ TEST_CASE("IPFMapper: [0001] to [2-1-10] sweep (PHI 0-90 by 1 deg)",
   std::printf("\n PHI (deg) | EbsdLib (R,G,B)   | MatLab  (R,G,B)\n");
   std::printf("-----------+-------------------+------------------\n");
 
-  for (int deg = 0; deg <= 90; ++deg) {
+  for(int deg = 0; deg <= 90; ++deg)
+  {
     Eigen::VectorXd p1(1), p(1), p2(1);
     p1[0] = 0.0;
     p[0] = deg * k_Deg2Rad;
-    p2[0] = (deg == 0) ? 1.0e-15
-                       : 0.0; // nudge at exactly 0 to match existing convention
+    p2[0] = (deg == 0) ? 1.0e-15 : 0.0; // nudge at exactly 0 to match existing convention
 
-    const auto ebsd = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0},
-                                           IPFColorScheme::EbsdLib);
-    const auto matlab = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0},
-                                             IPFColorScheme::MatLab);
+    const auto ebsd = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0}, IPFColorScheme::EbsdLib);
+    const auto matlab = mapper.eulerToColors(p1, p, p2, {0.0, 0.0, 1.0}, IPFColorScheme::MatLab);
 
-    std::printf("    %3d    | (%3d, %3d, %3d)   | (%3d, %3d, %3d)\n", deg,
-                ebsd[0].r, ebsd[0].g, ebsd[0].b, matlab[0].r, matlab[0].g,
-                matlab[0].b);
+    std::printf("    %3d    | (%3d, %3d, %3d)   | (%3d, %3d, %3d)\n", deg, ebsd[0].r, ebsd[0].g, ebsd[0].b, matlab[0].r, matlab[0].g, matlab[0].b);
   }
 
   std::printf("\n");
   CHECK(true);
 }
 
-TEST_CASE("IPFMapper::eulerToColors: same orientation gives identical colours",
-          "[ipfmapper]") {
+TEST_CASE("IPFMapper::eulerToColors: same orientation gives identical colours", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   const double p1 = 0.7;
@@ -265,7 +251,8 @@ TEST_CASE("IPFMapper::eulerToColors: same orientation gives identical colours",
   CHECK(colors[0].b == colors[2].b);
 }
 
-TEST_CASE("IPFMapper::eulerToColors: size mismatch throws", "[ipfmapper]") {
+TEST_CASE("IPFMapper::eulerToColors: size mismatch throws", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   Eigen::VectorXd phi1(3), phi(2), phi2(3);
@@ -276,7 +263,8 @@ TEST_CASE("IPFMapper::eulerToColors: size mismatch throws", "[ipfmapper]") {
   CHECK_THROWS_AS(mapper.eulerToColors(phi1, phi, phi2), std::invalid_argument);
 }
 
-TEST_CASE("IPFMapper::writePNG: creates file on disk", "[ipfmapper]") {
+TEST_CASE("IPFMapper::writePNG: creates file on disk", "[ipfmapper]")
+{
   IPFMapper mapper{CrystalSystem::HCP};
 
   // 3×3 regular spatial grid
@@ -286,8 +274,10 @@ TEST_CASE("IPFMapper::writePNG: creates file on disk", "[ipfmapper]") {
   Eigen::MatrixXd coords(N, 2);
   Eigen::VectorXd phi1(N), phi(N), phi2(N);
   int idx = 0;
-  for (int iy = 0; iy < ny; ++iy) {
-    for (int ix = 0; ix < nx; ++ix) {
+  for(int iy = 0; iy < ny; ++iy)
+  {
+    for(int ix = 0; ix < nx; ++ix)
+    {
       coords(idx, 0) = static_cast<double>(ix) * 0.1;
       coords(idx, 1) = static_cast<double>(iy) * 0.1;
       phi1[idx] = 0.2 * idx;
@@ -307,9 +297,11 @@ TEST_CASE("IPFMapper::writePNG: creates file on disk", "[ipfmapper]") {
 // PoleFigure tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace {
+namespace
+{
 // Build a small ODFComponent with a few non-zero bins.
-ODFComponent makeTinyODF() {
+ODFComponent makeTinyODF()
+{
   ODFCalculator calc;
   Eigen::VectorXd phi1(5), phi(5), phi2(5);
   phi1 << 0.3, 1.0, 2.0, 3.5, 5.0;
@@ -319,7 +311,8 @@ ODFComponent makeTinyODF() {
 }
 } // anonymous namespace
 
-TEST_CASE("PoleFigure::fromODF: returns non-empty data", "[polefigure]") {
+TEST_CASE("PoleFigure::fromODF: returns non-empty data", "[polefigure]")
+{
   PoleFigure pf;
   const ODFComponent odf = makeTinyODF();
   const PoleFigureData pfd = pf.fromODF(odf);
@@ -329,7 +322,8 @@ TEST_CASE("PoleFigure::fromODF: returns non-empty data", "[polefigure]") {
   CHECK(pfd.intensity.size() == pfd.x.size());
 }
 
-TEST_CASE("PoleFigure::fromODF: all intensities non-negative", "[polefigure]") {
+TEST_CASE("PoleFigure::fromODF: all intensities non-negative", "[polefigure]")
+{
   PoleFigure pf;
   const ODFComponent odf = makeTinyODF();
   const PoleFigureData pfd = pf.fromODF(odf);
@@ -337,8 +331,8 @@ TEST_CASE("PoleFigure::fromODF: all intensities non-negative", "[polefigure]") {
   CHECK((pfd.intensity.array() >= 0.0).all());
 }
 
-TEST_CASE("PoleFigure::fromODF: intensities normalised to sum ~= 1",
-          "[polefigure]") {
+TEST_CASE("PoleFigure::fromODF: intensities normalised to sum ~= 1", "[polefigure]")
+{
   PoleFigure pf;
   const ODFComponent odf = makeTinyODF();
   const PoleFigureData pfd = pf.fromODF(odf);
@@ -346,14 +340,15 @@ TEST_CASE("PoleFigure::fromODF: intensities normalised to sum ~= 1",
   CHECK(pfd.intensity.sum() == Approx(1.0).margin(1.0e-9));
 }
 
-TEST_CASE("PoleFigure::fromODF: stereographic coords are finite",
-          "[polefigure]") {
+TEST_CASE("PoleFigure::fromODF: stereographic coords are finite", "[polefigure]")
+{
   PoleFigure pf;
   const ODFComponent odf = makeTinyODF();
   const PoleFigureData pfd = pf.fromODF(odf);
 
   // All projected X, Y values should be finite (no NaN/Inf)
-  for (int i = 0; i < pfd.x.size(); ++i) {
+  for(int i = 0; i < pfd.x.size(); ++i)
+  {
     CHECK(std::isfinite(pfd.x[i]));
     CHECK(std::isfinite(pfd.y[i]));
   }

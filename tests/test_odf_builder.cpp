@@ -18,7 +18,8 @@ TEST_CASE("ODFBuilder::accumulate (no smoothing) hits exactly one bin per tuple"
   const mtrsim::ODFBuildParams p{72, 36, 72, 5.0, false};
   std::vector<double> values(72 * 36 * 72, 0.0);
 
-  // Tuple at bin (i_phi1=5, i_PHI=3, i_phi2=10) center → angles (27.5, 17.5, 52.5) deg
+  // Tuple at bin (i_phi1=5, i_PHI=3, i_phi2=10) center → angles
+  // (27.5, 17.5, 52.5) deg
   const std::vector<std::array<double, 3>> eulers = {{27.5 * k_DegToRad, 17.5 * k_DegToRad, 52.5 * k_DegToRad}};
   mtrsim::accumulate(eulers, p, values);
 

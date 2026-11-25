@@ -5,15 +5,22 @@
 #include "simplnx/DataStructure/DataPath.hpp"
 #include "simplnx/DataStructure/DataStructure.hpp"
 #include "simplnx/Filter/IFilter.hpp"
+#include "simplnx/Utilities/ThrottledMessageHandler.hpp"
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 
 namespace nx::core
 {
 
+/**
+ * @struct ComputeODFInputValues
+ * @brief Supplies the selected phase, input paths, and full Euler-grid settings.
+ */
 struct MTRSIM_EXPORT ComputeODFInputValues
 {
+  int32_t selectedPhase = 1;
   bool applySmoothing;
   double binSizeDeg;
   bool useMask;
@@ -33,6 +40,11 @@ struct MTRSIM_EXPORT ComputeODFInputValues
   //                    are density on SO(3) divided by uniform density;
   //                    matches MTEX's plot(odf) MUD convention).
   uint64_t outputUnits;
+  /**
+   * @brief Receives the contributing voxel count when non-null.
+   * The caller owns the storage, which must remain valid until operator() returns.
+   */
+  usize* contributingVoxelCount = nullptr;
 };
 
 /**
@@ -51,13 +63,27 @@ public:
   ComputeODF& operator=(const ComputeODF&) = delete;
   ComputeODF& operator=(ComputeODF&&) noexcept = delete;
 
+  /**
+   * @brief Accumulates the selected phase and writes the normalized full-grid ODF.
+   * @return Error for invalid selected crystal metadata or output shape; warning for failed orientation expansions.
+   */
   Result<> operator()();
+
+  /**
+   * @brief Reports completed voxels through the shared progress throttle.
+   * @param completedVoxels Number of voxels completed since the previous call.
+   *
+   * The mutex serializes throttle updates from parallel accumulation workers.
+   */
+  void sendThreadSafeProgressMessage(usize completedVoxels);
 
 private:
   DataStructure& m_DataStructure;
   const ComputeODFInputValues* m_InputValues = nullptr;
   const std::atomic_bool& m_ShouldCancel;
   const IFilter::MessageHandler& m_MessageHandler;
+  mutable std::mutex m_ProgressMessageMutex;
+  ThrottledMessageHandler m_ProgressThrottle;
 };
 
 } // namespace nx::core

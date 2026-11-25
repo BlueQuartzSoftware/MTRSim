@@ -1,28 +1,27 @@
 /**
- * Synthetic unit tests for ComputeODFFilter (Milestone AJ, Task 7a — Create New mode).
- *
- * Tests build the input EBSD DataStructure inline (no .dream3d/.h5 fixture files)
- * and assert on the resulting ODF Float64 array.
- *
- * MATLAB-reference parity is intentionally NOT tested here; that comparison waits
- * on the exemplar-storage decision (see Task 7 follow-up notes) and the
- * PHI-boundary behavior of mtrsim::accumulate.
+ * @file
+ * @brief Tests selected-phase ODF computation, metadata persistence, and MATLAB reference agreement.
  */
 
 #include <catch2/catch.hpp>
 
+#include "MTRSim/Filters/Algorithms/ComputeODF.hpp"
 #include "MTRSim/Filters/ComputeODFFilter.hpp"
 #include "MTRSim/MTRSim_test_dirs.hpp"
 
 #include "LibMTRSim/ODFFileIO.hpp"
 
 #include "SimplnxCore/Filters/ReadDREAM3DFilter.hpp"
+#include "SimplnxCore/Filters/WriteDREAM3DFilter.hpp"
 
 #include "simplnx/DataStructure/AttributeMatrix.hpp"
 #include "simplnx/DataStructure/DataArray.hpp"
 #include "simplnx/DataStructure/DataGroup.hpp"
 #include "simplnx/DataStructure/DataStore.hpp"
+#include "simplnx/DataStructure/EmptyStringStore.hpp"
 #include "simplnx/DataStructure/Geometry/ImageGeom.hpp"
+#include "simplnx/DataStructure/StringArray.hpp"
+#include "simplnx/Filter/Actions/CreateArrayAction.hpp"
 #include "simplnx/Parameters/ArraySelectionParameter.hpp"
 #include "simplnx/Parameters/BoolParameter.hpp"
 #include "simplnx/Parameters/ChoicesParameter.hpp"
@@ -31,6 +30,7 @@
 #include "simplnx/Parameters/Dream3dImportParameter.hpp"
 #include "simplnx/Parameters/GeometrySelectionParameter.hpp"
 #include "simplnx/Parameters/NumberParameter.hpp"
+#include "simplnx/Pipeline/Pipeline.hpp"
 #include "simplnx/UnitTest/UnitTestCommon.hpp"
 
 #include <fmt/format.h>
@@ -41,6 +41,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
 #include <numbers>
 #include <optional>
 #include <string>
@@ -51,7 +52,8 @@ using namespace nx::core::UnitTest;
 
 namespace
 {
-// EbsdLib crystal-structure codes (matches ebsdlib::CrystalStructure namespace).
+// EbsdLib crystal-structure codes (matches ebsdlib::CrystalStructure
+// namespace).
 constexpr uint32_t k_HexagonalHigh = 0;
 constexpr uint32_t k_CubicHigh = 1;
 
@@ -68,9 +70,7 @@ const std::string k_ComponentName = "Component 1";
   return static_cast<usize>(iPhi1) * static_cast<usize>(nPHI) * static_cast<usize>(nphi2) + static_cast<usize>(iPHI) * static_cast<usize>(nphi2) + static_cast<usize>(iPhi2);
 }
 
-// Builds an ImageGeom + cell AttributeMatrix + Euler/Phases/(Mask) arrays, and an
-// ensemble AttributeMatrix + CrystalStructures array. Returns the DataStructure plus
-// the four DataPaths that the filter will need.
+// The fixture provides cell inputs and matching ensemble crystal codes and material names.
 struct EbsdInputs
 {
   DataStructure dataStructure;
@@ -80,10 +80,12 @@ struct EbsdInputs
   DataPath eulerAnglesPath;
   DataPath phasesPath;
   DataPath crystalStructuresPath;
+  DataPath materialNamesPath;
   DataPath maskPath;
 };
 
-EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersDeg, const std::vector<int32>& phaseLabels, uint32_t crystalCodeForPhase1, const std::vector<bool>* maskValues = nullptr)
+EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersDeg, const std::vector<int32>& phaseLabels, uint32_t crystalCodeForPhase1, const std::vector<bool>* maskValues = nullptr,
+                              bool includeCubicPhase2 = false)
 {
   REQUIRE(eulersDeg.size() == phaseLabels.size());
   if(maskValues != nullptr)
@@ -94,9 +96,10 @@ EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
   EbsdInputs out;
   const usize numVoxels = eulersDeg.size();
 
-  // Lay out the input EBSD ImageGeom as a 1-D strip (numVoxels x 1 x 1). The geometry shape
-  // is irrelevant to ODF output; only the per-voxel content matters. Using {N, 1, 1} keeps
-  // the cell tuple-shape unambiguous so the AttributeMatrix sees N tuples.
+  // Lay out the input EBSD ImageGeom as a 1-D strip (numVoxels x 1 x 1). The
+  // geometry shape is irrelevant to ODF output; only the per-voxel content
+  // matters. Using {N, 1, 1} keeps the cell tuple-shape unambiguous so the
+  // AttributeMatrix sees N tuples.
   ImageGeom* ebsdGeom = ImageGeom::Create(out.dataStructure, "EBSD");
   ebsdGeom->setDimensions({numVoxels, 1, 1});
   out.ebsdGeomPath = DataPath({"EBSD"});
@@ -129,38 +132,50 @@ EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
     out.maskPath = out.cellAttrMatPath.createChildPath("Mask");
   }
 
-  // Ensemble AttributeMatrix at the top level (not on the geometry) — preflight only checks
-  // that the array is UInt32/1-component, not where it lives, which mirrors the spec.
-  AttributeMatrix* ensembleAm = AttributeMatrix::Create(out.dataStructure, "EnsembleData", {2});
+  // Ensemble arrays can reside outside the input geometry.
+  const usize ensembleCount = includeCubicPhase2 ? 3 : 2;
+  AttributeMatrix* ensembleAm = AttributeMatrix::Create(out.dataStructure, "EnsembleData", {ensembleCount});
   out.ensembleAttrMatPath = DataPath({"EnsembleData"});
 
-  UInt32Array* csArr = UInt32Array::CreateWithStore<DataStore<uint32>>(out.dataStructure, "CrystalStructures", {2}, {1}, ensembleAm->getId());
+  UInt32Array* csArr = UInt32Array::CreateWithStore<DataStore<uint32>>(out.dataStructure, "CrystalStructures", {ensembleCount}, {1}, ensembleAm->getId());
   (*csArr)[0] = 999; // phase 0 = "no phase" — never indexed by the algorithm
   (*csArr)[1] = crystalCodeForPhase1;
   out.crystalStructuresPath = out.ensembleAttrMatPath.createChildPath("CrystalStructures");
+  std::vector<std::string> materialNames = {"Unknown", "Phase 1"};
+  if(includeCubicPhase2)
+  {
+    (*csArr)[2] = k_CubicHigh;
+    materialNames.push_back("Cubic Phase 2");
+  }
+  REQUIRE(StringArray::CreateWithValues(out.dataStructure, "Material Names", {ensembleCount}, materialNames, ensembleAm->getId()) != nullptr);
+  out.materialNamesPath = out.ensembleAttrMatPath.createChildPath("Material Names");
 
   return out;
 }
 
-// Pre-fills a base Arguments object with all the required input paths. Tests then
-// override individual values as needed.
+// Pre-fills a base Arguments object with all the required input paths. Tests
+// then override individual values as needed.
 Arguments makeBaseArgs(const EbsdInputs& inputs, bool applySmoothing, float32 binSizeDeg)
 {
   Arguments args;
+  args.insertOrAssign(ComputeODFFilter::k_SaveAsImageGeometry_Key, false);
   args.insertOrAssign(ComputeODFFilter::k_ApplySmoothing_Key, std::make_any<bool>(applySmoothing));
   args.insertOrAssign(ComputeODFFilter::k_BinSizeDeg_Key, std::make_any<float32>(binSizeDeg));
   args.insertOrAssign(ComputeODFFilter::k_EulerAngles_Key, std::make_any<DataPath>(inputs.eulerAnglesPath));
   args.insertOrAssign(ComputeODFFilter::k_Phases_Key, std::make_any<DataPath>(inputs.phasesPath));
   args.insertOrAssign(ComputeODFFilter::k_CrystalStructures_Key, std::make_any<DataPath>(inputs.crystalStructuresPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaterialNames_Key, inputs.materialNamesPath);
+  args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(false));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(DataPath{}));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(DataPath{}));
   args.insertOrAssign(ComputeODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(k_OutputGeomPath));
   args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(k_CellAttrMatName));
   args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<DataObjectNameParameter::ValueType>(k_ComponentName));
   return args;
 }
 
-// Returns the code of the first error in a preflight result, or 0 if there are no errors.
+// Returns the code of the first error in a preflight result, or 0 if there are
+// no errors.
 static int32 firstErrorCode(const IFilter::PreflightResult& r)
 {
   const auto& errors = r.outputActions.errors();
@@ -189,12 +204,14 @@ std::pair<double, usize> sumAndNonZeroCount(const DataStructure& ds)
 
 } // namespace
 
-TEST_CASE("MTRSim::ComputeODFFilter: Single HCP voxel, no smoothing, produces a normalized ODF", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Single HCP voxel, no smoothing, produces "
+          "a normalized ODF",
+          "[MTRSim][ComputeODFFilter]")
 {
-  // 1 voxel of HCP at (10, 20, 30) deg. With smoothing off, each of the 12 symmetric
-  // variants deposits exactly 1.0 into a (possibly shared) bin. Normalization divides
-  // by the total deposit count = 12 (matches MATLAB calc_ODF.m), so the resulting sum
-  // should be exactly 1.0.
+  // 1 voxel of HCP at (10, 20, 30) deg. With smoothing off, each of the 12
+  // symmetric variants deposits exactly 1.0 into a (possibly shared) bin.
+  // Normalization divides by the total deposit count = 12 (matches MATLAB
+  // calc_ODF.m), so the resulting sum should be exactly 1.0.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
 
@@ -206,16 +223,19 @@ TEST_CASE("MTRSim::ComputeODFFilter: Single HCP voxel, no smoothing, produces a 
 
   const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
   REQUIRE(sum == Approx(1.0).margin(1.0e-9));
-  // Some symmetric variants may map to the same bin, so >=1 and <=12 nonzero bins are valid.
+  // Some symmetric variants may map to the same bin, so >=1 and <=12 nonzero
+  // bins are valid.
   REQUIRE(nonZero >= 1);
   REQUIRE(nonZero <= 12);
 }
 
-TEST_CASE("MTRSim::ComputeODFFilter: Single Cubic voxel, no smoothing, produces a normalized ODF", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Single Cubic voxel, no smoothing, "
+          "produces a normalized ODF",
+          "[MTRSim][ComputeODFFilter]")
 {
-  // 1 voxel of Cubic_High at (10, 20, 30) deg. 24 symmetric variants × 1.0 each, normalized
-  // by the total deposit count = 24 (matches MATLAB calc_ODF.m), so the resulting sum should
-  // be exactly 1.0.
+  // 1 voxel of Cubic_High at (10, 20, 30) deg. 24 symmetric variants × 1.0
+  // each, normalized by the total deposit count = 24 (matches MATLAB
+  // calc_ODF.m), so the resulting sum should be exactly 1.0.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_CubicHigh);
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
 
@@ -233,11 +253,12 @@ TEST_CASE("MTRSim::ComputeODFFilter: Single Cubic voxel, no smoothing, produces 
 
 TEST_CASE("MTRSim::ComputeODFFilter: Smoothing distributes per MATLAB weights", "[MTRSim][ComputeODFFilter]")
 {
-  // 1 HCP voxel near a bin edge (12.5, 12.5, 12.5) deg. 12.5/5.0 = 2.5 so this value sits
-  // exactly on the boundary between bins 2 and 3 (NOT at a bin center). With smoothing on,
-  // each of the 12 symmetric variants distributes 1.0 across 27 bins (the MATLAB tri-linear
-  // weights sum to 1.0 regardless of where inside the cube the sample falls). Total =
-  // 12 x 1.0; normalize by total deposit count N=12 -> final sum = 1.0.
+  // 1 HCP voxel near a bin edge (12.5, 12.5, 12.5) deg. 12.5/5.0 = 2.5 so this
+  // value sits exactly on the boundary between bins 2 and 3 (NOT at a bin
+  // center). With smoothing on, each of the 12 symmetric variants
+  // distributes 1.0 across 27 bins (the MATLAB tri-linear weights sum to 1.0
+  // regardless of where inside the cube the sample falls). Total = 12 x 1.0;
+  // normalize by total deposit count N=12 -> final sum = 1.0.
   EbsdInputs inputs = buildSyntheticEbsd({{{12.5f, 12.5f, 12.5f}}}, {1}, k_HexagonalHigh);
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/true, /*binSizeDeg=*/5.0f);
 
@@ -249,15 +270,17 @@ TEST_CASE("MTRSim::ComputeODFFilter: Smoothing distributes per MATLAB weights", 
 
   const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
   REQUIRE(sum == Approx(1.0).margin(1.0e-9));
-  // Smoothing across 27 bins per variant means many more nonzero bins are expected.
+  // Smoothing across 27 bins per variant means many more nonzero bins are
+  // expected.
   REQUIRE(nonZero >= 12);
 }
 
 TEST_CASE("MTRSim::ComputeODFFilter: MUD output applies per-row sin(PHI) Jacobian", "[MTRSim][ComputeODFFilter]")
 {
   // Run the filter twice on identical input (same Eulers, smoothing on, default
-  // hex symmetry) — once in Count-Density mode and once in MUD mode — then verify
-  // that for every non-zero bin the per-bin ratio matches the per-PHI-row Jacobian
+  // hex symmetry) — once in Count-Density mode and once in MUD mode — then
+  // verify that for every non-zero bin the per-bin ratio matches the
+  // per-PHI-row Jacobian
   //   factor = 8 * pi^2 / (step^3 * sin(PHI_center(j)))
   // This locks the conversion formula in place. Any future change (wrong row
   // index, missing pi^2, swapped step exponent, etc.) breaks this immediately.
@@ -344,10 +367,11 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD output applies per-row sin(PHI) Jacobia
 
 TEST_CASE("MTRSim::ComputeODFFilter: MUD integrates to 8*pi^2 on SO(3)", "[MTRSim][ComputeODFFilter]")
 {
-  // Single-number sanity check: by construction the count-density ODF sums to 1.0
-  // (it's a probability distribution on Bunge bins). Converting to MUD multiplies
-  // each bin by 8*pi^2 / (step^3 * sin(PHI_center)). If we then weight each bin by
-  // its true SO(3) volume element (step^3 * sin(PHI_center)), we should recover
+  // Single-number sanity check: by construction the count-density ODF sums
+  // to 1.0 (it's a probability distribution on Bunge bins). Converting to MUD
+  // multiplies each bin by 8*pi^2 / (step^3 * sin(PHI_center)). If we then
+  // weight each bin by its true SO(3) volume element (step^3 *
+  // sin(PHI_center)), we should recover
   //   sum_bins (MUD[bin] * step^3 * sin(PHI_center(bin))) = 8*pi^2
   // i.e. the SO(3) volume. This is the closed-form integral identity for MUD.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}, {{50.0f, 70.0f, 110.0f}}}, {1, 1}, k_HexagonalHigh);
@@ -394,8 +418,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD integrates to 8*pi^2 on SO(3)", "[MTRSi
 TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFFilter]")
 {
   // 4 HCP voxels with distinct Eulers, mask = {true, false, true, false}.
-  // 2 contributing voxels × 12 variants = 24 deposits; normalized by total deposit
-  // count N=24 (matches MATLAB calc_ODF.m) → sum = 1.0.
+  // 2 contributing voxels × 12 variants = 24 deposits; normalized by total
+  // deposit count N=24 (matches MATLAB calc_ODF.m) → sum = 1.0.
   std::vector<std::array<float32, 3>> eulers = {{{10.0f, 20.0f, 30.0f}}, {{40.0f, 50.0f, 60.0f}}, {{70.0f, 80.0f, 90.0f}}, {{15.0f, 25.0f, 35.0f}}};
   std::vector<int32> phases = {1, 1, 1, 1};
   std::vector<bool> mask = {true, false, true, false};
@@ -403,7 +427,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFF
 
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(true));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(inputs.maskPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(inputs.maskPath));
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.dataStructure, args);
@@ -416,11 +440,42 @@ TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFF
   REQUIRE(nonZero >= 1);
 }
 
+TEST_CASE("MTRSim::ComputeODFFilter: Progress messages drive the numeric progress field", "[MTRSim][ComputeODFFilter][Messages]")
+{
+  std::vector<std::array<float32, 3>> eulers(4096, {10.0F, 20.0F, 30.0F});
+  std::vector<int32> phases(eulers.size(), 1);
+  EbsdInputs inputs = buildSyntheticEbsd(eulers, phases, k_HexagonalHigh);
+  Arguments args = makeBaseArgs(inputs, false, 5.0F);
+
+  std::mutex messagesMutex;
+  std::vector<IFilter::Message> messages;
+  const IFilter::MessageHandler handler{[&](const IFilter::Message& message) {
+    const std::lock_guard<std::mutex> lock(messagesMutex);
+    messages.push_back(message);
+  }};
+
+  ComputeODFFilter filter;
+  const auto executeResult = filter.execute(inputs.dataStructure, args, nullptr, handler);
+  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
+
+  std::vector<IFilter::Message> progressMessages;
+  for(const auto& message : messages)
+  {
+    if(message.type == IFilter::Message::Type::Progress)
+    {
+      progressMessages.push_back(message);
+    }
+  }
+  REQUIRE_FALSE(progressMessages.empty());
+  REQUIRE(progressMessages.back().progress == 100);
+  REQUIRE(progressMessages.back().message.find("Compute ODF for phase 1") != std::string::npos);
+}
+
 TEST_CASE("MTRSim::ComputeODFFilter: Phase 0 voxels are skipped", "[MTRSim][ComputeODFFilter]")
 {
   // 4 HCP voxels with phase pattern {1, 0, 1, 0}, all same Euler. No mask.
-  // 2 contributing × 12 variants = 24 deposits; normalize by total deposit count N=24
-  // (matches MATLAB calc_ODF.m) → sum = 1.0.
+  // 2 contributing × 12 variants = 24 deposits; normalize by total deposit
+  // count N=24 (matches MATLAB calc_ODF.m) → sum = 1.0.
   std::vector<std::array<float32, 3>> eulers = {{{10.0f, 20.0f, 30.0f}}, {{10.0f, 20.0f, 30.0f}}, {{10.0f, 20.0f, 30.0f}}, {{10.0f, 20.0f, 30.0f}}};
   std::vector<int32> phases = {1, 0, 1, 0};
   EbsdInputs inputs = buildSyntheticEbsd(eulers, phases, k_HexagonalHigh);
@@ -440,9 +495,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Phase 0 voxels are skipped", "[MTRSim][Comp
 
 TEST_CASE("MTRSim::ComputeODFFilter: Empty mask DataPath disables the mask", "[MTRSim][ComputeODFFilter]")
 {
-  // 4 HCP voxels, all phase=1, distinct Eulers. UseMask = false (mask path is empty).
-  // 4 contributing × 12 variants = 48 deposits; normalize by total deposit count N=48
-  // (matches MATLAB calc_ODF.m) → sum = 1.0.
+  // 4 HCP voxels, all phase=1, distinct Eulers. UseMask = false (mask path is
+  // empty). 4 contributing × 12 variants = 48 deposits; normalize by total
+  // deposit count N=48 (matches MATLAB calc_ODF.m) → sum = 1.0.
   std::vector<std::array<float32, 3>> eulers = {{{10.0f, 20.0f, 30.0f}}, {{40.0f, 50.0f, 60.0f}}, {{70.0f, 80.0f, 90.0f}}, {{15.0f, 25.0f, 35.0f}}};
   std::vector<int32> phases = {1, 1, 1, 1};
   EbsdInputs inputs = buildSyntheticEbsd(eulers, phases, k_HexagonalHigh);
@@ -471,11 +526,14 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects bad bin size", "[MTRSim][
   REQUIRE(firstErrorCode(preflightResult) == -12200);
 }
 
-TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects euler_angles wrong component count", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects euler_angles wrong "
+          "component count",
+          "[MTRSim][ComputeODFFilter]")
 {
-  // Build a normal DataStructure, then swap in a wrong-component-count Float32 array
-  // for euler_angles. The ArraySelectionParameter component-shape constraint will cause
-  // the IFilter::preflight wrapper to flag it before preflightImpl is even called.
+  // Build a normal DataStructure, then swap in a wrong-component-count Float32
+  // array for euler_angles. The ArraySelectionParameter component-shape
+  // constraint will cause the IFilter::preflight wrapper to flag it before
+  // preflightImpl is even called.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
 
   // Add an alternate single-component Float32 array on the same cell AM.
@@ -489,9 +547,11 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects euler_angles wrong compon
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.dataStructure, args);
   REQUIRE(preflightResult.outputActions.invalid());
-  // The ArraySelectionParameter component-shape constraint is enforced by the IFilter::preflight
-  // wrapper (code -208 = FilterParameter::Constants::k_Validate_TupleShapeValue) BEFORE preflightImpl
-  // runs, so our own -12201 code never gets a chance to fire. Assert the wrapper code explicitly.
+  // The ArraySelectionParameter component-shape constraint is enforced by the
+  // IFilter::preflight wrapper (code -208 =
+  // FilterParameter::Constants::k_Validate_TupleShapeValue) BEFORE
+  // preflightImpl runs, so our own -12201 code never gets a chance to fire.
+  // Assert the wrapper code explicitly.
   REQUIRE(firstErrorCode(preflightResult) == -208);
 }
 
@@ -499,8 +559,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects mismatched attribute matr
 {
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
 
-  // Create a second cell AttributeMatrix on the same geometry with its own Phases array,
-  // so euler_angles and phases live on different parents.
+  // Create a second cell AttributeMatrix on the same geometry with its own
+  // Phases array, so euler_angles and phases live on different parents.
   ImageGeom& ebsdGeom = inputs.dataStructure.getDataRefAs<ImageGeom>(inputs.ebsdGeomPath);
   AttributeMatrix* otherAm = AttributeMatrix::Create(inputs.dataStructure, "OtherCellData", {1}, ebsdGeom.getId());
   Int32Array* otherPhases = Int32Array::CreateWithStore<DataStore<int32>>(inputs.dataStructure, "Phases", {1}, {1}, otherAm->getId());
@@ -535,23 +595,23 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight populates updatedValues", "[MTRSi
 }
 
 // -----------------------------------------------------------------------------
-// Append-mode tests (Milestone AJ, Task 7b). Build on T7a: first run Create New to
-// populate an ODF geometry, then run Append against that same geometry.
+// Append-mode tests (Milestone AJ, Task 7b). Build on T7a: first run Create New
+// to populate an ODF geometry, then run Append against that same geometry.
 // -----------------------------------------------------------------------------
 
 namespace
 {
-// Builds a pre-existing ImageGeom with the given XYZ dimensions, XYZ spacing, and a cell
-// AttributeMatrix named "Cell Data". Optionally pre-populates a "Component 1" Float64 cell-data
-// array with a constant value so tests can verify it's left alone by an Append call.
+// Builds a pre-existing ImageGeom with the given XYZ dimensions, XYZ spacing,
+// and a cell AttributeMatrix named "Cell Data". Optionally pre-populates a
+// "Component 1" Float64 cell-data array with a constant value so tests can
+// verify it's left alone by an Append call.
 struct ExistingOdfGeom
 {
   DataPath geomPath;
   DataPath cellAttrMatPath;
 };
 
-ExistingOdfGeom buildExistingOdfGeom(DataStructure& ds, const std::array<usize, 3>& dimsXYZ, const std::array<float32, 3>& spacingXYZ, bool seedComponent1 = false,
-                                     double seedValue = 0.0)
+ExistingOdfGeom buildExistingOdfGeom(DataStructure& ds, const std::array<usize, 3>& dimsXYZ, const std::array<float32, 3>& spacingXYZ, bool seedComponent1 = false, double seedValue = 0.0)
 {
   ExistingOdfGeom out;
   ImageGeom* geom = ImageGeom::Create(ds, "ODF");
@@ -560,10 +620,12 @@ ExistingOdfGeom buildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
   geom->setOrigin({0.0f, 0.0f, 0.0f});
   out.geomPath = DataPath({"ODF"});
 
-  // Tuple shape is ZYX for cell-data arrays — match the convention used by Create New mode.
+  // Tuple shape is ZYX for cell-data arrays — match the convention used by
+  // Create New mode.
   const std::vector<usize> tupleShapeZYX = {dimsXYZ[2], dimsXYZ[1], dimsXYZ[0]};
   AttributeMatrix* cellAm = AttributeMatrix::Create(ds, k_CellAttrMatName, tupleShapeZYX, geom->getId());
-  // Register the AttributeMatrix with the ImageGeom as its cell data so getCellDataPath() works.
+  // Register the AttributeMatrix with the ImageGeom as its cell data so
+  // getCellDataPath() works.
   geom->setCellData(cellAm->getId());
   out.cellAttrMatPath = out.geomPath.createChildPath(k_CellAttrMatName);
 
@@ -599,11 +661,228 @@ std::pair<double, usize> sumAndNonZeroOf(const DataStructure& ds, const DataPath
 }
 } // namespace
 
-TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an existing ODF", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Selected phase controls symmetry and masked contributions", "[MTRSim][ComputeODFFilter]")
 {
-  // Run Create New first: 1 HCP voxel at (10, 20, 30) deg, no smoothing, bin size 5 deg.
-  // Expected Component 1 sum = 1.0 (12 deposits normalized by total deposit count N=12,
-  // matches MATLAB calc_ODF.m).
+  const int32 selectedPhase = GENERATE(1, 2);
+  const bool useMask = GENERATE(false, true);
+  const std::vector<bool> mask = {true, false, true};
+  auto inputs = buildSyntheticEbsd({{{11.0f, 22.0f, 33.0f}}, {{41.0f, 57.0f, 83.0f}}, {{17.0f, 43.0f, 79.0f}}}, {1, 1, 2}, k_HexagonalHigh, &mask, true);
+  auto args = makeBaseArgs(inputs, false, 5.0F);
+  args.insertOrAssign("phase_index", selectedPhase);
+  args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, useMask);
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, inputs.maskPath);
+  const auto result = ComputeODFFilter().execute(inputs.dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(result.result);
+  const auto [sum, nonZero] = sumAndNonZeroCount(inputs.dataStructure);
+  REQUIRE(sum == Approx(1.0).margin(1.0e-12));
+  // These general orientations have distinct 5-degree bins for each symmetry operator.
+  REQUIRE(nonZero == (selectedPhase == 1 && useMask ? 12 : 24));
+  const DataPath componentPath({"ODF", "Cell Data", "Component 1"});
+  REQUIRE_NOTHROW(inputs.dataStructure.getDataRefAs<Float64Array>(componentPath));
+  const auto& values = inputs.dataStructure.getDataRefAs<Float64Array>(componentPath);
+  // The identity operator places the phase-1 orientation at (11, 22, 33) degrees.
+  REQUIRE(values[odfLinear(2, 4, 6, 36, 72)] == Approx(selectedPhase == 2 ? 0.0 : (useMask ? 1.0 / 12.0 : 1.0 / 24.0)).margin(1.0e-12));
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Units metadata is initialized by preflight actions", "[MTRSim][ComputeODFFilter]")
+{
+  const int outputSetup = GENERATE(0, 1, 2);
+  const ChoicesParameter::ValueType units = GENERATE(0ULL, 1ULL);
+  const bool pipelinePreflight = GENERATE(false, true);
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  auto args = makeBaseArgs(inputs, false, 5.0F);
+  args.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, units);
+  if(outputSetup != 0)
+  {
+    buildExistingOdfGeom(inputs.dataStructure, {72, 36, 72}, {5.0F, 5.0F, 5.0F});
+    if(outputSetup == 2)
+    {
+      const auto* geometry = inputs.dataStructure.getDataAs<ImageGeom>(k_OutputGeomPath);
+      REQUIRE(geometry != nullptr);
+      REQUIRE(DataGroup::Create(inputs.dataStructure, "ODF Metadata", geometry->getId()) != nullptr);
+    }
+    args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, ChoicesParameter::ValueType{1});
+    args.insertOrAssign(ComputeODFFilter::k_ExistingOdfGeometry_Key, k_OutputGeomPath);
+  }
+  if(pipelinePreflight)
+  {
+    Pipeline pipeline;
+    REQUIRE(pipeline.push_back(std::make_unique<ComputeODFFilter>(), args));
+    const std::atomic_bool shouldCancel = false;
+    REQUIRE(pipeline.preflight(inputs.dataStructure, shouldCancel));
+  }
+  else
+  {
+    const auto preflight = ComputeODFFilter().preflight(inputs.dataStructure, args);
+    SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+    const auto applied = preflight.outputActions.value().applyAll(inputs.dataStructure, IDataAction::Mode::Preflight);
+    SIMPLNX_RESULT_REQUIRE_VALID(applied);
+  }
+  const auto* unitsArray = inputs.dataStructure.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "Component 1 Units"}));
+  REQUIRE(unitsArray != nullptr);
+  REQUIRE(unitsArray->getNumberOfTuples() == 1);
+  REQUIRE((*unitsArray)[0] == (units == 0 ? "Count-Density" : "MUD"));
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Rejects invalid ensemble selections", "[MTRSim][ComputeODFFilter]")
+{
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  auto args = makeBaseArgs(inputs, false, 5.0F);
+  int32 expectedCode = -12216;
+  SECTION("zero phase")
+  {
+    args.insertOrAssign("phase_index", int32{0});
+  }
+  SECTION("negative phase")
+  {
+    args.insertOrAssign("phase_index", int32{-1});
+  }
+  SECTION("phase outside ensemble")
+  {
+    args.insertOrAssign("phase_index", int32{2});
+  }
+  SECTION("wrong material object type")
+  {
+    args.insertOrAssign("material_names_path", inputs.crystalStructuresPath);
+    expectedCode = -12214;
+  }
+  SECTION("different ensemble tuple counts")
+  {
+    REQUIRE(StringArray::CreateWithValues(inputs.dataStructure, "Short Names", {1}, {"Only"}) != nullptr);
+    args.insertOrAssign("material_names_path", DataPath({"Short Names"}));
+    expectedCode = -12215;
+  }
+  const auto result = ComputeODFFilter().preflight(inputs.dataStructure, args);
+  REQUIRE(result.outputActions.invalid());
+  REQUIRE(firstErrorCode(result) == expectedCode);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Preflight defers crystal values for placeholder stores", "[MTRSim][ComputeODFFilter]")
+{
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  REQUIRE(inputs.dataStructure.removeData(inputs.crystalStructuresPath));
+  const CreateArrayAction action(DataType::uint32, {2}, {1}, inputs.crystalStructuresPath);
+  const auto applied = action.apply(inputs.dataStructure, IDataAction::Mode::Preflight);
+  SIMPLNX_RESULT_REQUIRE_VALID(applied);
+  REQUIRE(inputs.dataStructure.removeData(inputs.materialNamesPath));
+  const auto* ensemble = inputs.dataStructure.getDataAs<AttributeMatrix>(inputs.ensembleAttrMatPath);
+  REQUIRE(ensemble != nullptr);
+  auto* materialNames = StringArray::CreateWithValues(inputs.dataStructure, "Material Names", {2}, {"", ""}, ensemble->getId());
+  REQUIRE(materialNames != nullptr);
+  materialNames->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  const auto preflight = ComputeODFFilter().preflight(inputs.dataStructure, makeBaseArgs(inputs, false, 5.0F));
+  SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Create mode rejects the reserved metadata group name for cell data", "[MTRSim][ComputeODFFilter]")
+{
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  auto args = makeBaseArgs(inputs, false, 5.0F);
+  args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::string{"ODF Metadata"});
+  const auto preflight = ComputeODFFilter().preflight(inputs.dataStructure, args);
+  REQUIRE(preflight.outputActions.invalid());
+  REQUIRE(firstErrorCode(preflight) == -12218);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Execution validates selected crystal metadata before accumulation", "[MTRSim][ComputeODFFilter]")
+{
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, 999);
+  ComputeODFInputValues values{};
+  values.eulerAnglesPath = inputs.eulerAnglesPath;
+  values.phasesPath = inputs.phasesPath;
+  values.crystalStructuresPath = inputs.crystalStructuresPath;
+  int32 expectedCode = -12217;
+  SECTION("unknown selected code")
+  {
+  }
+  SECTION("placeholder crystal values")
+  {
+    REQUIRE(inputs.dataStructure.removeData(inputs.crystalStructuresPath));
+    const CreateArrayAction action(DataType::uint32, {2}, {1}, inputs.crystalStructuresPath);
+    const auto applied = action.apply(inputs.dataStructure, IDataAction::Mode::Preflight);
+    SIMPLNX_RESULT_REQUIRE_VALID(applied);
+  }
+  SECTION("phase zero")
+  {
+    values.selectedPhase = 0;
+    expectedCode = -12216;
+  }
+  SECTION("phase outside tuple range")
+  {
+    values.selectedPhase = 2;
+    expectedCode = -12216;
+  }
+  const std::atomic_bool shouldCancel = false;
+  const IFilter::MessageHandler handler;
+  Result<> result;
+  REQUIRE_NOTHROW(result = ComputeODF(inputs.dataStructure, handler, shouldCancel, &values)());
+  REQUIRE(result.invalid());
+  REQUIRE(result.errors().front().code == expectedCode);
+  REQUIRE(result.errors().front().message.find(inputs.crystalStructuresPath.toString()) != std::string::npos);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Rejects metadata collisions", "[MTRSim][ComputeODFFilter]")
+{
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  buildExistingOdfGeom(inputs.dataStructure, {72, 36, 72}, {5.0F, 5.0F, 5.0F});
+  const auto* geometry = inputs.dataStructure.getDataAs<ImageGeom>(k_OutputGeomPath);
+  REQUIRE(geometry != nullptr);
+  int32 expectedCode = -12218;
+  SECTION("wrong group type")
+  {
+    REQUIRE(StringArray::CreateWithValues(inputs.dataStructure, "ODF Metadata", {1}, {"collision"}, geometry->getId()) != nullptr);
+  }
+  SECTION("existing units object")
+  {
+    const auto* group = DataGroup::Create(inputs.dataStructure, "ODF Metadata", geometry->getId());
+    REQUIRE(group != nullptr);
+    REQUIRE(StringArray::CreateWithValues(inputs.dataStructure, "Component 1 Units", {1}, {"MUD"}, group->getId()) != nullptr);
+    expectedCode = -12219;
+  }
+  auto args = makeBaseArgs(inputs, false, 5.0F);
+  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, ChoicesParameter::ValueType{1});
+  args.insertOrAssign(ComputeODFFilter::k_ExistingOdfGeometry_Key, k_OutputGeomPath);
+  const auto result = ComputeODFFilter().preflight(inputs.dataStructure, args);
+  REQUIRE(result.outputActions.invalid());
+  REQUIRE(firstErrorCode(result) == expectedCode);
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Units metadata survives DREAM3D round trip", "[MTRSim][ComputeODFFilter]")
+{
+  UnitTest::LoadPlugins();
+  const ChoicesParameter::ValueType units = GENERATE(0ULL, 1ULL);
+  auto inputs = buildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
+  auto args = makeBaseArgs(inputs, false, 10.0F);
+  args.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, units);
+  const auto computed = ComputeODFFilter().execute(inputs.dataStructure, args);
+  SIMPLNX_RESULT_REQUIRE_VALID(computed.result);
+  const std::filesystem::path outputPath = std::filesystem::path(unit_test::k_BinaryTestOutputDir.view()) / fmt::format("compute_odf_units_{}.dream3d", units);
+  WriteDREAM3DFilter writer;
+  auto writeArgs = writer.getDefaultArguments();
+  writeArgs.insertOrAssign(WriteDREAM3DFilter::k_ExportFilePath, outputPath);
+  writeArgs.insertOrAssign(WriteDREAM3DFilter::k_WriteXdmf, false);
+  const auto written = writer.execute(inputs.dataStructure, writeArgs);
+  SIMPLNX_RESULT_REQUIRE_VALID(written.result);
+  DataStructure restored;
+  ReadDREAM3DFilter reader;
+  auto readArgs = reader.getDefaultArguments();
+  readArgs.insertOrAssign(ReadDREAM3DFilter::k_ImportFileData, Dream3dImportParameter::ImportData(outputPath));
+  const auto read = reader.execute(restored, readArgs);
+  SIMPLNX_RESULT_REQUIRE_VALID(read.result);
+  const auto* unitsArray = restored.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "Component 1 Units"}));
+  REQUIRE(unitsArray != nullptr);
+  REQUIRE(unitsArray->getNumberOfTuples() == 1);
+  REQUIRE((*unitsArray)[0] == (units == 0 ? "Count-Density" : "MUD"));
+  REQUIRE(std::filesystem::remove(outputPath));
+}
+
+TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an "
+          "existing ODF",
+          "[MTRSim][ComputeODFFilter]")
+{
+  // Run Create New first: 1 HCP voxel at (10, 20, 30) deg, no smoothing, bin
+  // size 5 deg. Expected Component 1 sum = 1.0 (12 deposits normalized by total
+  // deposit count N=12, matches MATLAB calc_ODF.m).
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
   {
     Arguments createArgs = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
@@ -618,7 +897,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an exis
   const auto [sum1Before, nonZero1Before] = sumAndNonZeroOf(inputs.dataStructure, component1Path);
   REQUIRE(sum1Before == Approx(1.0).margin(1.0e-9));
 
-  // Now Append a second component with the SAME EBSD input: sum should also be 1.0.
+  // Now Append a second component with the SAME EBSD input: sum should also
+  // be 1.0.
   const std::string k_AppendedComponentName = "Component 2";
   Arguments appendArgs = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
   appendArgs.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
@@ -637,8 +917,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an exis
   REQUIRE(sum2 == Approx(1.0).margin(1.0e-9));
   REQUIRE(nonZero2 == nonZero1Before);
 
-  // Defense-in-depth: the appended array must have the same tuple count as Component 1
-  // (i.e. it was created against the existing geometry's dims, not a fresh set).
+  // Defense-in-depth: the appended array must have the same tuple count as
+  // Component 1 (i.e. it was created against the existing geometry's dims, not
+  // a fresh set).
   const auto& component1Arr = inputs.dataStructure.getDataRefAs<Float64Array>(component1Path);
   const auto& component2Arr = inputs.dataStructure.getDataRefAs<Float64Array>(component2Path);
   REQUIRE(component2Arr.getNumberOfTuples() == component1Arr.getNumberOfTuples());
@@ -651,7 +932,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an exis
 
 TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-uniform spacing", "[MTRSim][ComputeODFFilter]")
 {
-  // Build EBSD inputs, then add a pre-existing ODF ImageGeom with non-uniform spacing.
+  // Build EBSD inputs, then add a pre-existing ODF ImageGeom with non-uniform
+  // spacing.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
   buildExistingOdfGeom(inputs.dataStructure, {72, 36, 72}, {5.0f, 5.0f, 6.0f});
 
@@ -670,7 +952,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-uniform spacing", "
     {
       found12207 = true;
       // Also verify the error message is informative about the spacing issue.
-      const bool messageMentionsSpacing = (err.message.find("uniform") != std::string::npos || err.message.find("non-uniform") != std::string::npos || err.message.find("spacing") != std::string::npos);
+      const bool messageMentionsSpacing =
+          (err.message.find("uniform") != std::string::npos || err.message.find("non-uniform") != std::string::npos || err.message.find("spacing") != std::string::npos);
       REQUIRE(messageMentionsSpacing);
       break;
     }
@@ -680,14 +963,17 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-uniform spacing", "
 
 TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects component-name collision", "[MTRSim][ComputeODFFilter]")
 {
-  // Existing ODF geom with a Component 1 seeded on it; Append call using the same component name.
+  // Existing ODF geom with a Component 1 seeded on it; Append call using the
+  // same component name.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
-  buildExistingOdfGeom(inputs.dataStructure, {72, 36, 72}, {5.0f, 5.0f, 5.0f}, /*seedComponent1=*/true, /*seedValue=*/0.0);
+  buildExistingOdfGeom(inputs.dataStructure, {72, 36, 72}, {5.0f, 5.0f, 5.0f},
+                       /*seedComponent1=*/true, /*seedValue=*/0.0);
 
   Arguments appendArgs = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
   appendArgs.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
   appendArgs.insertOrAssign(ComputeODFFilter::k_ExistingOdfGeometry_Key, std::make_any<DataPath>(k_OutputGeomPath));
-  // k_ComponentName_Key keeps its makeBaseArgs default = k_ComponentName = "Component 1" → collision.
+  // k_ComponentName_Key keeps its makeBaseArgs default = k_ComponentName =
+  // "Component 1" → collision.
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.dataStructure, appendArgs);
@@ -706,7 +992,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects component-name collisio
 
 TEST_CASE("MTRSim::ComputeODFFilter: Append mode preflight reports derived bin size", "[MTRSim][ComputeODFFilter]")
 {
-  // Uniform 2.5-deg spacing existing geom; user passes bin_size_deg = 999.0 to prove it's ignored.
+  // Uniform 2.5-deg spacing existing geom; user passes bin_size_deg = 999.0 to
+  // prove it's ignored.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
   buildExistingOdfGeom(inputs.dataStructure, {144, 72, 144}, {2.5f, 2.5f, 2.5f});
 
@@ -726,51 +1013,28 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode preflight reports derived bin s
   REQUIRE(it->value.find("999") == std::string::npos);
 }
 
-TEST_CASE("MTRSim::ComputeODFFilter: Unknown crystal code produces warning not error", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Unknown selected crystal code is rejected", "[MTRSim][ComputeODFFilter]")
 {
-  // Build a synthetic EBSD with 1 voxel, phase=1, but crystal_structures[1] = 999u (unknown code).
-  // The per-voxel LaueOps lookup fails (out-of-range / nullptr); the algorithm increments
-  // the local failure count and surfaces a post-loop warning (-12213) rather than an error.
-  // No voxels contribute, so ODFval sum = 0.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, /*crystalCode=*/999u);
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
-
+  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(firstErrorCode(preflightResult) == -12217);
   auto executeResult = filter.execute(inputs.dataStructure, args);
-  // The execute result itself is VALID (the filter ran; just no voxels contributed).
-  SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
-
-  // But there must be a warning with code -12213 on the result.
-  const auto& warnings = executeResult.result.warnings();
-  bool found12213 = false;
-  for(const auto& w : warnings)
-  {
-    if(w.code == -12213)
-    {
-      found12213 = true;
-      REQUIRE(w.message.find("1 voxel") != std::string::npos);
-      break;
-    }
-  }
-  REQUIRE(found12213);
-
-  // No voxels contributed, so the output ODFval should be all zeros.
-  const auto [sum, nonZeroCount] = sumAndNonZeroCount(inputs.dataStructure);
-  REQUIRE(sum == Approx(0.0).margin(1.0e-12));
-  REQUIRE(nonZeroCount == 0);
+  REQUIRE(executeResult.result.invalid());
 }
 
 TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-ImageGeom geometry", "[MTRSim][ComputeODFFilter]")
 {
-  // Build a DataStructure where /ODF resolves to a plain DataGroup (not an ImageGeom),
-  // with a valid EBSD input tree alongside. Run Append mode pointing at /ODF.
-  // The GeometrySelectionParameter wrapper enforces IGeometry::Type::Image and flags this
-  // with its own generic geometry-type code (-3) BEFORE preflightImpl runs, so our belt-
-  // and-suspenders -12206 in preflightImpl is shadowed. Assert the wrapper code explicitly,
-  // mirroring the pattern used by the "bad euler component count" test above.
+  // Build a DataStructure where /ODF resolves to a plain DataGroup (not an
+  // ImageGeom), with a valid EBSD input tree alongside. Run Append mode
+  // pointing at /ODF. The GeometrySelectionParameter wrapper enforces
+  // IGeometry::Type::Image and flags this with its own generic geometry-type
+  // code (-3) BEFORE preflightImpl runs, so our belt- and-suspenders -12206 in
+  // preflightImpl is shadowed. Assert the wrapper code explicitly, mirroring
+  // the pattern used by the "bad euler component count" test above.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
 
   // Plant a DataGroup at /ODF instead of an ImageGeom.
@@ -778,7 +1042,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-ImageGeom geometry"
   REQUIRE(dg != nullptr);
 
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
-  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, std::make_any<ChoicesParameter::ValueType>(1ULL)); // Append
+  args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key,
+                      std::make_any<ChoicesParameter::ValueType>(1ULL)); // Append
   args.insertOrAssign(ComputeODFFilter::k_ExistingOdfGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
 
   ComputeODFFilter filter;
@@ -789,8 +1054,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-ImageGeom geometry"
 
 TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects ImageGeom with no cell-data", "[MTRSim][ComputeODFFilter]")
 {
-  // Build a DataStructure with a bare ImageGeom at /ODF that has NO cell AttributeMatrix
-  // attached. Run Append mode. Preflight must reject with code -12208.
+  // Build a DataStructure with a bare ImageGeom at /ODF that has NO cell
+  // AttributeMatrix attached. Run Append mode. Preflight must reject with code
+  // -12208.
   EbsdInputs inputs = buildSyntheticEbsd({{{10.0f, 20.0f, 30.0f}}}, {1}, k_HexagonalHigh);
 
   // Create a bare ImageGeom WITHOUT calling setCellData.
@@ -822,7 +1088,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects ImageGeom with no cell-
 
 namespace fs = std::filesystem;
 
-TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin validation", "[MTRSim][ComputeODFFilter]")
+TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
+          "validation",
+          "[MTRSim][ComputeODFFilter]")
 {
   // 12 hardcoded HCP orientations exercising PHI-near-pole, PHI-near-equator,
   // axis-wrap, and multi-axis generic cases. The reference HDF5 is produced
@@ -856,31 +1124,25 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin valid
   //
   //  # | (phi1 deg, PHI deg, phi2 deg) | bin (5 deg spacing)   | Why
   // ---+--------------------------------+-----------------------+----------------------------------------------
-  //   1| ( 12.5,    12.5,   12.5)       | (2,  2,  2)           | Pure mid-bin; baseline
-  //   2| ( 47.5,    27.5,   92.5)       | (9,  5,  18)          | Generic interior, no special structure
-  //   3| (137.5,    67.5,  217.5)       | (27, 13, 43)          | Multi-decimal-bin coverage; phi1/phi2 > 90 deg
-  //   4| (  2.5,     2.5,    2.5)       | (0,  0,  0)           | All near zero; tests near-PHI=0 handling
-  //   5| ( 47.5,     2.5,   32.5)       | (9,  0,  6)           | PHI very small with non-trivial phi1/phi2
-  //   6| ( 62.5,     2.5,   92.5)       | (12, 0,  18)          | PHI very small, generic phi1/phi2
-  //   7| ( 47.5,    92.5,   32.5)       | (9,  18, 6)           | PHI just above pi/2 (equatorial regime)
-  //   8| ( 47.5,   177.5,   32.5)       | (9,  35, 6)           | PHI near pi (upper-pole regime)
-  //   9| ( 47.5,    87.5,   32.5)       | (9,  17, 6)           | PHI just below pi/2 (complement of #7)
-  //  10| (357.5,    32.5,   32.5)       | (71, 6,  6)           | phi1 near 360 deg (wrap regime)
-  //  11| ( 47.5,    32.5,  357.5)       | (9,  6,  71)          | phi2 near 360 deg (wrap regime)
-  //  12| (357.5,    87.5,  357.5)       | (71, 17, 71)          | All three near upper boundaries simultaneously
+  //   1| ( 12.5,    12.5,   12.5)       | (2,  2,  2)           | Pure mid-bin;
+  //   baseline 2| ( 47.5,    27.5,   92.5)       | (9,  5,  18)          |
+  //   Generic interior, no special structure 3| (137.5,    67.5,  217.5) | (27,
+  //   13, 43)          | Multi-decimal-bin coverage; phi1/phi2 > 90 deg 4|
+  //   (  2.5,     2.5,    2.5)       | (0,  0,  0)           | All near zero;
+  //   tests near-PHI=0 handling 5| ( 47.5,     2.5,   32.5)       | (9,  0,  6)
+  //   | PHI very small with non-trivial phi1/phi2 6| ( 62.5,     2.5,   92.5)
+  //   | (12, 0,  18)          | PHI very small, generic phi1/phi2 7|
+  //   ( 47.5,    92.5,   32.5)       | (9,  18, 6)           | PHI just above
+  //   pi/2 (equatorial regime) 8| ( 47.5,   177.5,   32.5)       | (9,  35, 6)
+  //   | PHI near pi (upper-pole regime) 9| ( 47.5,    87.5,   32.5)       | (9,
+  //   17, 6)           | PHI just below pi/2 (complement of #7)
+  //  10| (357.5,    32.5,   32.5)       | (71, 6,  6)           | phi1 near 360
+  //  deg (wrap regime) 11| ( 47.5,    32.5,  357.5)       | (9,  6,  71) | phi2
+  //  near 360 deg (wrap regime) 12| (357.5,    87.5,  357.5)       | (71, 17,
+  //  71)          | All three near upper boundaries simultaneously
   const std::vector<std::array<float32, 3>> eulersDeg = {
-      { 12.5f,  12.5f,  12.5f},
-      { 47.5f,  27.5f,  92.5f},
-      {137.5f,  67.5f, 217.5f},
-      {  2.5f,   2.5f,   2.5f},
-      { 47.5f,   2.5f,  32.5f},
-      { 62.5f,   2.5f,  92.5f},
-      { 47.5f,  92.5f,  32.5f},
-      { 47.5f, 177.5f,  32.5f},
-      { 47.5f,  87.5f,  32.5f},
-      {357.5f,  32.5f,  32.5f},
-      { 47.5f,  32.5f, 357.5f},
-      {357.5f,  87.5f, 357.5f},
+      {12.5f, 12.5f, 12.5f}, {47.5f, 27.5f, 92.5f},  {137.5f, 67.5f, 217.5f}, {2.5f, 2.5f, 2.5f},     {47.5f, 2.5f, 32.5f},   {62.5f, 2.5f, 92.5f},
+      {47.5f, 92.5f, 32.5f}, {47.5f, 177.5f, 32.5f}, {47.5f, 87.5f, 32.5f},   {357.5f, 32.5f, 32.5f}, {47.5f, 32.5f, 357.5f}, {357.5f, 87.5f, 357.5f},
   };
 
   // buildSyntheticEbsd already converts deg -> rad internally (see helper).
@@ -922,7 +1184,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin valid
   if(!refFixtureVersion.has_value())
   {
     WARN("Reference HDF5 at " << refPath.string() << " has no /ODF_best/fixture_version field "
-                              << "(produced by an older run_validation.m before the fixture-version mechanism). " << regenerateMsg);
+                              << "(produced by an older run_validation.m "
+                                 "before the fixture-version mechanism). "
+                              << regenerateMsg);
     return;
   }
   if(*refFixtureVersion != k_TargetedFixtureVersion)
@@ -970,16 +1234,22 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin valid
   }
   const double rmsDiff = std::sqrt(sumSqDiff / static_cast<double>(refValues.size()));
 
-  INFO(fmt::format("max |diff| = {:.3e}, RMS = {:.3e}, failing bins = {} / {} (tolerance = {:.0e})", maxAbsDiff, rmsDiff, failingBins, refValues.size(), k_Tolerance));
+  INFO(fmt::format("max |diff| = {:.3e}, RMS = {:.3e}, failing bins = {} / {} "
+                   "(tolerance = {:.0e})",
+                   maxAbsDiff, rmsDiff, failingBins, refValues.size(), k_Tolerance));
   if(failingBins > 0)
   {
-    INFO(fmt::format("First failing bin: index {}, MATLAB = {:.6e}, C++ = {:.6e}, diff = {:.3e}", firstFailingIndex, refValues[firstFailingIndex], static_cast<double>(outStore[firstFailingIndex]),
+    INFO(fmt::format("First failing bin: index {}, MATLAB = {:.6e}, C++ = "
+                     "{:.6e}, diff = {:.3e}",
+                     firstFailingIndex, refValues[firstFailingIndex], static_cast<double>(outStore[firstFailingIndex]),
                      std::abs(static_cast<double>(outStore[firstFailingIndex]) - refValues[firstFailingIndex])));
   }
   REQUIRE(failingBins == 0);
 }
 
-TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation against calc_ODF.m", "[MTRSim][ComputeODFFilter][validation]")
+TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
+          "against calc_ODF.m",
+          "[MTRSim][ComputeODFFilter][validation]")
 {
   // Phase 2 validation: load the 640x640 HCP titanium EBSD scan from
   // data/real_world_microtexture_data.dream3d, run ComputeODFFilter on the
@@ -1030,9 +1300,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation again
   const DataPath crystalStructuresPath = geomPath.createChildPath("CellEnsembleData").createChildPath("CrystalStructures");
   const DataPath maskBoolPath = cellAttrMatPath.createChildPath("MaskBool");
 
-  // Build a Bool mask alongside whatever-type Mask was loaded. ReadDREAM3DFilter
-  // may give it back as UInt8Array or BoolArray depending on stored metadata
-  // — handle both so we don't bad_cast on either.
+  // Build a Bool mask alongside whatever-type Mask was loaded.
+  // ReadDREAM3DFilter may give it back as UInt8Array or BoolArray depending on
+  // stored metadata — handle both so we don't bad_cast on either.
   {
     const auto* maskBase = dataStructure.getDataAs<IDataArray>(maskUInt8Path);
     REQUIRE(maskBase != nullptr);
@@ -1076,8 +1346,10 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation again
   args.insertOrAssign(ComputeODFFilter::k_EulerAngles_Key, std::make_any<DataPath>(eulerAnglesPath));
   args.insertOrAssign(ComputeODFFilter::k_Phases_Key, std::make_any<DataPath>(phasesPath));
   args.insertOrAssign(ComputeODFFilter::k_CrystalStructures_Key, std::make_any<DataPath>(crystalStructuresPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaterialNames_Key, geomPath.createChildPath("CellEnsembleData").createChildPath("MaterialName"));
+  args.insertOrAssign(ComputeODFFilter::k_PhaseIndex_Key, int32{1});
   args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, std::make_any<bool>(true));
-  args.insertOrAssign(ComputeODFFilter::k_Mask_Key, std::make_any<DataPath>(maskBoolPath));
+  args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, std::make_any<DataPath>(maskBoolPath));
   args.insertOrAssign(ComputeODFFilter::k_OutputImageGeometry_Key, std::make_any<DataPath>(DataPath({"ODF"})));
   args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Cell Data"}));
   args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Component 1"}));
@@ -1120,10 +1392,14 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation again
   }
   const double rmsDiff = std::sqrt(sumSqDiff / static_cast<double>(refValues.size()));
 
-  INFO(fmt::format("max |diff| = {:.3e}, RMS = {:.3e}, failing bins = {} / {} (tolerance = {:.0e})", maxAbsDiff, rmsDiff, failingBins, refValues.size(), k_Tolerance));
+  INFO(fmt::format("max |diff| = {:.3e}, RMS = {:.3e}, failing bins = {} / {} "
+                   "(tolerance = {:.0e})",
+                   maxAbsDiff, rmsDiff, failingBins, refValues.size(), k_Tolerance));
   if(failingBins > 0)
   {
-    INFO(fmt::format("First failing bin: index {}, MATLAB = {:.6e}, C++ = {:.6e}, diff = {:.3e}", firstFailingIndex, refValues[firstFailingIndex], static_cast<double>(outStore[firstFailingIndex]),
+    INFO(fmt::format("First failing bin: index {}, MATLAB = {:.6e}, C++ = "
+                     "{:.6e}, diff = {:.3e}",
+                     firstFailingIndex, refValues[firstFailingIndex], static_cast<double>(outStore[firstFailingIndex]),
                      std::abs(static_cast<double>(outStore[firstFailingIndex]) - refValues[firstFailingIndex])));
   }
   REQUIRE(failingBins == 0);

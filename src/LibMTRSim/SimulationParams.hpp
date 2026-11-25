@@ -6,14 +6,16 @@
 #include <string>
 #include <vector>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
 /**
  * @brief Holds all parameters that drive a single MTR simulation run.
  *
  * These map directly to the top-level parameter block in simulate_MTRs.m.
  */
-struct LIBMTRSIM_EXPORT SimulationParams {
+struct LIBMTRSIM_EXPORT SimulationParams
+{
   // Volume dimensions [mm]
   double xLen = 1.5 * 25.4;
   double yLen = 0.5 * 25.4;

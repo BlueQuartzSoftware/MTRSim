@@ -37,25 +37,27 @@ dx     : voxel spacing in x
 dy     : voxel spacing in y
 dz     : voxel spacing in z
 
-###The MTR spatial parameters are set in simulate_MTRs.m
+### The MTR spatial parameters are set in simulate_MTRs.m
+
 volume_fractions   :  volume fraction of each MTR "class"
 theta_list         :  correlation lengths of plurigaussian model
 nugvar             :  nugget variance (not used)
 
-###The plurigaussian model is used to simulate the underlying MTR assignment 
-###for each voxel 
+### The plurigaussian model is used to simulate the underlying MTR assignment for each voxel 
 
-###The plurigaussian parameters are set in PGRF_simulation.m
+### The plurigaussian parameters are set in PGRF_simulation.m
+
 correlation_function_selected   : generally set to 'anisotropic'
 corr_func_name                  : correlation model, set to 'exp' or 'gaussian'
 boundary_conditions             : 'periodic' or 'nonperiodic'
 mean_function_selected          : generally set to 'stationary'
 
-###Based on the MTR assignments, for each voxel a random crystallographic 
-###orientation is drawn from the corresponding MTR-/component-ODF.
-###The finite mixture model for the ODF is essentially a collection of 
-###normalized histograms over the Euler angles, contained in simulation_ODF.mat
-###Parameterized families of models are not provided
+Based on the MTR assignments, for each voxel a random crystallographic 
+orientation is drawn from the corresponding MTR-/component-ODF.
+The finite mixture model for the ODF is essentially a collection of 
+normalized histograms over the Euler angles, contained in simulation_ODF.mat
+
+- Parameterized families of models are not provided
 ODF_best                        : typically components are estimated from data 
 
 

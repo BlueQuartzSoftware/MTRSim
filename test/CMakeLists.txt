@@ -7,6 +7,8 @@
 # Define the list of unit test source files
 set(${PLUGIN_NAME}UnitTest_SRCS
     ComputeODFTest.cpp
+    ComputeODFPresentationTest.cpp
+    MTRSimTest.cpp
     ReadMTRSimODFTest.cpp
     WriteMTRSimODFTest.cpp
 )
@@ -23,12 +25,14 @@ create_simplnx_plugin_unit_test(PLUGIN_NAME ${PLUGIN_NAME}
 # can use the target_link_libraries() cmake call
 # target_link_libraries(${PLUGIN_NAME}UnitTest PUBLIC [name of library])
 
-# Realistic-data validation test (ComputeODFTest.cpp's [validation]-tagged
-# test) loads data/real_world_microtexture_data.dream3d through SimplnxCore's
-# ReadDREAM3DFilter, so we need its headers + link.
-target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore)
+# ComputeODFTest uses SimplnxCore's ReadDREAM3DFilter for validation data.
+# ComputeODFPresentationTest uses NXImageProcessing's ReadImageFilter to verify PNG output.
+target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore NXImageProcessing ${PLUGIN_NAME})
 target_include_directories(${PLUGIN_NAME}UnitTest PRIVATE
   ${simplnx_SOURCE_DIR}/src/Plugins/SimplnxCore/src
+  ${simplnx_BINARY_DIR}/Plugins/SimplnxCore/generated
+  ${simplnx_SOURCE_DIR}/src/Plugins/NXImageProcessing/src
+  ${simplnx_BINARY_DIR}/Plugins/NXImageProcessing/generated
 )
 
 # ------------------------------------------------------------------------------
@@ -80,4 +84,3 @@ set(TEST_PIPELINE_LIST_FILE ${${PLUGIN_NAME}_BINARY_DIR}/PrebuiltPipelineTests/n
 FILE(WRITE ${TEST_PIPELINE_LIST_FILE} "Prebuilt Pipeline Tests\n")
 get_target_property(PIPELINE_RUNNER_NAME nxrunner NAME)
 get_target_property(PIPELINE_RUNNER_DEBUG nxrunner DEBUG_POSTFIX)
-

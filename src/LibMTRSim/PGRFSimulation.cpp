@@ -8,12 +8,16 @@
 
 #include <algorithm>
 #include <cmath>
-#include <spdlog/spdlog.h>
+#include <fmt/format.h>
 #include <stdexcept>
 
-namespace mtrsim {
+namespace mtrsim
+{
 
-PGRFSimulation::PGRFSimulation(std::mt19937_64 &rng) : m_Rng(rng) {}
+PGRFSimulation::PGRFSimulation(std::mt19937_64& rng)
+: m_Rng(rng)
+{
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // run
@@ -31,40 +35,41 @@ PGRFSimulation::PGRFSimulation(std::mt19937_64 &rng) : m_Rng(rng) {}
 //   boundary_conditions       = 'nonperiodic'
 //   mean_function_selected    = 'stationary'  (mu = 0 for all fields)
 
-PGRFResult PGRFSimulation::run(const SimulationParams &params) {
+PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserver* observer)
+{
   // ── Grid dimensions ──────────────────────────────────────────────────────
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
   const int ny = static_cast<int>(std::round(params.yLen / params.dy));
-  const int nz =
-      std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
+  const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
   const int N = nx * ny * nz;
   const int numComponents = static_cast<int>(params.volumeFractions.size());
   const int numGaussians = numComponents - 1;
 
-  if (numGaussians < 1) {
-    throw std::invalid_argument(
-        "PGRFSimulation: need at least 2 volume fraction components");
+  if(numGaussians < 1)
+  {
+    throw std::invalid_argument("PGRFSimulation: need at least 2 volume fraction components");
   }
-  if (static_cast<int>(params.thetaList.size()) < numGaussians) {
-    throw std::invalid_argument(
-        "PGRFSimulation: thetaList must have one row per latent Gaussian");
+  if(static_cast<int>(params.thetaList.size()) < numGaussians)
+  {
+    throw std::invalid_argument("PGRFSimulation: thetaList must have one row per latent Gaussian");
   }
 
-  spdlog::info("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} "
-               "latent fields",
-               nx, ny, nz, N, numComponents, numGaussians);
+  if(observer != nullptr)
+  {
+    observer->info(fmt::format("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} latent fields", nx, ny, nz, N, numComponents, numGaussians));
+  }
 
   // ── Select assignment-rule thresholds ────────────────────────────────────
-  spdlog::info("PGRFSimulation: selecting assignment rule thresholds...");
+  if(observer != nullptr)
+  {
+    observer->info("PGRFSimulation: selecting assignment rule thresholds...");
+  }
   AssignmentRule ar(m_Rng);
-  const AssignmentRuleThresholds thresholds =
-      ar.selectThresholds(params.volumeFractions);
+  const AssignmentRuleThresholds thresholds = ar.selectThresholds(params.volumeFractions);
 
   // ── Exponential correlation function: rho(lag, theta) = exp(-|lag|/theta) ─
   // Matches MATLAB: corr_func_name = 'exp', boundary_conditions = 'nonperiodic'
-  auto corrFn = [](double lag, double theta) -> double {
-    return std::exp(-std::abs(lag) / theta);
-  };
+  auto corrFn = [](double lag, double theta) -> double { return std::exp(-std::abs(lag) / theta); };
 
   GPGenerator gpGen(m_Rng, corrFn);
 
@@ -72,31 +77,43 @@ PGRFResult PGRFSimulation::run(const SimulationParams &params) {
   // Stationary mean: mu_const = 0 for all fields (matches MATLAB default)
   Eigen::MatrixXd zAll = Eigen::MatrixXd::Zero(N, numGaussians);
 
-  for (int h = 0; h < numGaussians; ++h) {
-    spdlog::info("PGRFSimulation: simulating latent Gaussian Y{} ...", h + 1);
+  for(int h = 0; h < numGaussians; ++h)
+  {
+    if(observer != nullptr)
+    {
+      if(observer->shouldCancel())
+      {
+        return PGRFResult{}; // cancelled; simulateMTR detects this via its cancelled() lambda
+      }
+      observer->updateProgress(h, numGaussians, fmt::format("Simulating latent Gaussian field {}/{}", h + 1, numGaussians));
+    }
 
-    const auto &thetaRow = params.thetaList[static_cast<std::size_t>(h)];
-    if (thetaRow.size() < 3) {
-      throw std::invalid_argument(
-          "PGRFSimulation: each thetaList row must have 3 elements [theta_x, "
-          "theta_y, theta_z]");
+    const auto& thetaRow = params.thetaList[static_cast<std::size_t>(h)];
+    if(thetaRow.size() < 3)
+    {
+      throw std::invalid_argument("PGRFSimulation: each thetaList row must have 3 elements [theta_x, "
+                                  "theta_y, theta_z]");
     }
 
     const std::array<double, 3> theta = {thetaRow[0], thetaRow[1], thetaRow[2]};
-    zAll.col(h) =
-        gpGen.generate(params.dx, params.dy, params.dz, theta, nx, ny, nz);
+    zAll.col(h) = gpGen.generate(params.dx, params.dy, params.dz, theta, nx, ny, nz);
   }
 
   // ── Apply assignment rule ─────────────────────────────────────────────────
-  spdlog::info("PGRFSimulation: applying assignment rule...");
+  if(observer != nullptr)
+  {
+    observer->info("PGRFSimulation: applying assignment rule...");
+  }
   const Eigen::VectorXi mtrIndex = ar.evaluate(zAll, thresholds);
 
   // Log empirical volume fractions for verification
-  for (int j = 1; j <= numComponents; ++j) {
+  for(int j = 1; j <= numComponents; ++j)
+  {
     const int count = (mtrIndex.array() == j).count();
-    spdlog::info("  P{} empirical = {:.3f}  (target {:.3f})", j,
-                 static_cast<double>(count) / static_cast<double>(N),
-                 params.volumeFractions[static_cast<std::size_t>(j - 1)]);
+    if(observer != nullptr)
+    {
+      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(N), params.volumeFractions[static_cast<std::size_t>(j - 1)]));
+    }
   }
 
   return PGRFResult{mtrIndex, zAll};

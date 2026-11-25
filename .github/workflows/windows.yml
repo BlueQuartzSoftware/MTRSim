@@ -1,0 +1,64 @@
+name: windows
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+  push:
+    branches:
+      - develop
+      - master
+
+jobs:
+  build:
+    env:
+      VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-2022
+        toolset:
+          - v143
+    runs-on: ${{matrix.os}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Checkout simplnx
+        run: |
+            git clone -b develop https://www.github.com/bluequartzsoftware/simplnx ${{github.workspace}}/../../simplnx          
+      - name: Add C++ Problem Matcher
+        uses: ammaraskar/msvc-problem-matcher@0.2.0
+      - name: Setup Build Environment
+        uses: ilammy/msvc-dev-cmd@v1.12.1
+        with:
+          vsversion: 2022
+      - name: Setup NuGet Credentials
+        shell: bash
+        run: |
+          `vcpkg fetch nuget | tail -n 1` \
+          sources add \
+          -source "https://nuget.pkg.github.com/BlueQuartzSoftware/index.json" \
+          -storepasswordincleartext \
+          -name "GitHub" \
+          -username "BlueQuartzSoftware" \
+          -password "${{secrets.GITHUB_TOKEN}}"
+          `vcpkg fetch nuget | tail -n 1` \
+          setapikey "${{secrets.GITHUB_TOKEN}}" \
+          -source "https://nuget.pkg.github.com/BlueQuartzSoftware/index.json"
+      - name: Install Sphinx
+        run: |
+          pip install sphinx myst-parser sphinx-markdown-tables sphinx_rtd_theme numpy
+      - name: Configure
+        run: |
+          cmake --preset ci-windows-${{matrix.toolset}} -T ${{matrix.toolset}} -DSIMPLNX_EXTRA_PLUGINS="MTRSim" -DSIMPLNX_PLUGIN_ENABLE_MTRSim=ON -DSIMPLNX_MTRSim_SOURCE_DIR=${{github.workspace}} ${{github.workspace}}/../../simplnx
+      - name: Build
+        run: |
+          cmake --build ${{github.workspace}}/../../simplnx/build --config Release
+      - name: Test
+        run: |
+          ctest --output-on-failure --test-dir ${{github.workspace}}/../../simplnx/build --build-config Release
+

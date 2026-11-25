@@ -29,11 +29,12 @@ WriteMTRSimODF::~WriteMTRSimODF() noexcept = default;
 // -----------------------------------------------------------------------------
 Result<> WriteMTRSimODF::operator()()
 {
-  m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Writing MTRSim ODF file: {}", m_InputValues->outputFile.string()));
+  m_MessageHandler.sendInfoMessage(fmt::format("Writing MTRSim ODF file: {}", m_InputValues->outputFile.string()));
 
   const auto& geom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputImageGeometry);
 
-  // Reverse the (phi2=X, PHI=Y, phi1=Z) ImageGeom convention back to phi1-first on-disk order.
+  // Reverse the (phi2=X, PHI=Y, phi1=Z) ImageGeom convention back to phi1-first
+  // on-disk order.
   const std::array<int64_t, 3> dimsPhi1PHIPhi2 = {static_cast<int64_t>(geom.getNumZCells()), static_cast<int64_t>(geom.getNumYCells()), static_cast<int64_t>(geom.getNumXCells())};
 
   const auto spacingXYZ = geom.getSpacing();
@@ -55,7 +56,7 @@ Result<> WriteMTRSimODF::operator()()
     const auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(m_InputValues->odfComponents[c]);
     const auto& store = componentArray.getDataStoreRef();
 
-    m_MessageHandler(IFilter::Message::Type::Info, fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));
+    m_MessageHandler.sendInfoMessage(fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));
 
     mtrsim::ODFFileComponent comp;
     comp.values.assign(store.begin(), store.end());

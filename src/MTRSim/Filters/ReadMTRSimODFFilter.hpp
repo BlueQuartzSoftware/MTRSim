@@ -26,10 +26,10 @@ public:
   ReadMTRSimODFFilter& operator=(ReadMTRSimODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static inline constexpr StringLiteral k_InputFile_Key = "input_file";
-  static inline constexpr StringLiteral k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
-  static inline constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry";
-  static inline constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteral k_InputFile_Key = "input_file";
+  static constexpr StringLiteral k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
+  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -90,29 +90,40 @@ public:
 
 protected:
   /**
-   * @brief Takes in a DataStructure and checks that the filter can be run on it with the given arguments.
-   * Returns any warnings/errors. Also returns the changes that would be applied to the DataStructure.
-   * Some parts of the actions may not be completely filled out if all the required information is not available at preflight time.
+   * @brief Takes in a DataStructure and checks that the filter can be run on it
+   * with the given arguments. Returns any warnings/errors. Also returns the
+   * changes that would be applied to the DataStructure. Some parts of the
+   * actions may not be completely filled out if all the required information is
+   * not available at preflight time.
    * @param dataStructure The input DataStructure instance
-   * @param filterArgs These are the input values for each parameter that is required for the filter
+   * @param filterArgs These are the input values for each parameter that is
+   * required for the filter
    * @param messageHandler The MessageHandler object
-   * @param shouldCancel Atomic boolean value that can be checked to cancel the filter
-   * @param executionContext The ExecutionContext that can be used to determine the correct absolute path from a relative path
-   * @return Returns a Result object with error or warning values if any of those occurred during execution of this function
+   * @param shouldCancel Atomic boolean value that can be checked to cancel the
+   * filter
+   * @param executionContext The ExecutionContext that can be used to determine
+   * the correct absolute path from a relative path
+   * @return Returns a Result object with error or warning values if any of
+   * those occurred during execution of this function
    */
   PreflightResult preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
                                 const ExecutionContext& executionContext) const override;
 
   /**
-   * @brief Applies the filter's algorithm to the DataStructure with the given arguments. Returns any warnings/errors.
-   * On failure, there is no guarantee that the DataStructure is in a correct state.
+   * @brief Applies the filter's algorithm to the DataStructure with the given
+   * arguments. Returns any warnings/errors. On failure, there is no guarantee
+   * that the DataStructure is in a correct state.
    * @param dataStructure The input DataStructure instance
-   * @param filterArgs These are the input values for each parameter that is required for the filter
+   * @param filterArgs These are the input values for each parameter that is
+   * required for the filter
    * @param pipelineNode The node in the pipeline that is being executed
    * @param messageHandler The MessageHandler object
-   * @param shouldCancel Atomic boolean value that can be checked to cancel the filter
-   * @param executionContext The ExecutionContext that can be used to determine the correct absolute path from a relative path
-   * @return Returns a Result object with error or warning values if any of those occurred during execution of this function
+   * @param shouldCancel Atomic boolean value that can be checked to cancel the
+   * filter
+   * @param executionContext The ExecutionContext that can be used to determine
+   * the correct absolute path from a relative path
+   * @return Returns a Result object with error or warning values if any of
+   * those occurred during execution of this function
    */
   Result<> executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
                        const ExecutionContext& executionContext) const override;
