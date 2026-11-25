@@ -26,13 +26,13 @@ create_simplnx_plugin_unit_test(PLUGIN_NAME ${PLUGIN_NAME}
 # target_link_libraries(${PLUGIN_NAME}UnitTest PUBLIC [name of library])
 
 # ComputeODFTest uses SimplnxCore's ReadDREAM3DFilter for validation data.
-# ComputeODFPresentationTest uses ImageProcessing's ReadImageFilter to verify PNG output.
-target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore ImageProcessing ${PLUGIN_NAME})
+# ComputeODFPresentationTest uses NXImageProcessing's ReadImageFilter to verify PNG output.
+target_link_libraries(${PLUGIN_NAME}UnitTest PRIVATE SimplnxCore NXImageProcessing ${PLUGIN_NAME})
 target_include_directories(${PLUGIN_NAME}UnitTest PRIVATE
   ${simplnx_SOURCE_DIR}/src/Plugins/SimplnxCore/src
   ${simplnx_BINARY_DIR}/Plugins/SimplnxCore/generated
-  ${simplnx_SOURCE_DIR}/src/Plugins/ImageProcessing/src
-  ${simplnx_BINARY_DIR}/Plugins/ImageProcessing/generated
+  ${simplnx_SOURCE_DIR}/src/Plugins/NXImageProcessing/src
+  ${simplnx_BINARY_DIR}/Plugins/NXImageProcessing/generated
 )
 
 # ------------------------------------------------------------------------------

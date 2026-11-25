@@ -3,7 +3,7 @@
 #include "MTRSim/Filters/Algorithms/GenerateODFSections.hpp"
 #include "MTRSim/Filters/ComputeODFFilter.hpp"
 
-#include "ImageProcessing/Filters/ReadImageFilter.hpp"
+#include "NXImageProcessing/Filters/ReadImageFilter.hpp"
 
 #include "EbsdLib/Core/EbsdLibConstants.h"
 #include "EbsdLib/Utilities/ODFSectionChrome.h"
