@@ -97,8 +97,8 @@ IFilter::UniquePointer ReadMTRSimODFFilter::clone() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&  /*dataStructure*/, const Arguments& filterArgs, const MessageHandler&  /*messageHandler*/, const std::atomic_bool&  /*shouldCancel*/,
-                                                            const ExecutionContext&  /*executionContext*/) const
+IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure& /*dataStructure*/, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                            const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pInputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_InputFile_Key);
   auto pHdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
@@ -158,8 +158,8 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
 }
 
 //------------------------------------------------------------------------------
-Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter*  /*pipelineNode*/, const MessageHandler& messageHandler,
-                                          const std::atomic_bool& shouldCancel, const ExecutionContext&  /*executionContext*/) const
+Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                          const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   ReadMTRSimODFInputValues inputValues;
 
@@ -172,7 +172,7 @@ Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Ar
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> ReadMTRSimODFFilter::FromSIMPLJson(const nlohmann::json&  /*json*/)
+Result<Arguments> ReadMTRSimODFFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = ReadMTRSimODFFilter().getDefaultArguments();
 

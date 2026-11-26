@@ -202,8 +202,8 @@ IFilter::UniquePointer ComputeODFFilter::clone() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler&  /*messageHandler*/, const std::atomic_bool&  /*shouldCancel*/,
-                                                         const ExecutionContext&  /*executionContext*/) const
+IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                         const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pOutputMode = filterArgs.value<ChoicesParameter::ValueType>(k_OutputMode_Key);
   auto pOutputUnits = filterArgs.value<ChoicesParameter::ValueType>(k_OutputUnits_Key);
@@ -586,8 +586,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
 }
 
 //------------------------------------------------------------------------------
-Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter*  /*pipelineNode*/, const MessageHandler& messageHandler,
-                                       const std::atomic_bool& shouldCancel, const ExecutionContext&  /*executionContext*/) const
+Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                       const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   const auto pOutputMode = filterArgs.value<ChoicesParameter::ValueType>(k_OutputMode_Key);
   const bool isAppendMode = (pOutputMode == 1ULL);
@@ -682,7 +682,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> ComputeODFFilter::FromSIMPLJson(const nlohmann::json&  /*json*/)
+Result<Arguments> ComputeODFFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = ComputeODFFilter().getDefaultArguments();
 

@@ -170,8 +170,8 @@ IFilter::UniquePointer MTRSimFilter::clone() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure&  /*dataStructure*/, const Arguments& filterArgs, const MessageHandler&  /*messageHandler*/, const std::atomic_bool&  /*shouldCancel*/,
-                                                     const ExecutionContext&  /*executionContext*/) const
+IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*dataStructure*/, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                     const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pOdfArrays = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
   const bool useConfig = filterArgs.value<bool>(k_UseConfigFile_Key);
@@ -292,8 +292,8 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure&  /*dat
 }
 
 //------------------------------------------------------------------------------
-Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter*  /*pipelineNode*/, const MessageHandler& messageHandler,
-                                   const std::atomic_bool& shouldCancel, const ExecutionContext&  /*executionContext*/) const
+Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                   const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   MTRSimInputValues inputValues;
   inputValues.inputOdfGeometryPath = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
@@ -349,7 +349,7 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> MTRSimFilter::FromSIMPLJson(const nlohmann::json&  /*json*/)
+Result<Arguments> MTRSimFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = MTRSimFilter().getDefaultArguments();
 
