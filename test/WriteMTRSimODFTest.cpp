@@ -94,7 +94,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
   // Determine the component paths that were created so we can pass them to the
   // writer.
   const auto origComponents = mtrsim::readODFComponents(inputFile);
-  REQUIRE(origComponents.size() >= 1);
+  REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
   std::vector<DataPath> componentPaths;
@@ -303,7 +303,7 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
   }
 
   const auto origComponents = mtrsim::readODFComponents(inputFile, readPrefix);
-  REQUIRE(origComponents.size() >= 1);
+  REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
   std::vector<DataPath> componentPaths;
