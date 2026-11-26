@@ -108,7 +108,7 @@ QSimVN::QSimVN(std::mt19937_64& rng)
 double QSimVN::phi(double z)
 {
   // Phi(z) = P(Z <= z) for Z ~ N(0,1).  MATLAB: erfc(-z/sqrt(2))/2
-  return std::erfc(-z / std::sqrt(2.0)) / 2.0;
+  return std::erfc(-z / std::numbers::sqrt2) / 2.0;
 }
 
 double QSimVN::phiInv(double p)
