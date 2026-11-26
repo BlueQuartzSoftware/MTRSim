@@ -91,7 +91,7 @@ def build_pipeline(name, cfg, repo_root):
             "write_xdmf_file": _val(False),
             "use_compression": _val(True),
             "compression_level": _val(5),
-            "parameters_version": 1,
+            "parameters_version": 2,
         },
         "comments": "Save the synthetic microstructure. Disable to only view in the GUI.",
         "filter": {"name": "nx::core::WriteDREAM3DFilter", "uuid": WRITE_DREAM3D_UUID},
@@ -132,7 +132,7 @@ def main():
             json.dump(pipeline, f, indent=2)
             f.write("\n")
         count += 1
-        print(f"wrote {out_path.relative_to(repo_root)}")
+        print(f"wrote {out_path}")
     print(f"\nGenerated {count} pipeline(s).")
 
 

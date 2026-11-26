@@ -109,7 +109,7 @@ public:
   /**
    * @brief Selects the RGB presentation geometry path.
    */
-  static constexpr StringLiteral k_OutputPresentationGeometry_Key = "output_presentation_geometry";
+  static constexpr StringLiteral k_OutputPresentationGeometry_Key = "output_presentation_geometry_path";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
