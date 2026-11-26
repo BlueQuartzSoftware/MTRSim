@@ -130,7 +130,8 @@ EBSDData MTRDataLoader::load(const std::string& directoryPath)
 
   // ── Euler angles (N × 3)
   // ─────────────────────────────────────────────────────
-  int nRowsEuler = 0, nColsEuler = 0;
+  int nRowsEuler = 0;
+  int nColsEuler = 0;
   const std::vector<double> eulerFlat = readMultiColumn(sep + "EulerAngles.csv", nRowsEuler, nColsEuler);
   if(nRowsEuler != N || nColsEuler < 3)
   {

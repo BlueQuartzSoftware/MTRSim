@@ -58,9 +58,12 @@ constexpr std::array<std::array<double, 3>, 12> k_HcpSymOps = {{
 // ─────────────────────────────────────────────────────────────────────────────
 inline Eigen::Matrix3d bungeRotationMatrix(double p1, double P, double p2)
 {
-  const double c1 = std::cos(p1), s1 = std::sin(p1);
-  const double C = std::cos(P), S = std::sin(P);
-  const double c2 = std::cos(p2), s2 = std::sin(p2);
+  const double c1 = std::cos(p1);
+  const double s1 = std::sin(p1);
+  const double C = std::cos(P);
+  const double S = std::sin(P);
+  const double c2 = std::cos(p2);
+  const double s2 = std::sin(p2);
 
   Eigen::Matrix3d G;
   G(0, 0) = c1 * c2 - s1 * s2 * C;
