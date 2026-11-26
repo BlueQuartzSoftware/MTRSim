@@ -77,7 +77,7 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
   // ComputeGBCDMetricBased): construct an `EulerD`, transform to an
   // `OrientationMatrix<double>`, and compose with `LaueOps::getMatSymOpD(k)`.
   const std::vector<ebsdlib::LaueOps::Pointer> allOps = ebsdlib::LaueOps::GetAllOrientationOps();
-  const ebsdlib::LaueOps::Pointer laueOps = allOps[ebsdlib::CrystalStructure::Hexagonal_High];
+  const ebsdlib::LaueOps::Pointer& laueOps = allOps[ebsdlib::CrystalStructure::Hexagonal_High];
   const std::size_t numOps = laueOps->getNumSymOps();
 
   const int N_input = static_cast<int>(phi1in.size());

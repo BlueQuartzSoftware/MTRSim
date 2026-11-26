@@ -122,7 +122,7 @@ public:
         reportProgress();
         continue;
       }
-      const ebsdlib::LaueOps::Pointer laueOps = allOps[code];
+      const ebsdlib::LaueOps::Pointer& laueOps = allOps[code];
       const std::size_t numOps = laueOps->getNumSymOps();
 
       // Promote single-precision EBSD inputs to double immediately.
