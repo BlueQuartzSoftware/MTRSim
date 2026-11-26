@@ -137,7 +137,7 @@ std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(const Eigen::VectorXd& phi
   };
 
 #if MTRSIM_HAS_TBB
-  tbb::parallel_for(0, N, computeColor);
+  tbb::parallel_for(0, n, computeColor);
 #else
   for(int i = 0; i < n; ++i)
   {
@@ -257,7 +257,7 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
   };
 
 #if MTRSIM_HAS_TBB
-  tbb::parallel_for(0, N, computeColor);
+  tbb::parallel_for(0, n, computeColor);
 #else
   for(int i = 0; i < n; ++i)
   {
