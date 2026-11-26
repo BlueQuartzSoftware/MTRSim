@@ -378,7 +378,10 @@ TEST_CASE("MTRSim::ComputeODFFilter: Cancellation at each stage creates no desti
 TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid settings", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   const std::vector<InvalidCase> cases = {
-      {.name = "section count", .error_code = -12309, .diagnostic_fragment = "1", .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
+      {.name = "section count",
+       .error_code = -12309,
+       .diagnostic_fragment = "1",
+       .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
       {.name = "sections per row zero",
        .error_code = -12310,
        .diagnostic_fragment = "0",

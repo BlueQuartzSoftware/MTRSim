@@ -85,9 +85,9 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std
 
   // MATLAB upper-triangular Cholesky factors: Rx = llt_x.matrixU()  (= L_x')
   // Used below as: W1 * Rz  and  Ry' * W2k * Rx
-  const Eigen::MatrixXd rx = lltX.matrixU();       // nx × nx
+  const Eigen::MatrixXd rx = lltX.matrixU();      // nx × nx
   const Eigen::MatrixXd ryLower = lltY.matrixL(); // ny × ny  (= MATLAB Ry')
-  const Eigen::MatrixXd rz = lltZ.matrixU();       // nz × nz
+  const Eigen::MatrixXd rz = lltZ.matrixU();      // nz × nz
 
   // ── Standard normal draw ─────────────────────────────────────────────────
   const int N = nx * ny * nz;
