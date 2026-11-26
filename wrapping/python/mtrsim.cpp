@@ -19,6 +19,7 @@
 
 #include <random>
 #include <string>
+#include <utility>
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -189,7 +190,7 @@ PYBIND11_MODULE(mtrsim, m)
   // GPGenerator
   // -------------------------------------------------------------------------
   py::class_<GPGenerator>(m, "GPGenerator", "Generates a separable GP field via the Kronecker-Cholesky method.")
-      .def(py::init([](Rng& rng, GPGenerator::CorrelationFn corrFn) { return new GPGenerator(rng.engine(), corrFn); }), "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
+      .def(py::init([](Rng& rng, GPGenerator::CorrelationFn corrFn) { return new GPGenerator(rng.engine(), std::move(corrFn)); }), "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
            "corr_fn(lag, theta) -> float: user-supplied correlation function")
       .def("generate", &GPGenerator::generate, "hx"_a, "hy"_a, "hz"_a, "theta"_a, "nx"_a, "ny"_a, "nz"_a,
            "Draw one GP realisation on an nx*ny*nz grid. Returns flattened "
