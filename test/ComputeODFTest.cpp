@@ -145,7 +145,7 @@ EbsdInputs buildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
   if(includeCubicPhase2)
   {
     (*csArr)[2] = k_CubicHigh;
-    materialNames.push_back("Cubic Phase 2");
+    materialNames.emplace_back("Cubic Phase 2");
   }
   REQUIRE(StringArray::CreateWithValues(out.dataStructure, "Material Names", {ensembleCount}, materialNames, ensembleAm->getId()) != nullptr);
   out.materialNamesPath = out.ensembleAttrMatPath.createChildPath("Material Names");
