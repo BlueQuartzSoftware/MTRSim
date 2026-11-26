@@ -192,7 +192,7 @@ Parameters ComputeODFFilter::parameters() const
 //------------------------------------------------------------------------------
 IFilter::VersionType ComputeODFFilter::parametersVersion() const
 {
-  return 5;
+  return 6;
 }
 
 //------------------------------------------------------------------------------

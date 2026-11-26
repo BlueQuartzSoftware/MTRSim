@@ -13,6 +13,14 @@
           "value": "Cell Ensemble Data",
           "version": 1
         },
+        "change_origin": {
+          "value": false,
+          "version": 1
+        },
+        "change_spacing": {
+          "value": false,
+          "version": 1
+        },
         "degrees_to_radians": {
           "value": true,
           "version": 1
@@ -25,11 +33,27 @@
           "value": "Data/T12-MAI-2010/fw-ar-IF1-avtr12-corr.ctf",
           "version": 1
         },
+        "origin": {
+          "value": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "version": 1
+        },
         "output_image_geometry_path": {
           "value": "ImageGeom",
           "version": 1
         },
-        "parameters_version": 1
+        "parameters_version": 2,
+        "spacing": {
+          "value": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "version": 1
+        }
       },
       "comments": "",
       "filter": {
@@ -40,6 +64,14 @@
     },
     {
       "args": {
+        "cell_feature_attribute_matrix_path": {
+          "value": "Cell Feature Data",
+          "version": 1
+        },
+        "clear_feature_attribute_matrix": {
+          "value": true,
+          "version": 1
+        },
         "input_image_geometry_path": {
           "value": "ImageGeom",
           "version": 1
@@ -52,7 +84,7 @@
           "value": "",
           "version": 1
         },
-        "parameters_version": 1,
+        "parameters_version": 2,
         "remove_original_geometry": {
           "value": true,
           "version": 1
@@ -226,6 +258,10 @@
           "value": "ImageGeom/Cell Ensemble Data/CrystalStructures",
           "version": 1
         },
+        "discrete_marker_radius": {
+          "value": 3,
+          "version": 1
+        },
         "generation_algorithm_index": {
           "value": 0,
           "version": 1
@@ -290,7 +326,7 @@
           "value": "Data/Output/12_PoleFigures",
           "version": 1
         },
-        "parameters_version": 2,
+        "parameters_version": 3,
         "save_as_image_geometry": {
           "value": true,
           "version": 1
@@ -333,6 +369,10 @@
           "value": "Cell Data",
           "version": 1
         },
+        "color_table_preset": {
+          "value": "Rainbow Blended White",
+          "version": 1
+        },
         "component_name": {
           "value": "Component 1",
           "version": 1
@@ -349,8 +389,28 @@
           "value": "",
           "version": 1
         },
+        "manual_maximum_mud": {
+          "value": 1.0,
+          "version": 1
+        },
+        "manual_minimum_mud": {
+          "value": 0.0,
+          "version": 1
+        },
         "mask_path": {
           "value": "ImageGeom/Cell Data/Mask",
+          "version": 1
+        },
+        "material_names_path": {
+          "value": "ImageGeom/Cell Ensemble Data/MaterialName",
+          "version": 1
+        },
+        "number_of_sections": {
+          "value": 6,
+          "version": 1
+        },
+        "odf_title": {
+          "value": "ODF Sections",
           "version": 1
         },
         "output_image_geometry_path": {
@@ -361,17 +421,49 @@
           "value": 0,
           "version": 1
         },
+        "output_png_file": {
+          "value": "",
+          "version": 1
+        },
+        "output_presentation_geometry_path": {
+          "value": "ODF Sections",
+          "version": 1
+        },
         "output_units_index": {
           "value": 1,
           "version": 1
         },
-        "parameters_version": 3,
+        "parameters_version": 6,
+        "phase_index": {
+          "value": 1,
+          "version": 1
+        },
         "phases_path": {
           "value": "ImageGeom/Cell Data/Phases",
           "version": 1
         },
+        "save_as_image_geometry": {
+          "value": true,
+          "version": 1
+        },
+        "scale_mode_index": {
+          "value": 0,
+          "version": 1
+        },
+        "section_width": {
+          "value": 768,
+          "version": 1
+        },
+        "sections_per_row": {
+          "value": 2,
+          "version": 1
+        },
         "use_mask": {
           "value": true,
+          "version": 1
+        },
+        "write_png": {
+          "value": false,
           "version": 1
         }
       },
@@ -386,6 +478,10 @@
       "args": {
         "cell_feature_attribute_matrix_path": {
           "value": "Cell Feature Data",
+          "version": 1
+        },
+        "clear_feature_attribute_matrix": {
+          "value": true,
           "version": 1
         },
         "crop_x_dim": {
@@ -444,7 +540,7 @@
           "value": "",
           "version": 1
         },
-        "parameters_version": 1,
+        "parameters_version": 2,
         "remove_original_geometry": {
           "value": true,
           "version": 1
@@ -506,8 +602,20 @@
     },
     {
       "args": {
+        "add_scale_bar": {
+          "value": false,
+          "version": 1
+        },
+        "create_color_table": {
+          "value": false,
+          "version": 1
+        },
         "file_name": {
           "value": "Data/Output/T12-MAI-2010/fw-ar-IF1-avtr12-corr_ODF.png",
+          "version": 1
+        },
+        "flip_mode_index": {
+          "value": 0,
           "version": 1
         },
         "image_array_path": {
@@ -522,17 +630,37 @@
           "value": "ODF",
           "version": 1
         },
+        "invalid_color_value": {
+          "value": [
+            0,
+            0,
+            0
+          ],
+          "version": 1
+        },
         "leading_digit_character": {
           "value": "0",
           "version": 1
         },
-        "parameters_version": 1,
+        "mask_array_path": {
+          "value": "",
+          "version": 1
+        },
+        "parameters_version": 5,
         "plane_index": {
           "value": 2,
           "version": 1
         },
+        "selected_preset": {
+          "value": "Black-Body Radiation",
+          "version": 1
+        },
         "total_index_digits": {
           "value": 3,
+          "version": 1
+        },
+        "use_mask": {
+          "value": false,
           "version": 1
         }
       },
