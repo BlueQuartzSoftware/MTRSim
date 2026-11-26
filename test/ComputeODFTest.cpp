@@ -176,7 +176,7 @@ Arguments makeBaseArgs(const EbsdInputs& inputs, bool applySmoothing, float32 bi
 
 // Returns the code of the first error in a preflight result, or 0 if there are
 // no errors.
-static int32 firstErrorCode(const IFilter::PreflightResult& r)
+int32 firstErrorCode(const IFilter::PreflightResult& r)
 {
   const auto& errors = r.outputActions.errors();
   return errors.empty() ? 0 : errors[0].code;
