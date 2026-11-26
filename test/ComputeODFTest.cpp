@@ -3,6 +3,7 @@
  * @brief Tests selected-phase ODF computation, metadata persistence, and MATLAB reference agreement.
  */
 
+#include <algorithm>
 #include <catch2/catch.hpp>
 
 #include "MTRSim/Filters/Algorithms/ComputeODF.hpp"
@@ -349,10 +350,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD output applies per-row sin(PHI) Jacobia
         ++binsCompared;
         const double expected = cd * expectedRowMul;
         const double rel = std::abs(mud - expected) / std::max(std::abs(expected), 1.0e-300);
-        if(rel > maxRelErr)
-        {
-          maxRelErr = rel;
-        }
+        maxRelErr = std::max(rel, maxRelErr);
         if(rel > 1.0e-12)
         {
           ++binsFailed;
@@ -1218,10 +1216,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
   for(std::size_t i = 0; i < refValues.size(); ++i)
   {
     const double diff = std::abs(static_cast<double>(outStore[i]) - refValues[i]);
-    if(diff > maxAbsDiff)
-    {
-      maxAbsDiff = diff;
-    }
+    maxAbsDiff = std::max(diff, maxAbsDiff);
     sumSqDiff += diff * diff;
     if(diff > k_Tolerance)
     {
@@ -1376,10 +1371,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   for(std::size_t i = 0; i < refValues.size(); ++i)
   {
     const double diff = std::abs(static_cast<double>(outStore[i]) - refValues[i]);
-    if(diff > maxAbsDiff)
-    {
-      maxAbsDiff = diff;
-    }
+    maxAbsDiff = std::max(diff, maxAbsDiff);
     sumSqDiff += diff * diff;
     if(diff > k_Tolerance)
     {
