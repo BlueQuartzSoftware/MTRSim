@@ -1,4 +1,4 @@
-# nxcleanup completed P2c
+# nxcleanup completed P3
 # Shared BlueQuartz clang-tidy configuration (simplnx, SimplnxOoc, SimplnxReview, DREAM3DNX).
 # Only HeaderFilterRegex and the macro allowlist differ between repositories.
 #
@@ -41,7 +41,6 @@
 # nxcleanup P4 naming-kind ConstexprVariable
 # nxcleanup P4 naming-kind Function
 # nxcleanup P4 naming-kind GlobalFunction
-# nxcleanup P3 naming-kind LocalPointer
 # nxcleanup P4 naming-kind PublicMember
 # nxcleanup P4 naming-kind TypeAlias
 # nxcleanup P3 naming-kind Variable
@@ -110,7 +109,5 @@ CheckOptions:
   readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
   # Enable Function in P4 after its findings are resolved.
   readability-identifier-naming.FunctionIgnoredRegexp: .*
-  # Enable LocalPointer in P3 after its findings are resolved.
-  readability-identifier-naming.LocalPointerIgnoredRegexp: .*
   # Enable Variable in P3 after its findings are resolved.
   readability-identifier-naming.VariableIgnoredRegexp: .*
