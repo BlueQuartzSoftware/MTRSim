@@ -236,9 +236,9 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
   REQUIRE(vals[k_SentinelIndex] == k_SentinelValue);
 
   std::size_t nonzeroCount = 0;
-  for(std::size_t i = 0; i < vals.size(); ++i)
+  for(double val : vals)
   {
-    if(vals[i] != 0.0)
+    if(val != 0.0)
     {
       ++nonzeroCount;
     }
