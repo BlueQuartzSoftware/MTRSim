@@ -147,7 +147,7 @@ Result<> GenerateODFSections::operator()()
     }
     const auto rgbPath = values.outputImageGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
     auto& outputRgb = m_DataStructure.getDataRefAs<UInt8Array>(rgbPath);
-    const auto* rgba = result.image->getPointer(0);
+    const auto* rgbaPtr = result.image->getPointer(0);
     const usize width = static_cast<usize>(result.width);
     for(usize row = 0; row < static_cast<usize>(result.height); ++row)
     {
@@ -158,9 +158,9 @@ Result<> GenerateODFSections::operator()()
       for(usize column = 0; column < width; ++column)
       {
         const usize tuple = row * width + column;
-        outputRgb[tuple * 3] = rgba[tuple * 4];
-        outputRgb[tuple * 3 + 1] = rgba[tuple * 4 + 1];
-        outputRgb[tuple * 3 + 2] = rgba[tuple * 4 + 2];
+        outputRgb[tuple * 3] = rgbaPtr[tuple * 4];
+        outputRgb[tuple * 3 + 1] = rgbaPtr[tuple * 4 + 1];
+        outputRgb[tuple * 3 + 2] = rgbaPtr[tuple * 4 + 2];
       }
     }
   }

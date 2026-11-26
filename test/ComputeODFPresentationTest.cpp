@@ -47,24 +47,24 @@ const DataPath k_RgbPath({"ODF Sections", "Cell Data", "ODF Sections RGB"});
 DataStructure CreateValidDataStructure()
 {
   DataStructure data;
-  auto* cells = AttributeMatrix::Create(data, "Input Cells", {8});
-  auto* eulers = Float32Array::Create(data, "Euler Angles", DataStoreUtilities::CreateDataStore<float32>(data, DataPath({"Input Cells", "Euler Angles"}), {8}, {3}), cells->getId());
-  auto* phases = Int32Array::Create(data, "Phases", DataStoreUtilities::CreateDataStore<int32>(data, DataPath({"Input Cells", "Phases"}), {8}, {1}), cells->getId());
-  REQUIRE(eulers != nullptr);
-  REQUIRE(phases != nullptr);
+  auto* cellsPtr = AttributeMatrix::Create(data, "Input Cells", {8});
+  auto* eulersPtr = Float32Array::Create(data, "Euler Angles", DataStoreUtilities::CreateDataStore<float32>(data, DataPath({"Input Cells", "Euler Angles"}), {8}, {3}), cellsPtr->getId());
+  auto* phasesPtr = Int32Array::Create(data, "Phases", DataStoreUtilities::CreateDataStore<int32>(data, DataPath({"Input Cells", "Phases"}), {8}, {1}), cellsPtr->getId());
+  REQUIRE(eulersPtr != nullptr);
+  REQUIRE(phasesPtr != nullptr);
   for(usize tupleIdx = 0; tupleIdx < 8; ++tupleIdx)
   {
-    (*eulers)[tupleIdx * 3] = static_cast<float32>((15.0 + tupleIdx * 10.0) * std::numbers::pi / 180.0);
-    (*eulers)[tupleIdx * 3 + 1] = static_cast<float32>((20.0 + tupleIdx * 5.0) * std::numbers::pi / 180.0);
-    (*eulers)[tupleIdx * 3 + 2] = static_cast<float32>((5.0 + tupleIdx * 5.0) * std::numbers::pi / 180.0);
-    (*phases)[tupleIdx] = 1;
+    (*eulersPtr)[tupleIdx * 3] = static_cast<float32>((15.0 + tupleIdx * 10.0) * std::numbers::pi / 180.0);
+    (*eulersPtr)[tupleIdx * 3 + 1] = static_cast<float32>((20.0 + tupleIdx * 5.0) * std::numbers::pi / 180.0);
+    (*eulersPtr)[tupleIdx * 3 + 2] = static_cast<float32>((5.0 + tupleIdx * 5.0) * std::numbers::pi / 180.0);
+    (*phasesPtr)[tupleIdx] = 1;
   }
-  auto* ensemble = AttributeMatrix::Create(data, "Ensemble Data", {2});
-  auto* crystals = UInt32Array::Create(data, "Crystal Structures", DataStoreUtilities::CreateDataStore<uint32>(data, k_CrystalStructuresPath, {2}, {1}), ensemble->getId());
-  REQUIRE(crystals != nullptr);
-  (*crystals)[0] = ebsdlib::CrystalStructure::UnknownCrystalStructure;
-  (*crystals)[1] = ebsdlib::CrystalStructure::Hexagonal_High;
-  REQUIRE(StringArray::CreateWithValues(data, "Material Names", {2}, {"Invalid", "Titanium (Alpha)"}, ensemble->getId()) != nullptr);
+  auto* ensemblePtr = AttributeMatrix::Create(data, "Ensemble Data", {2});
+  auto* crystalsPtr = UInt32Array::Create(data, "Crystal Structures", DataStoreUtilities::CreateDataStore<uint32>(data, k_CrystalStructuresPath, {2}, {1}), ensemblePtr->getId());
+  REQUIRE(crystalsPtr != nullptr);
+  (*crystalsPtr)[0] = ebsdlib::CrystalStructure::UnknownCrystalStructure;
+  (*crystalsPtr)[1] = ebsdlib::CrystalStructure::Hexagonal_High;
+  REQUIRE(StringArray::CreateWithValues(data, "Material Names", {2}, {"Invalid", "Titanium (Alpha)"}, ensemblePtr->getId()) != nullptr);
   return data;
 }
 
@@ -92,8 +92,8 @@ std::string GetPreflightValue(const IFilter::PreflightResult& result, const std:
 struct InvalidCase
 {
   std::string name;
-  int32 errorCode = 0;
-  std::string diagnosticFragment;
+  int32 error_code = 0;
+  std::string diagnostic_fragment;
   std::function<void(DataStructure&, Arguments&)> mutate;
 };
 
@@ -136,9 +136,9 @@ DataStructure CreateDeferredMetadataDataStructure()
   const CreateArrayAction action(DataType::uint32, {2}, {1}, k_CrystalStructuresPath);
   const auto result = action.apply(data, IDataAction::Mode::Preflight);
   SIMPLNX_RESULT_REQUIRE_VALID(result);
-  const auto* ensemble = data.getDataAs<AttributeMatrix>(k_CrystalStructuresPath.getParent());
-  REQUIRE(ensemble != nullptr);
-  REQUIRE(StringArray::CreateWithValues(data, k_MaterialNamesPath.getTargetName(), {2}, {"", ""}, ensemble->getId()) != nullptr);
+  const auto* ensemblePtr = data.getDataAs<AttributeMatrix>(k_CrystalStructuresPath.getParent());
+  REQUIRE(ensemblePtr != nullptr);
+  REQUIRE(StringArray::CreateWithValues(data, k_MaterialNamesPath.getTargetName(), {2}, {"", ""}, ensemblePtr->getId()) != nullptr);
   return data;
 }
 
@@ -202,35 +202,35 @@ TEST_CASE("MTRSim::ComputeODFFilter: Output modes preserve PNG and RGB pixels", 
       const auto result = ComputeODFFilter{}.execute(data, args);
       SIMPLNX_RESULT_REQUIRE_VALID(result.result);
       REQUIRE(std::filesystem::exists(output.png) == mode.first);
-      const auto* geom = data.getDataAs<ImageGeom>(k_OutputGeometryPath);
-      const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-      REQUIRE((geom != nullptr) == mode.second);
-      REQUIRE((rgb != nullptr) == mode.second);
+      const auto* geomPtr = data.getDataAs<ImageGeom>(k_OutputGeometryPath);
+      const auto* rgbPtr = data.getDataAs<UInt8Array>(k_RgbPath);
+      REQUIRE((geomPtr != nullptr) == mode.second);
+      REQUIRE((rgbPtr != nullptr) == mode.second);
       if(mode.second)
       {
-        REQUIRE(rgb->getNumberOfComponents() == 3);
-        REQUIRE(std::any_of(rgb->begin(), rgb->end(), [](uint8 value) { return value != 0; }));
+        REQUIRE(rgbPtr->getNumberOfComponents() == 3);
+        REQUIRE(std::any_of(rgbPtr->begin(), rgbPtr->end(), [](uint8 value) { return value != 0; }));
       }
       if(mode.first)
       {
         auto decoded = ReadPng(output.png);
-        const auto* decodedGeom = decoded.getDataAs<ImageGeom>(DataPath({"Decoded"}));
-        const auto* rgba = decoded.getDataAs<UInt8Array>(DataPath({"Decoded", "Cells", "Pixels"}));
-        REQUIRE(decodedGeom != nullptr);
-        REQUIRE(rgba != nullptr);
-        REQUIRE(rgba->getNumberOfComponents() == 4);
+        const auto* decodedGeomPtr = decoded.getDataAs<ImageGeom>(DataPath({"Decoded"}));
+        const auto* rgbaPtr = decoded.getDataAs<UInt8Array>(DataPath({"Decoded", "Cells", "Pixels"}));
+        REQUIRE(decodedGeomPtr != nullptr);
+        REQUIRE(rgbaPtr != nullptr);
+        REQUIRE(rgbaPtr->getNumberOfComponents() == 4);
         if(mode.second)
         {
-          REQUIRE(decodedGeom->getDimensions() == geom->getDimensions());
-          REQUIRE(rgba->getNumberOfTuples() == rgb->getNumberOfTuples());
+          REQUIRE(decodedGeomPtr->getDimensions() == geomPtr->getDimensions());
+          REQUIRE(rgbaPtr->getNumberOfTuples() == rgbPtr->getNumberOfTuples());
           bool pixelsMatch = true;
-          for(usize tupleIdx = 0; tupleIdx < rgb->getNumberOfTuples(); ++tupleIdx)
+          for(usize tupleIdx = 0; tupleIdx < rgbPtr->getNumberOfTuples(); ++tupleIdx)
           {
             for(usize compIdx = 0; compIdx < 3; ++compIdx)
             {
-              pixelsMatch &= (*rgb)[tupleIdx * 3 + compIdx] == (*rgba)[tupleIdx * 4 + compIdx];
+              pixelsMatch &= (*rgbPtr)[tupleIdx * 3 + compIdx] == (*rgbaPtr)[tupleIdx * 4 + compIdx];
             }
-            pixelsMatch &= (*rgba)[tupleIdx * 4 + 3] == 255;
+            pixelsMatch &= (*rgbaPtr)[tupleIdx * 4 + 3] == 255;
           }
           REQUIRE(pixelsMatch);
         }
@@ -264,18 +264,18 @@ TEST_CASE("MTRSim::ComputeODFFilter: Units produce identical MUD and Count-Densi
   args.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, ChoicesParameter::ValueType{0});
   const auto countResult = filter.execute(countData, args);
   SIMPLNX_RESULT_REQUIRE_VALID(countResult.result);
-  const auto* mudGeom = mudData.getDataAs<ImageGeom>(k_OutputGeometryPath);
-  const auto* countGeom = countData.getDataAs<ImageGeom>(k_OutputGeometryPath);
-  REQUIRE(mudGeom != nullptr);
-  REQUIRE(countGeom != nullptr);
-  REQUIRE(mudGeom->getDimensions() == countGeom->getDimensions());
+  const auto* mudGeomPtr = mudData.getDataAs<ImageGeom>(k_OutputGeometryPath);
+  const auto* countGeomPtr = countData.getDataAs<ImageGeom>(k_OutputGeometryPath);
+  REQUIRE(mudGeomPtr != nullptr);
+  REQUIRE(countGeomPtr != nullptr);
+  REQUIRE(mudGeomPtr->getDimensions() == countGeomPtr->getDimensions());
   const auto rgbPath = k_OutputGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
-  const auto* mudRgb = mudData.getDataAs<UInt8Array>(rgbPath);
-  const auto* countRgb = countData.getDataAs<UInt8Array>(rgbPath);
-  REQUIRE(mudRgb != nullptr);
-  REQUIRE(countRgb != nullptr);
+  const auto* mudRgbPtr = mudData.getDataAs<UInt8Array>(rgbPath);
+  const auto* countRgbPtr = countData.getDataAs<UInt8Array>(rgbPath);
+  REQUIRE(mudRgbPtr != nullptr);
+  REQUIRE(countRgbPtr != nullptr);
   REQUIRE(ebsdlib::GetODFColorBarTitle(ebsdlib::ODFValueUnits::CountDensity) == "MUD (from Count-Density)");
-  REQUIRE_FALSE(std::equal(mudRgb->begin(), mudRgb->end(), countRgb->begin(), countRgb->end()));
+  REQUIRE_FALSE(std::equal(mudRgbPtr->begin(), mudRgbPtr->end(), countRgbPtr->begin(), countRgbPtr->end()));
   ebsdlib::ODFSectionConfiguration config;
   config.grid.laueOpsIndex = ebsdlib::CrystalStructure::Hexagonal_High;
   config.sectionWidth = 128;
@@ -288,8 +288,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Units produce identical MUD and Count-Densi
       {
         for(usize compIdx = 0; compIdx < 3; ++compIdx)
         {
-          const usize offset = (row * mudGeom->getNumXCells() + column) * 3 + compIdx;
-          equal &= (*mudRgb)[offset] == (*countRgb)[offset];
+          const usize offset = (row * mudGeomPtr->getNumXCells() + column) * 3 + compIdx;
+          equal &= (*mudRgbPtr)[offset] == (*countRgbPtr)[offset];
         }
       }
     }
@@ -339,9 +339,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Cancellation at each stage creates no desti
       const IFilter::MessageHandler handler{[&](const IFilter::Message& message) {
         if(message.message == "Converting ODF values")
         {
-          auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-          REQUIRE(rgb != nullptr);
-          std::fill(rgb->begin(), rgb->end(), uint8{173});
+          auto* rgbPtr = data.getDataAs<UInt8Array>(k_RgbPath);
+          REQUIRE(rgbPtr != nullptr);
+          std::fill(rgbPtr->begin(), rgbPtr->end(), uint8{173});
         }
         if(message.message == stage)
         {
@@ -357,9 +357,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Cancellation at each stage creates no desti
       REQUIRE(std::filesystem::is_empty(output.directory));
       if(stage != "Writing ODF section PNG")
       {
-        const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-        REQUIRE(rgb != nullptr);
-        REQUIRE(std::all_of(rgb->begin(), rgb->end(), [](uint8 value) { return value == 173; }));
+        const auto* rgbPtr = data.getDataAs<UInt8Array>(k_RgbPath);
+        REQUIRE(rgbPtr != nullptr);
+        REQUIRE(std::all_of(rgbPtr->begin(), rgbPtr->end(), [](uint8 value) { return value == 173; }));
       }
     }
   }
@@ -378,42 +378,42 @@ TEST_CASE("MTRSim::ComputeODFFilter: Cancellation at each stage creates no desti
 TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid settings", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   const std::vector<InvalidCase> cases = {
-      {.name = "section count", .errorCode = -12309, .diagnosticFragment = "1", .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
+      {.name = "section count", .error_code = -12309, .diagnostic_fragment = "1", .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
       {.name = "sections per row zero",
-       .errorCode = -12310,
-       .diagnosticFragment = "0",
+       .error_code = -12310,
+       .diagnostic_fragment = "0",
        .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{0}); }},
       {.name = "sections per row too large",
-       .errorCode = -12310,
-       .diagnosticFragment = "7",
+       .error_code = -12310,
+       .diagnostic_fragment = "7",
        .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{7}); }},
       {.name = "section width",
-       .errorCode = -12311,
-       .diagnosticFragment = "127",
+       .error_code = -12311,
+       .diagnostic_fragment = "127",
        .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionWidth_Key, int32{127}); }},
       {.name = "invalid preset",
-       .errorCode = -12312,
-       .diagnosticFragment = "Not A Preset",
+       .error_code = -12312,
+       .diagnostic_fragment = "Not A Preset",
        .mutate = [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_ColorTablePreset_Key, CreateColorMapParameter::ValueType{"Not A Preset"}); }},
       {.name = "negative manual minimum",
-       .errorCode = -12313,
-       .diagnosticFragment = "-0.5",
+       .error_code = -12313,
+       .diagnostic_fragment = "-0.5",
        .mutate =
            [](DataStructure&, Arguments& args) {
              args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
              args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, float64{-0.5});
            }},
       {.name = "non-finite manual minimum",
-       .errorCode = -12313,
-       .diagnosticFragment = "nan",
+       .error_code = -12313,
+       .diagnostic_fragment = "nan",
        .mutate =
            [](DataStructure&, Arguments& args) {
              args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
              args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, std::numeric_limits<float64>::quiet_NaN());
            }},
       {.name = "equal manual limits",
-       .errorCode = -12313,
-       .diagnosticFragment = "[1, 1]",
+       .error_code = -12313,
+       .diagnostic_fragment = "[1, 1]",
        .mutate =
            [](DataStructure&, Arguments& args) {
              args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
@@ -421,8 +421,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid sett
              args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, float64{1.0});
            }},
       {.name = "reversed manual limits",
-       .errorCode = -12313,
-       .diagnosticFragment = "[2, 1]",
+       .error_code = -12313,
+       .diagnostic_fragment = "[2, 1]",
        .mutate =
            [](DataStructure&, Arguments& args) {
              args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
@@ -430,8 +430,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid sett
              args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, float64{1.0});
            }},
       {.name = "non-PNG extension",
-       .errorCode = -3003,
-       .diagnosticFragment = ".jpg",
+       .error_code = -3003,
+       .diagnostic_fragment = ".jpg",
        .mutate =
            [](DataStructure&, Arguments& args) {
              args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, true);
@@ -451,8 +451,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid sett
       const auto result = filter.preflight(dataStructure, args);
       SIMPLNX_RESULT_REQUIRE_INVALID(result.outputActions);
       REQUIRE_FALSE(result.outputActions.errors().empty());
-      CHECK(result.outputActions.errors()[0].code == testCase.errorCode);
-      CHECK(result.outputActions.errors()[0].message.find(testCase.diagnosticFragment) != std::string::npos);
+      CHECK(result.outputActions.errors()[0].code == testCase.error_code);
+      CHECK(result.outputActions.errors()[0].message.find(testCase.diagnostic_fragment) != std::string::npos);
     }
   }
 }
@@ -460,9 +460,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid sett
 TEST_CASE("MTRSim::ComputeODFFilter: Deferred metadata omits unavailable values and shrinks the RGB geometry", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   auto data = CreateDeferredMetadataDataStructure();
-  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
-  REQUIRE(names != nullptr);
-  names->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  auto* namesPtr = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(namesPtr != nullptr);
+  namesPtr->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
   auto args = ExecutionArguments();
   const auto preflight = ComputeODFFilter{}.preflight(data, args);
   SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
@@ -478,17 +478,17 @@ TEST_CASE("MTRSim::ComputeODFFilter: Deferred metadata omits unavailable values 
   REQUIRE(GetPreflightValue(preflight, "Composite Dimensions").find("conservative maximum") != std::string::npos);
   const auto applied = preflight.outputActions.value().applyRegular(data, IDataAction::Mode::Execute);
   SIMPLNX_RESULT_REQUIRE_VALID(applied);
-  const auto* geom = data.getDataAs<ImageGeom>(k_OutputGeometryPath);
-  REQUIRE(geom != nullptr);
-  const auto conservativeDimensions = geom->getDimensions();
-  auto* crystals = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
-  REQUIRE(crystals != nullptr);
-  const auto replaced = crystals->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
+  const auto* geomPtr = data.getDataAs<ImageGeom>(k_OutputGeometryPath);
+  REQUIRE(geomPtr != nullptr);
+  const auto conservativeDimensions = geomPtr->getDimensions();
+  auto* crystalsPtr = data.getDataAs<UInt32Array>(k_CrystalStructuresPath);
+  REQUIRE(crystalsPtr != nullptr);
+  const auto replaced = crystalsPtr->setDataStore(std::make_shared<DataStore<uint32>>(ShapeType{2}, ShapeType{1}, ebsdlib::CrystalStructure::Hexagonal_High));
   SIMPLNX_RESULT_REQUIRE_VALID(replaced);
   REQUIRE(data.removeData(k_MaterialNamesPath));
-  auto* ensemble = data.getDataAs<AttributeMatrix>(k_MaterialNamesPath.getParent());
-  REQUIRE(ensemble != nullptr);
-  REQUIRE(StringArray::CreateWithValues(data, "Material Names", {2}, {"Invalid", "Titanium (Alpha)"}, ensemble->getId()) != nullptr);
+  auto* ensemblePtr = data.getDataAs<AttributeMatrix>(k_MaterialNamesPath.getParent());
+  REQUIRE(ensemblePtr != nullptr);
+  REQUIRE(StringArray::CreateWithValues(data, "Material Names", {2}, {"Invalid", "Titanium (Alpha)"}, ensemblePtr->getId()) != nullptr);
   // This adapter models execution after an upstream reader fills preflight placeholders.
   struct MaterializedComputeFilter : ComputeODFFilter
   {
@@ -499,23 +499,23 @@ TEST_CASE("MTRSim::ComputeODFFilter: Deferred metadata omits unavailable values 
   args.insertOrAssign(ComputeODFFilter::k_OutputPngPath_Key, output.png);
   const auto result = MaterializedComputeFilter{}.executeImpl(data, args, nullptr, {}, false, {});
   SIMPLNX_RESULT_REQUIRE_VALID(result);
-  REQUIRE(geom->getNumXCells() == conservativeDimensions[0]);
-  REQUIRE(geom->getNumYCells() < conservativeDimensions[1]);
-  const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-  REQUIRE(rgb != nullptr);
-  REQUIRE(rgb->getTupleShape() == geom->getCellData()->getShape());
+  REQUIRE(geomPtr->getNumXCells() == conservativeDimensions[0]);
+  REQUIRE(geomPtr->getNumYCells() < conservativeDimensions[1]);
+  const auto* rgbPtr = data.getDataAs<UInt8Array>(k_RgbPath);
+  REQUIRE(rgbPtr != nullptr);
+  REQUIRE(rgbPtr->getTupleShape() == geomPtr->getCellData()->getShape());
   auto decoded = ReadPng(output.png);
-  const auto* decodedGeom = decoded.getDataAs<ImageGeom>(DataPath({"Decoded"}));
-  const auto* rgba = decoded.getDataAs<UInt8Array>(DataPath({"Decoded", "Cells", "Pixels"}));
-  REQUIRE(decodedGeom != nullptr);
-  REQUIRE(rgba != nullptr);
-  REQUIRE(decodedGeom->getDimensions() == geom->getDimensions());
+  const auto* decodedGeomPtr = decoded.getDataAs<ImageGeom>(DataPath({"Decoded"}));
+  const auto* rgbaPtr = decoded.getDataAs<UInt8Array>(DataPath({"Decoded", "Cells", "Pixels"}));
+  REQUIRE(decodedGeomPtr != nullptr);
+  REQUIRE(rgbaPtr != nullptr);
+  REQUIRE(decodedGeomPtr->getDimensions() == geomPtr->getDimensions());
   bool matches = true;
-  for(usize tupleIdx = 0; tupleIdx < rgb->getNumberOfTuples(); ++tupleIdx)
+  for(usize tupleIdx = 0; tupleIdx < rgbPtr->getNumberOfTuples(); ++tupleIdx)
   {
     for(usize compIdx = 0; compIdx < 3; ++compIdx)
     {
-      matches &= (*rgb)[tupleIdx * 3 + compIdx] == (*rgba)[tupleIdx * 4 + compIdx];
+      matches &= (*rgbPtr)[tupleIdx * 3 + compIdx] == (*rgbaPtr)[tupleIdx * 4 + compIdx];
     }
   }
   REQUIRE(matches);
@@ -528,9 +528,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Placeholder Material Names preserves known 
   const auto args = ExecutionArguments();
   const auto known = ComputeODFFilter{}.preflight(data, args);
   SIMPLNX_RESULT_REQUIRE_VALID(known.outputActions);
-  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
-  REQUIRE(names != nullptr);
-  names->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  auto* namesPtr = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(namesPtr != nullptr);
+  namesPtr->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
   IFilter::PreflightResult preflight;
   REQUIRE_NOTHROW(preflight = ComputeODFFilter{}.preflight(data, args));
   SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
@@ -549,9 +549,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Placeholder Material Names preserves known 
 TEST_CASE("MTRSim::ComputeODFFilter: Placeholder Material Names returns a contextual execution error", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   auto data = CreateValidDataStructure();
-  auto* names = data.getDataAs<StringArray>(k_MaterialNamesPath);
-  REQUIRE(names != nullptr);
-  names->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
+  auto* namesPtr = data.getDataAs<StringArray>(k_MaterialNamesPath);
+  REQUIRE(namesPtr != nullptr);
+  namesPtr->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
   auto args = ExecutionArguments();
   TemporaryOutput output;
   args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, true);
@@ -571,19 +571,19 @@ TEST_CASE("MTRSim::ComputeODFFilter: Internal presentation adapts Float32 and Fl
 {
   auto data32 = ComputeNumericData();
   auto data64 = ComputeNumericData();
-  auto* source32 = data32.getDataAs<Float64Array>(k_OdfArrayPath);
-  auto* source64 = data64.getDataAs<Float64Array>(k_OdfArrayPath);
-  REQUIRE(source32 != nullptr);
-  REQUIRE(source64 != nullptr);
-  auto* cells = data32.getDataAs<AttributeMatrix>(k_OdfArrayPath.getParent());
-  REQUIRE(cells != nullptr);
+  auto* source32Ptr = data32.getDataAs<Float64Array>(k_OdfArrayPath);
+  auto* source64Ptr = data64.getDataAs<Float64Array>(k_OdfArrayPath);
+  REQUIRE(source32Ptr != nullptr);
+  REQUIRE(source64Ptr != nullptr);
+  auto* cellsPtr = data32.getDataAs<AttributeMatrix>(k_OdfArrayPath.getParent());
+  REQUIRE(cellsPtr != nullptr);
   const auto floatPath = k_OdfArrayPath.replaceName("Float ODF");
-  auto* odf32 = Float32Array::Create(data32, "Float ODF", DataStoreUtilities::CreateDataStore<float32>(data32, floatPath, source32->getTupleShape(), {1}), cells->getId());
-  REQUIRE(odf32 != nullptr);
-  for(usize index = 0; index < odf32->getSize(); ++index)
+  auto* odf32Ptr = Float32Array::Create(data32, "Float ODF", DataStoreUtilities::CreateDataStore<float32>(data32, floatPath, source32Ptr->getTupleShape(), {1}), cellsPtr->getId());
+  REQUIRE(odf32Ptr != nullptr);
+  for(usize index = 0; index < odf32Ptr->getSize(); ++index)
   {
-    (*odf32)[index] = static_cast<float32>((*source32)[index]);
-    (*source64)[index] = (*odf32)[index];
+    (*odf32Ptr)[index] = static_cast<float32>((*source32Ptr)[index]);
+    (*source64Ptr)[index] = (*odf32Ptr)[index];
   }
   auto values = ExecutionInputValues();
   const auto result64 = RenderExisting(data64, values);
@@ -591,11 +591,11 @@ TEST_CASE("MTRSim::ComputeODFFilter: Internal presentation adapts Float32 and Fl
   values.odfArrayPath = floatPath;
   const auto result32 = RenderExisting(data32, values);
   SIMPLNX_RESULT_REQUIRE_VALID(result32);
-  const auto* rgb32 = data32.getDataAs<UInt8Array>(k_RgbPath);
-  const auto* rgb64 = data64.getDataAs<UInt8Array>(k_RgbPath);
-  REQUIRE(rgb32 != nullptr);
-  REQUIRE(rgb64 != nullptr);
-  REQUIRE(std::equal(rgb32->begin(), rgb32->end(), rgb64->begin(), rgb64->end()));
+  const auto* rgb32Ptr = data32.getDataAs<UInt8Array>(k_RgbPath);
+  const auto* rgb64Ptr = data64.getDataAs<UInt8Array>(k_RgbPath);
+  REQUIRE(rgb32Ptr != nullptr);
+  REQUIRE(rgb64Ptr != nullptr);
+  REQUIRE(std::equal(rgb32Ptr->begin(), rgb32Ptr->end(), rgb64Ptr->begin(), rgb64Ptr->end()));
   UnitTest::CheckArraysInheritTupleDims(data32);
   UnitTest::CheckArraysInheritTupleDims(data64);
 }
@@ -611,10 +611,10 @@ TEST_CASE("MTRSim::ComputeODFFilter: Invalid presentation values preserve an exi
     REQUIRE(stream.good());
   }
   auto data = ComputeNumericData();
-  auto* odf = data.getDataAs<Float64Array>(k_OdfArrayPath);
-  REQUIRE(odf != nullptr);
+  auto* odfPtr = data.getDataAs<Float64Array>(k_OdfArrayPath);
+  REQUIRE(odfPtr != nullptr);
   // Values outside the rendered crop still require validation.
-  (*odf)[odf->getSize() - 1] = value;
+  (*odfPtr)[odfPtr->getSize() - 1] = value;
   auto values = ExecutionInputValues();
   values.writePng = true;
   values.outputPngPath = output.png;
@@ -638,21 +638,21 @@ TEST_CASE("MTRSim::ComputeODFFilter: Empty selected phase rejects presentation",
   const auto units = GENERATE(ChoicesParameter::ValueType{0}, ChoicesParameter::ValueType{1});
   CAPTURE(masked, scale, mode.first, mode.second, units);
   auto data = CreateValidDataStructure();
-  auto* phases = data.getDataAs<Int32Array>(DataPath({"Input Cells", "Phases"}));
-  REQUIRE(phases != nullptr);
+  auto* phasesPtr = data.getDataAs<Int32Array>(DataPath({"Input Cells", "Phases"}));
+  REQUIRE(phasesPtr != nullptr);
   auto args = ExecutionArguments();
   if(masked)
   {
     const DataPath maskPath({"Input Cells", "Mask"});
-    auto* mask = BoolArray::Create(data, "Mask", DataStoreUtilities::CreateDataStore<bool>(data, maskPath, {8}, {1}), phases->getParentIds().front());
-    REQUIRE(mask != nullptr);
-    std::fill(mask->begin(), mask->end(), false);
+    auto* maskPtr = BoolArray::Create(data, "Mask", DataStoreUtilities::CreateDataStore<bool>(data, maskPath, {8}, {1}), phasesPtr->getParentIds().front());
+    REQUIRE(maskPtr != nullptr);
+    std::fill(maskPtr->begin(), maskPtr->end(), false);
     args.insertOrAssign(ComputeODFFilter::k_UseMask_Key, true);
     args.insertOrAssign(ComputeODFFilter::k_MaskArrayPath_Key, maskPath);
   }
   else
   {
-    std::fill(phases->begin(), phases->end(), 0);
+    std::fill(phasesPtr->begin(), phasesPtr->end(), 0);
   }
   TemporaryOutput output;
   const std::string original = "Existing PNG destination";
@@ -677,22 +677,22 @@ TEST_CASE("MTRSim::ComputeODFFilter: Empty selected phase rejects presentation",
       CHECK(result.result.errors().front().message.find("phase 1") != std::string::npos);
       CHECK(result.result.errors().front().message.find("no voxels contributed") != std::string::npos);
     }
-    const auto* rgb = data.getDataAs<UInt8Array>(k_RgbPath);
-    CHECK((rgb == nullptr || std::all_of(rgb->begin(), rgb->end(), [](uint8 value) { return value == 0; })));
+    const auto* rgbPtr = data.getDataAs<UInt8Array>(k_RgbPath);
+    CHECK((rgbPtr == nullptr || std::all_of(rgbPtr->begin(), rgbPtr->end(), [](uint8 value) { return value == 0; })));
   }
   else
   {
     SIMPLNX_RESULT_REQUIRE_VALID(result.result);
-    const auto* odf = data.getDataAs<Float64Array>(k_OdfArrayPath);
-    REQUIRE(odf != nullptr);
-    CHECK(std::all_of(odf->begin(), odf->end(), [](float64 value) { return value == 0.0; }));
+    const auto* odfPtr = data.getDataAs<Float64Array>(k_OdfArrayPath);
+    REQUIRE(odfPtr != nullptr);
+    CHECK(std::all_of(odfPtr->begin(), odfPtr->end(), [](float64 value) { return value == 0.0; }));
     TemporaryOutput persistence;
     const auto numericFile = persistence.directory / "empty_phase.dream3d";
     UnitTest::WriteTestDataStructure(data, numericFile);
     const auto restored = UnitTest::LoadDataStructure(numericFile);
-    const auto* metadata = restored.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "ODF Values Units"}));
-    REQUIRE(metadata != nullptr);
-    CHECK((*metadata)[0] == (units == 0 ? "Count-Density" : "MUD"));
+    const auto* metadataPtr = restored.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "ODF Values Units"}));
+    REQUIRE(metadataPtr != nullptr);
+    CHECK((*metadataPtr)[0] == (units == 0 ? "Count-Density" : "MUD"));
     CHECK(data.getDataAs<UInt8Array>(k_RgbPath) == nullptr);
   }
   std::ifstream stream(output.png, std::ios::binary);

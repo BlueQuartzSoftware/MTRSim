@@ -80,7 +80,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
   const int ny = static_cast<int>(std::round(params.yLen / params.dy));
   const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
-  const int N = nx * ny * nz;
+  const int n = nx * ny * nz;
 
   if(static_cast<int>(odfComponents.size()) != static_cast<int>(params.volumeFractions.size()))
   {
@@ -98,7 +98,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   // 1. PGRF assignment (sim-ordered, 1-based component ids).
   report(0, 100, "Running plurigaussian field simulation");
   PGRFSimulation pgrf{rng};
-  const PGRFResult pgrf_result = pgrf.run(params, observer); // throws on bad dims
+  const PGRFResult pgrfResult = pgrf.run(params, observer); // throws on bad dims
   if(cancelled())
   {
     MTRSimResult out;
@@ -106,7 +106,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
     return out;
   }
 
-  if(static_cast<int>(pgrf_result.mtrIndex.size()) != N)
+  if(static_cast<int>(pgrfResult.mtrIndex.size()) != n)
   {
     throw std::runtime_error("simulateMTR: PGRF result size does not match grid dimensions");
   }
@@ -119,7 +119,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   for(int j = 0; j < numComponents; ++j)
   {
     report(j, numComponents, fmt::format("Sampling orientations (component {}/{})", j + 1, numComponents));
-    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(N, odfComponents[static_cast<std::size_t>(j)], uniformOdf, observer);
+    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(n, odfComponents[static_cast<std::size_t>(j)], uniformOdf, observer);
     if(cancelled())
     {
       MTRSimResult out;
@@ -129,14 +129,14 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   }
 
   // 3. Assign per-voxel orientation by component (sim order).
-  std::vector<int32_t> mtrSim(static_cast<std::size_t>(N));
-  std::vector<double> phi1Sim(static_cast<std::size_t>(N));
-  std::vector<double> phiSim(static_cast<std::size_t>(N));
-  std::vector<double> phi2Sim(static_cast<std::size_t>(N));
-  for(int i = 0; i < N; ++i)
+  std::vector<int32_t> mtrSim(static_cast<std::size_t>(n));
+  std::vector<double> phi1Sim(static_cast<std::size_t>(n));
+  std::vector<double> phiSim(static_cast<std::size_t>(n));
+  std::vector<double> phi2Sim(static_cast<std::size_t>(n));
+  for(int i = 0; i < n; ++i)
   {
-    const int comp = pgrf_result.mtrIndex[i] - 1;
-    mtrSim[static_cast<std::size_t>(i)] = pgrf_result.mtrIndex[i];
+    const int comp = pgrfResult.mtrIndex[i] - 1;
+    mtrSim[static_cast<std::size_t>(i)] = pgrfResult.mtrIndex[i];
     phi1Sim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 0);
     phiSim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 1);
     phi2Sim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 2);

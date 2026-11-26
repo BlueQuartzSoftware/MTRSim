@@ -114,15 +114,15 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     return {.outputActions = MakeErrorResult<OutputActions>(-12100, "Select at least one ODF component array.")};
   }
 
-  const auto* geom = dataStructure.getDataAs<ImageGeom>(pInputImageGeomPath);
-  if(geom == nullptr)
+  const auto* geomPtr = dataStructure.getDataAs<ImageGeom>(pInputImageGeomPath);
+  if(geomPtr == nullptr)
   {
     return {.outputActions = MakeErrorResult<OutputActions>(-12101, "Input geometry must be an ImageGeom.")};
   }
 
-  const usize numX = geom->getNumXCells();
-  const usize numY = geom->getNumYCells();
-  const usize numZ = geom->getNumZCells();
+  const usize numX = geomPtr->getNumXCells();
+  const usize numY = geomPtr->getNumYCells();
+  const usize numZ = geomPtr->getNumZCells();
   if(numX < 2 || numY < 2 || numZ < 2)
   {
     return {.outputActions = MakeErrorResult<OutputActions>(-12105, "Degenerate geometry rejected (< 2 bins on some axis).")};
@@ -155,24 +155,24 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
                                                                                   arrayPath.toString(), pInputImageGeomPath.toString()))};
     }
 
-    const auto* arr = dataStructure.getDataAs<Float64Array>(arrayPath);
-    if(arr == nullptr)
+    const auto* arrPtr = dataStructure.getDataAs<Float64Array>(arrayPath);
+    if(arrPtr == nullptr)
     {
       return {.outputActions = MakeErrorResult<OutputActions>(-12103, fmt::format("Selected array '{}' must be a Float64 DataArray.", arrayPath.toString()))};
     }
 
-    if(arr->getNumberOfTuples() != expectedTuples)
+    if(arrPtr->getNumberOfTuples() != expectedTuples)
     {
       return {.outputActions = MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
                                                                                   "ImageGeom has {} cells.",
-                                                                                  arrayPath.toString(), arr->getNumberOfTuples(), expectedTuples))};
+                                                                                  arrayPath.toString(), arrPtr->getNumberOfTuples(), expectedTuples))};
     }
   }
 
   // Populate a preview of what execute() will write. We can't probe a file that
   // doesn't exist yet, so every field is derived from the selected geometry and
   // the array list.
-  const auto spacing = geom->getSpacing();
+  const auto spacing = geomPtr->getSpacing();
   preflightUpdatedValues.push_back({"HDF5 Path Prefix", pHdf5PathPrefix});
   preflightUpdatedValues.push_back({"Components to Write", std::to_string(pODFComponents.size())});
   preflightUpdatedValues.push_back({"Tuples per Component", std::to_string(expectedTuples)});

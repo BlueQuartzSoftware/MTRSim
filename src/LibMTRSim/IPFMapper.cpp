@@ -56,26 +56,26 @@ constexpr std::array<std::array<double, 3>, 12> k_HcpSymOps = {{
 //       | −c1s2−s1c2C  −s1s2+c1c2C   c2S  |
 //       |  s1S          −c1S          C    |
 // ─────────────────────────────────────────────────────────────────────────────
-inline Eigen::Matrix3d bungeRotationMatrix(double p1, double P, double p2)
+inline Eigen::Matrix3d BungeRotationMatrix(double p1, double P, double p2)
 {
   const double c1 = std::cos(p1);
   const double s1 = std::sin(p1);
-  const double C = std::cos(P);
-  const double S = std::sin(P);
+  const double c = std::cos(P);
+  const double s = std::sin(P);
   const double c2 = std::cos(p2);
   const double s2 = std::sin(p2);
 
-  Eigen::Matrix3d G;
-  G(0, 0) = c1 * c2 - s1 * s2 * C;
-  G(0, 1) = s1 * c2 + c1 * s2 * C;
-  G(0, 2) = s2 * S;
-  G(1, 0) = -c1 * s2 - s1 * c2 * C;
-  G(1, 1) = -s1 * s2 + c1 * c2 * C;
-  G(1, 2) = c2 * S;
-  G(2, 0) = s1 * S;
-  G(2, 1) = -c1 * S;
-  G(2, 2) = C;
-  return G;
+  Eigen::Matrix3d g;
+  g(0, 0) = c1 * c2 - s1 * s2 * c;
+  g(0, 1) = s1 * c2 + c1 * s2 * c;
+  g(0, 2) = s2 * s;
+  g(1, 0) = -c1 * s2 - s1 * c2 * c;
+  g(1, 1) = -s1 * s2 + c1 * c2 * c;
+  g(1, 2) = c2 * s;
+  g(2, 0) = s1 * s;
+  g(2, 1) = -c1 * s;
+  g(2, 2) = c;
+  return g;
 }
 } // anonymous namespace
 
@@ -91,8 +91,8 @@ IPFMapper::IPFMapper(CrystalSystem system)
 
 std::vector<RGBColor> IPFMapper::eulerToColors(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir, IPFColorScheme scheme) const
 {
-  const int N = static_cast<int>(phi1.size());
-  if(phi.size() != N || phi2.size() != N)
+  const int n = static_cast<int>(phi1.size());
+  if(phi.size() != n || phi2.size() != n)
   {
     throw std::invalid_argument("IPFMapper::eulerToColors — phi1, phi, phi2 must have the same length");
   }
@@ -109,7 +109,7 @@ std::vector<RGBColor> IPFMapper::eulerToColors(const Eigen::VectorXd& phi1, cons
 
 std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(const Eigen::VectorXd& phi1, const Eigen::VectorXd& phi, const Eigen::VectorXd& phi2, std::array<double, 3> refDir) const
 {
-  const int N = static_cast<int>(phi1.size());
+  const int n = static_cast<int>(phi1.size());
 
   std::shared_ptr<ebsdlib::LaueOps> ops;
   if(m_System == CrystalSystem::HCP)
@@ -125,7 +125,7 @@ std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(const Eigen::VectorXd& phi
     throw std::invalid_argument("IPFMapper::eulerToColorsEbsdLib — unsupported crystal system");
   }
 
-  std::vector<RGBColor> colors(static_cast<std::size_t>(N));
+  std::vector<RGBColor> colors(static_cast<std::size_t>(n));
 
   auto computeColor = [&](int i) {
     double eulers[3] = {phi1[i], phi[i], phi2[i]};
@@ -139,7 +139,7 @@ std::vector<RGBColor> IPFMapper::eulerToColorsEbsdLib(const Eigen::VectorXd& phi
 #if MTRSIM_HAS_TBB
   tbb::parallel_for(0, N, computeColor);
 #else
-  for(int i = 0; i < N; ++i)
+  for(int i = 0; i < n; ++i)
   {
     computeColor(i);
   }
@@ -174,19 +174,19 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
                                 "colour scheme currently supports HCP only");
   }
 
-  const int N = static_cast<int>(phi1.size());
-  constexpr int numOps = static_cast<int>(k_HcpSymOps.size());
+  const int n = static_cast<int>(phi1.size());
+  constexpr int k_NumOps = static_cast<int>(k_HcpSymOps.size());
   constexpr double k_MaxAngle = std::numbers::pi / 6.0; // 30° — HCP fundamental-zone arc
   const double tanMaxAngle = std::tan(k_MaxAngle);
 
   // Pre-compute symmetry-operator rotation matrices
   std::array<Eigen::Matrix3d, 12> symMats;
-  for(int k = 0; k < numOps; ++k)
+  for(int k = 0; k < k_NumOps; ++k)
   {
-    symMats[static_cast<std::size_t>(k)] = bungeRotationMatrix(k_HcpSymOps[static_cast<std::size_t>(k)][0], k_HcpSymOps[static_cast<std::size_t>(k)][1], k_HcpSymOps[static_cast<std::size_t>(k)][2]);
+    symMats[static_cast<std::size_t>(k)] = BungeRotationMatrix(k_HcpSymOps[static_cast<std::size_t>(k)][0], k_HcpSymOps[static_cast<std::size_t>(k)][1], k_HcpSymOps[static_cast<std::size_t>(k)][2]);
   }
 
-  std::vector<RGBColor> colors(static_cast<std::size_t>(N));
+  std::vector<RGBColor> colors(static_cast<std::size_t>(n));
 
   auto computeColor = [&](int i) {
     // Replicate the MATLAB guard: nudge phi2 away from exact zero
@@ -196,15 +196,15 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
       p2 += 1.0e-15;
     }
 
-    const Eigen::Matrix3d G = bungeRotationMatrix(phi1[i], phi[i], p2);
+    const Eigen::Matrix3d g = BungeRotationMatrix(phi1[i], phi[i], p2);
 
     double xFund = 0.0;
     double yFund = 0.0;
 
-    for(int k = 0; k < numOps; ++k)
+    for(int k = 0; k < k_NumOps; ++k)
     {
       // g_rot_symm = O_k * G   (matches MATLAB exactly)
-      const Eigen::Matrix3d R = symMats[static_cast<std::size_t>(k)] * G;
+      const Eigen::Matrix3d R = symMats[static_cast<std::size_t>(k)] * g;
 
       // h_rot = R * [0,0,1] = third column of R
       double hx = R(0, 2);
@@ -221,14 +221,14 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
 
       // Stereographic projection
       const double denom = 1.0 - hz; // always ≥ 1.0 after hemisphere flip
-      const double X = hx / denom;
-      const double Y = hy / denom;
+      const double x = hx / denom;
+      const double y = hy / denom;
 
       // Fundamental-zone check (HCP unit triangle)
-      if(X >= 0.0 && Y >= 0.0 && Y <= X * tanMaxAngle)
+      if(x >= 0.0 && y >= 0.0 && y <= x * tanMaxAngle)
       {
-        xFund = X;
-        yFund = Y;
+        xFund = x;
+        yFund = y;
         break;
       }
     }
@@ -259,7 +259,7 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
 #if MTRSIM_HAS_TBB
   tbb::parallel_for(0, N, computeColor);
 #else
-  for(int i = 0; i < N; ++i)
+  for(int i = 0; i < n; ++i)
   {
     computeColor(i);
   }
@@ -274,8 +274,8 @@ std::vector<RGBColor> IPFMapper::eulerToColorsMatLab(const Eigen::VectorXd& phi1
 void IPFMapper::writePNG(const Eigen::MatrixXd& spatialCoords, const Eigen::VectorXd& phi1_in, const Eigen::VectorXd& phi_in, const Eigen::VectorXd& phi2_in, const std::string& outputPath,
                          IPFColorScheme scheme) const
 {
-  const int N = static_cast<int>(phi1_in.size());
-  if(spatialCoords.rows() != N || spatialCoords.cols() < 2)
+  const int n = static_cast<int>(phi1_in.size());
+  if(spatialCoords.rows() != n || spatialCoords.cols() < 2)
   {
     throw std::invalid_argument("IPFMapper::writePNG — spatialCoords must have N rows and ≥ 2 columns");
   }
@@ -325,7 +325,7 @@ void IPFMapper::writePNG(const Eigen::MatrixXd& spatialCoords, const Eigen::Vect
     return static_cast<int>(std::distance(sorted.begin(), it));
   };
 
-  for(int i = 0; i < N; ++i)
+  for(int i = 0; i < n; ++i)
   {
     const int col = findRank(xUnique, xCol[i]);
     const int row = findRank(yUnique, yCol[i]);
@@ -373,11 +373,11 @@ void IPFMapper::writeIPFTriangleLegendMatLab(int imageDim, const std::string& ou
 
   // Coordinate bounds with a small margin so the triangle edges aren't clipped.
   constexpr double k_Pad = 0.05;
-  constexpr double xMin = -k_Pad;
-  constexpr double xMax = 1.0 + k_Pad;
+  constexpr double k_XMin = -k_Pad;
+  constexpr double k_XMax = 1.0 + k_Pad;
   const double yMin = -k_Pad;
   const double yMax = sinMaxAngle + k_Pad;
-  const double xRange = xMax - xMin;
+  const double xRange = k_XMax - k_XMin;
   const double yRange = yMax - yMin;
 
   const int width = imageDim;
@@ -391,18 +391,18 @@ void IPFMapper::writeIPFTriangleLegendMatLab(int imageDim, const std::string& ou
     for(int col = 0; col < width; ++col)
     {
       // Map pixel centre to stereographic coordinates (Y increases upward)
-      const double X = xMin + (static_cast<double>(col) + 0.5) * xRange / width;
-      const double Y = yMax - (static_cast<double>(row) + 0.5) * yRange / height;
+      const double x = k_XMin + (static_cast<double>(col) + 0.5) * xRange / width;
+      const double y = yMax - (static_cast<double>(row) + 0.5) * yRange / height;
 
       // Fundamental-zone test
-      if(X < 0.0 || Y < 0.0 || Y > X * tanMaxAngle || (X * X + Y * Y) > 1.0)
+      if(x < 0.0 || y < 0.0 || y > x * tanMaxAngle || (x * x + y * y) > 1.0)
       {
         continue;
       }
 
       // Polar colour mapping — identical to IPF_colors.m
-      const double r = std::sqrt(X * X + Y * Y);
-      const double beta = std::atan2(Y, X);
+      const double r = std::sqrt(x * x + y * y);
+      const double beta = std::atan2(y, x);
 
       double cmap1 = 1.0 - r;
       double cmap2 = r * (1.0 - beta / k_MaxAngle);

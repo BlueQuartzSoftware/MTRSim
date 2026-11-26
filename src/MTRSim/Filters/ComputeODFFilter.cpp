@@ -227,18 +227,18 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   std::vector<PreflightValue> preflightUpdatedValues;
 
   const auto& crystalStructures = dataStructure.getDataRefAs<UInt32Array>(pCrystalStructuresPath);
-  const auto* materialNames = dataStructure.getDataAs<StringArray>(materialNamesPath);
-  if(materialNames == nullptr)
+  const auto* materialNamesPtr = dataStructure.getDataAs<StringArray>(materialNamesPath);
+  if(materialNamesPtr == nullptr)
   {
     return {.outputActions =
                 MakeErrorResult<OutputActions>(-12214, fmt::format("Material Names path '{}' must select a StringArray; the selected object has a different type.", materialNamesPath.toString()))};
   }
   const usize ensembleCount = crystalStructures.getNumberOfTuples();
-  if(materialNames->getNumberOfTuples() != ensembleCount)
+  if(materialNamesPtr->getNumberOfTuples() != ensembleCount)
   {
     return {.outputActions = MakeErrorResult<OutputActions>(
                 -12215, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. Select arrays with equal ensemble tuple counts.",
-                                    pCrystalStructuresPath.toString(), ensembleCount, materialNamesPath.toString(), materialNames->getNumberOfTuples()))};
+                                    pCrystalStructuresPath.toString(), ensembleCount, materialNamesPath.toString(), materialNamesPtr->getNumberOfTuples()))};
   }
   if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= ensembleCount)
   {
@@ -291,14 +291,14 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   {
     // Append mode: validate the existing ODF ImageGeom up front so we can
     // derive the bin size.
-    const auto* existingGeom = dataStructure.getDataAs<ImageGeom>(pExistingOdfGeomPath);
-    if(existingGeom == nullptr)
+    const auto* existingGeomPtr = dataStructure.getDataAs<ImageGeom>(pExistingOdfGeomPath);
+    if(existingGeomPtr == nullptr)
     {
       return {.outputActions = MakeErrorResult<OutputActions>(-12206, fmt::format("Existing ODF Image Geometry '{}' must exist and "
                                                                                   "be an ImageGeom.",
                                                                                   pExistingOdfGeomPath.toString()))};
     }
-    const FloatVec3 spacing = existingGeom->getSpacing();
+    const FloatVec3 spacing = existingGeomPtr->getSpacing();
     constexpr float32 k_SpacingTolerance = 1.0e-6f;
     if(std::abs(spacing[0] - spacing[1]) > k_SpacingTolerance || std::abs(spacing[0] - spacing[2]) > k_SpacingTolerance)
     {
@@ -316,9 +316,9 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     binSize = static_cast<double>(spacing[0]);
     binSizeIsDerived = true;
     // Derived dims from existing geometry: X = phi2, Y = PHI, Z = phi1.
-    nphi2 = static_cast<int32_t>(existingGeom->getNumXCells());
-    nPHI = static_cast<int32_t>(existingGeom->getNumYCells());
-    nphi1 = static_cast<int32_t>(existingGeom->getNumZCells());
+    nphi2 = static_cast<int32_t>(existingGeomPtr->getNumXCells());
+    nPHI = static_cast<int32_t>(existingGeomPtr->getNumYCells());
+    nphi1 = static_cast<int32_t>(existingGeomPtr->getNumZCells());
 
     // Defense-in-depth: reject existing geometries whose dims do not match the
     // 360/binSize (phi1, phi2) and 180/binSize (PHI) integer-divisor
@@ -429,8 +429,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
 
   const DataPath metadataGroupPath = targetImageGeomPath.createChildPath(mtrsim::odf_metadata::k_GroupName.str());
   const DataPath unitsPath = mtrsim::odf_metadata::CreateUnitsPath(targetImageGeomPath, pComponentName);
-  const auto* metadataObject = dataStructure.getData(metadataGroupPath);
-  if((!isAppendMode && cellAttrMatPath == metadataGroupPath) || (metadataObject != nullptr && dataStructure.getDataAs<DataGroup>(metadataGroupPath) == nullptr))
+  const auto* metadataObjectPtr = dataStructure.getData(metadataGroupPath);
+  if((!isAppendMode && cellAttrMatPath == metadataGroupPath) || (metadataObjectPtr != nullptr && dataStructure.getDataAs<DataGroup>(metadataGroupPath) == nullptr))
   {
     return {.outputActions = MakeErrorResult<OutputActions>(
                 -12218, fmt::format("ODF metadata path '{}' must be a DataGroup. Choose a different cell Attribute Matrix name or remove the conflicting object.", metadataGroupPath.toString()))};
@@ -459,7 +459,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     resultOutputActions.value().appendAction(std::move(createArrayAction));
   }
 
-  if(metadataObject == nullptr)
+  if(metadataObjectPtr == nullptr)
   {
     resultOutputActions.value().appendAction(std::make_unique<CreateDataGroupAction>(metadataGroupPath));
   }
@@ -495,7 +495,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
 
   const bool deferredMetadata = crystalStructures.getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty;
-  const bool hasMaterialName = !deferredMetadata && !materialNames->isPlaceholder();
+  const bool hasMaterialName = !deferredMetadata && !materialNamesPtr->isPlaceholder();
   // Empty ensemble stores provide no values. Triclinic limits reserve the largest presentation page.
   const uint32 crystalStructure = deferredMetadata ? ebsdlib::CrystalStructure::Triclinic : crystalStructures[static_cast<usize>(selectedPhase)];
   const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
@@ -544,7 +544,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   config.title = filterArgs.value<StringParameter::ValueType>(k_ODF_Image_Title_Key);
   if(hasMaterialName)
   {
-    config.materialName = (*materialNames)[static_cast<usize>(selectedPhase)];
+    config.materialName = (*materialNamesPtr)[static_cast<usize>(selectedPhase)];
   }
   config.phaseNumber = selectedPhase;
 

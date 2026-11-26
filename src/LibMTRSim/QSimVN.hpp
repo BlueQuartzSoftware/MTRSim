@@ -53,8 +53,8 @@ private:
 
   double mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, const Eigen::VectorXd& x, const Eigen::VectorXd& a, const Eigen::VectorXd& b) const;
 
-  static double phi(double z);
-  static double phiInv(double p);
+  static double Phi(double z);
+  static double PhiInv(double p);
 
   std::mt19937_64& m_Rng;
 };

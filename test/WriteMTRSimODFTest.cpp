@@ -178,12 +178,12 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
 
   // Initialize to zero, then place a single sentinel at a known (iPhi1, iPHI,
   // iPhi2).
-  constexpr std::size_t k_iPhi1 = 3;
-  constexpr std::size_t k_iPHI = 5;
-  constexpr std::size_t k_iPhi2 = 7;
+  constexpr std::size_t k_IPhi1 = 3;
+  constexpr std::size_t k_IPhi = 5;
+  constexpr std::size_t k_IPhi2 = 7;
   // Row-major flat index with phi1 slowest, phi2 fastest: 3*18*72 + 5*72 + 7 =
   // 4255.
-  constexpr std::size_t k_SentinelIndex = k_iPhi1 * (k_NumPHI * k_NumPhi2) + k_iPHI * k_NumPhi2 + k_iPhi2;
+  constexpr std::size_t k_SentinelIndex = k_IPhi1 * (k_NumPHI * k_NumPhi2) + k_IPhi * k_NumPhi2 + k_IPhi2;
   static_assert(k_SentinelIndex == 4255, "Recompute sentinel flat index before asserting on it.");
   constexpr double k_SentinelValue = 42.0;
 
@@ -269,7 +269,7 @@ namespace
 {
 // Helper: read fixture with a given prefix, write it out with a distinct
 // prefix, read back and verify byte-exact equality of the component values.
-void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
+void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
 {
   UnitTest::LoadPlugins();
 
@@ -350,10 +350,10 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip blank_ODF with distinct prefix", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  runDistinctPrefixRoundTrip("blank_ODF.h5", "/blank_ODF", "/blank_ODF_exported", "mtrsim_blank_rt");
+  RunDistinctPrefixRoundTrip("blank_ODF.h5", "/blank_ODF", "/blank_ODF_exported", "mtrsim_blank_rt");
 }
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip uniform_ODF with distinct prefix", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  runDistinctPrefixRoundTrip("uniform_ODF.h5", "/uniform_ODF", "/uniform_ODF_exported", "mtrsim_uniform_rt");
+  RunDistinctPrefixRoundTrip("uniform_ODF.h5", "/uniform_ODF", "/uniform_ODF_exported", "mtrsim_uniform_rt");
 }
