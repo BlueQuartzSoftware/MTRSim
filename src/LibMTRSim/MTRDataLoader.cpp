@@ -30,7 +30,7 @@ std::vector<double> readColumn(const std::string& path)
   {
     // Strip trailing commas and whitespace (MATLAB csvwrite sometimes adds
     // them)
-    while(!line.empty() && (line.back() == ',' || line.back() == '\r' || std::isspace(static_cast<unsigned char>(line.back()))))
+    while(!line.empty() && (line.back() == ',' || line.back() == '\r' || (std::isspace(static_cast<unsigned char>(line.back())) != 0)))
     {
       line.pop_back();
     }
@@ -58,7 +58,7 @@ std::vector<double> readMultiColumn(const std::string& path, int& outNRows, int&
   while(std::getline(f, line))
   {
     // Strip trailing whitespace/CR
-    while(!line.empty() && (line.back() == '\r' || std::isspace(static_cast<unsigned char>(line.back()))))
+    while(!line.empty() && (line.back() == '\r' || (std::isspace(static_cast<unsigned char>(line.back())) != 0)))
     {
       line.pop_back();
     }
@@ -73,11 +73,11 @@ std::vector<double> readMultiColumn(const std::string& path, int& outNRows, int&
     while(std::getline(ss, token, ','))
     {
       // Trim token whitespace
-      while(!token.empty() && std::isspace(static_cast<unsigned char>(token.front())))
+      while(!token.empty() && (std::isspace(static_cast<unsigned char>(token.front())) != 0))
       {
         token.erase(token.begin());
       }
-      while(!token.empty() && std::isspace(static_cast<unsigned char>(token.back())))
+      while(!token.empty() && (std::isspace(static_cast<unsigned char>(token.back())) != 0))
       {
         token.pop_back();
       }
