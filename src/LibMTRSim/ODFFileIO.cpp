@@ -445,7 +445,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
 
   constexpr double k_RadToDeg = 180.0 / std::numbers::pi;
 
-  ODFFileMetadata md;
+  ODFFileMetadata md{};
   md.numComponents = numComponents;
   md.dimsPhi1PHIPhi2 = {nphi1, nPHI, nphi2};
   md.spacingDegPhi1PHIPhi2 = {stepPhi1 * k_RadToDeg, stepPHI * k_RadToDeg, stepPhi2 * k_RadToDeg};

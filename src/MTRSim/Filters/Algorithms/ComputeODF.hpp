@@ -21,9 +21,9 @@ namespace nx::core
 struct MTRSIM_EXPORT ComputeODFInputValues
 {
   int32_t selectedPhase = 1;
-  bool applySmoothing;
-  double binSizeDeg;
-  bool useMask;
+  bool applySmoothing{};
+  double binSizeDeg{};
+  bool useMask{};
   DataPath eulerAnglesPath;
   DataPath phasesPath;
   DataPath crystalStructuresPath;
@@ -31,15 +31,15 @@ struct MTRSIM_EXPORT ComputeODFInputValues
   DataPath outputImageGeometry;
   std::string cellAttrMatName;
   std::string componentName;
-  int32_t nphi1;
-  int32_t nPHI;
-  int32_t nphi2;
+  int32_t nphi1{};
+  int32_t nPHI{};
+  int32_t nphi2{};
   // 0 = Count-Density (raw normalized histogram, sums to 1 over Bunge bins;
   //                    matches MATLAB calc_ODF.m).
   // 1 = MUD          (per-row Jacobian sin(Phi) correction applied so values
   //                    are density on SO(3) divided by uniform density;
   //                    matches MTEX's plot(odf) MUD convention).
-  uint64_t outputUnits;
+  uint64_t outputUnits{};
   /**
    * @brief Receives the contributing voxel count when non-null.
    * The caller owns the storage, which must remain valid until operator() returns.

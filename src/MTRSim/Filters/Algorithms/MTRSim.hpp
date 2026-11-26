@@ -21,8 +21,8 @@ struct MTRSIM_EXPORT MTRSimInputValues
   std::vector<std::vector<double>> thetaList;       // M rows x 3 cols
   std::vector<float32> physicalSize;                // [x,y,z] microns
   std::vector<float32> physicalSpacing;             // [x,y,z] microns
-  uint64 seed;
-  bool generatePolarColoring;
+  uint64 seed{};
+  bool generatePolarColoring{};
   DataPath outputGeometryPath;
   std::string cellAttrMatName;
   std::string mtrIdsArrayName;
