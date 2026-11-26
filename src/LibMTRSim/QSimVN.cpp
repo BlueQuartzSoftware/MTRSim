@@ -293,7 +293,7 @@ double QSimVN::mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, c
     const double ai = a(k) - s;
     const double bi = b(k) - s;
 
-    double newC;
+    double newC = NAN;
     if(std::abs(ai) < cn * ct)
     {
       newC = phi(ai / ct);
@@ -303,7 +303,7 @@ double QSimVN::mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, c
       newC = (1.0 + matlabSign(ai)) / 2.0;
     }
 
-    double newD;
+    double newD = NAN;
     if(std::abs(bi) < cn * ct)
     {
       newD = phi(bi / ct);
@@ -336,7 +336,7 @@ std::pair<double, double> QSimVN::compute(int m, const Eigen::MatrixXd& r, const
   const double b0 = bs(0);
   const double cn = 37.5;
 
-  double ci;
+  double ci = NAN;
   if(std::abs(a0) < cn * ct0)
   {
     ci = phi(a0 / ct0);
@@ -346,7 +346,7 @@ std::pair<double, double> QSimVN::compute(int m, const Eigen::MatrixXd& r, const
     ci = (1.0 + matlabSign(a0)) / 2.0;
   }
 
-  double di;
+  double di = NAN;
   if(std::abs(b0) < cn * ct0)
   {
     di = phi(b0 / ct0);

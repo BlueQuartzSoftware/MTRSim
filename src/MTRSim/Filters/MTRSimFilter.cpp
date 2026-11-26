@@ -309,7 +309,7 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
   // from whichever source the user has selected — config file or manual fields.
   // The config file is parsed at most ONCE here; the algorithm is config-agnostic.
   const bool useConfig = filterArgs.value<bool>(k_UseConfigFile_Key);
-  uint64 seed;
+  uint64 seed = 0;
   if(useConfig)
   {
     mtrsim::SimulationParams cfg;
