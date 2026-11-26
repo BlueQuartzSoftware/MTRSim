@@ -51,8 +51,8 @@ const std::string k_CellAttrMatName = "Cell Data";
 std::vector<DataPath> BuildOdfDataStructure(DataStructure& dataStructure, usize numComponents)
 {
   ImageGeom* imageGeom = ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
-  imageGeom->setSpacing({5.0f, 5.0f, 5.0f});
-  imageGeom->setOrigin({0.0f, 0.0f, 0.0f});
+  REQUIRE(imageGeom->setSpacing({5.0f, 5.0f, 5.0f}).valid());
+  REQUIRE(imageGeom->setOrigin({0.0f, 0.0f, 0.0f}).valid());
   imageGeom->setDimensions({k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
 
   // ZYX tuple shape (slowest to fastest)

@@ -616,8 +616,8 @@ ExistingOdfGeom buildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
   ExistingOdfGeom out;
   ImageGeom* geom = ImageGeom::Create(ds, "ODF");
   geom->setDimensions({dimsXYZ[0], dimsXYZ[1], dimsXYZ[2]});
-  geom->setSpacing({spacingXYZ[0], spacingXYZ[1], spacingXYZ[2]});
-  geom->setOrigin({0.0f, 0.0f, 0.0f});
+  REQUIRE(geom->setSpacing({spacingXYZ[0], spacingXYZ[1], spacingXYZ[2]}).valid());
+  REQUIRE(geom->setOrigin({0.0f, 0.0f, 0.0f}).valid());
   out.geomPath = DataPath({"ODF"});
 
   // Tuple shape is ZYX for cell-data arrays — match the convention used by
@@ -1063,8 +1063,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects ImageGeom with no cell-
   auto* geom = ImageGeom::Create(inputs.dataStructure, "ODF");
   REQUIRE(geom != nullptr);
   geom->setDimensions({72, 36, 72});
-  geom->setSpacing({5.0f, 5.0f, 5.0f});
-  geom->setOrigin({0.0f, 0.0f, 0.0f});
+  REQUIRE(geom->setSpacing({5.0f, 5.0f, 5.0f}).valid());
+  REQUIRE(geom->setOrigin({0.0f, 0.0f, 0.0f}).valid());
   // Intentionally skip setCellData — leaves getCellData() == nullptr.
 
   Arguments args = makeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
