@@ -183,10 +183,10 @@ int32 FirstErrorCode(const IFilter::PreflightResult& r)
 }
 
 // Returns (sum, nonZeroBinCount) over the output ODF array.
-std::pair<double, usize> SumAndNonZeroCount(const DataStructure& ds)
+std::pair<double, usize> SumAndNonZeroCount(const DataStructure& dataStructure)
 {
   const DataPath odfPath = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(k_ComponentName);
-  const auto& odfArr = ds.getDataRefAs<Float64Array>(odfPath);
+  const auto& odfArr = dataStructure.getDataRefAs<Float64Array>(odfPath);
   const auto& store = odfArr.getDataStoreRef();
   double sum = 0.0;
   usize nonZero = 0;
@@ -608,10 +608,10 @@ struct ExistingOdfGeom
   DataPath cell_attr_mat_path;
 };
 
-ExistingOdfGeom BuildExistingOdfGeom(DataStructure& ds, const std::array<usize, 3>& dimsXYZ, const std::array<float32, 3>& spacingXYZ, bool seedComponent1 = false, double seedValue = 0.0)
+ExistingOdfGeom BuildExistingOdfGeom(DataStructure& dataStructure, const std::array<usize, 3>& dimsXYZ, const std::array<float32, 3>& spacingXYZ, bool seedComponent1 = false, double seedValue = 0.0)
 {
   ExistingOdfGeom out;
-  ImageGeom* geomPtr = ImageGeom::Create(ds, "ODF");
+  ImageGeom* geomPtr = ImageGeom::Create(dataStructure, "ODF");
   geomPtr->setDimensions({dimsXYZ[0], dimsXYZ[1], dimsXYZ[2]});
   REQUIRE(geomPtr->setSpacing({spacingXYZ[0], spacingXYZ[1], spacingXYZ[2]}).valid());
   REQUIRE(geomPtr->setOrigin({0.0f, 0.0f, 0.0f}).valid());
@@ -620,7 +620,7 @@ ExistingOdfGeom BuildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
   // Tuple shape is ZYX for cell-data arrays — match the convention used by
   // Create New mode.
   const std::vector<usize> tupleShapeZYX = {dimsXYZ[2], dimsXYZ[1], dimsXYZ[0]};
-  AttributeMatrix* cellAmPtr = AttributeMatrix::Create(ds, k_CellAttrMatName, tupleShapeZYX, geomPtr->getId());
+  AttributeMatrix* cellAmPtr = AttributeMatrix::Create(dataStructure, k_CellAttrMatName, tupleShapeZYX, geomPtr->getId());
   // Register the AttributeMatrix with the ImageGeom as its cell data so
   // getCellDataPath() works.
   geomPtr->setCellData(cellAmPtr->getId());
@@ -628,7 +628,7 @@ ExistingOdfGeom BuildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
 
   if(seedComponent1)
   {
-    Float64Array* seedArrPtr = Float64Array::CreateWithStore<DataStore<float64>>(ds, k_ComponentName, tupleShapeZYX, {1}, cellAmPtr->getId());
+    Float64Array* seedArrPtr = Float64Array::CreateWithStore<DataStore<float64>>(dataStructure, k_ComponentName, tupleShapeZYX, {1}, cellAmPtr->getId());
     auto& store = seedArrPtr->getDataStoreRef();
     for(usize i = 0; i < store.getSize(); ++i)
     {
@@ -639,9 +639,9 @@ ExistingOdfGeom BuildExistingOdfGeom(DataStructure& ds, const std::array<usize, 
 }
 
 // Returns (sum, nonZeroCount) over an arbitrary Float64 array path.
-std::pair<double, usize> SumAndNonZeroOf(const DataStructure& ds, const DataPath& path)
+std::pair<double, usize> SumAndNonZeroOf(const DataStructure& dataStructure, const DataPath& path)
 {
-  const auto& arr = ds.getDataRefAs<Float64Array>(path);
+  const auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
   const auto& store = arr.getDataStoreRef();
   double sum = 0.0;
   usize nonZero = 0;
