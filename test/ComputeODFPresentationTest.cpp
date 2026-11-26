@@ -378,36 +378,36 @@ TEST_CASE("MTRSim::ComputeODFFilter: Cancellation at each stage creates no desti
 TEST_CASE("MTRSim::ComputeODFFilter: Presentation preflight rejects invalid settings", "[MTRSim][ComputeODFFilter][Presentation]")
 {
   const std::vector<InvalidCase> cases = {
-      {"section count", -12309, "1", [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
-      {"sections per row zero", -12310, "0", [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{0}); }},
-      {"sections per row too large", -12310, "7", [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{7}); }},
-      {"section width", -12311, "127", [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionWidth_Key, int32{127}); }},
-      {"invalid preset", -12312, "Not A Preset",
-       [](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_ColorTablePreset_Key, CreateColorMapParameter::ValueType{"Not A Preset"}); }},
-      {"negative manual minimum", -12313, "-0.5",
-       [](DataStructure&, Arguments& args) {
+      {.name="section count", .errorCode=-12309, .diagnosticFragment="1", .mutate=[](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_NumSections_Key, int32{1}); }},
+      {.name="sections per row zero", .errorCode=-12310, .diagnosticFragment="0", .mutate=[](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{0}); }},
+      {.name="sections per row too large", .errorCode=-12310, .diagnosticFragment="7", .mutate=[](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionsPerRow_Key, int32{7}); }},
+      {.name="section width", .errorCode=-12311, .diagnosticFragment="127", .mutate=[](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_SectionWidth_Key, int32{127}); }},
+      {.name="invalid preset", .errorCode=-12312, .diagnosticFragment="Not A Preset",
+       .mutate=[](DataStructure&, Arguments& args) { args.insertOrAssign(ComputeODFFilter::k_ColorTablePreset_Key, CreateColorMapParameter::ValueType{"Not A Preset"}); }},
+      {.name="negative manual minimum", .errorCode=-12313, .diagnosticFragment="-0.5",
+       .mutate=[](DataStructure&, Arguments& args) {
          args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
          args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, float64{-0.5});
        }},
-      {"non-finite manual minimum", -12313, "nan",
-       [](DataStructure&, Arguments& args) {
+      {.name="non-finite manual minimum", .errorCode=-12313, .diagnosticFragment="nan",
+       .mutate=[](DataStructure&, Arguments& args) {
          args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
          args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, std::numeric_limits<float64>::quiet_NaN());
        }},
-      {"equal manual limits", -12313, "[1, 1]",
-       [](DataStructure&, Arguments& args) {
+      {.name="equal manual limits", .errorCode=-12313, .diagnosticFragment="[1, 1]",
+       .mutate=[](DataStructure&, Arguments& args) {
          args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
          args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, float64{1.0});
          args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, float64{1.0});
        }},
-      {"reversed manual limits", -12313, "[2, 1]",
-       [](DataStructure&, Arguments& args) {
+      {.name="reversed manual limits", .errorCode=-12313, .diagnosticFragment="[2, 1]",
+       .mutate=[](DataStructure&, Arguments& args) {
          args.insertOrAssign(ComputeODFFilter::k_ScaleMode_Key, ChoicesParameter::ValueType{1});
          args.insertOrAssign(ComputeODFFilter::k_ManualMinimum_Key, float64{2.0});
          args.insertOrAssign(ComputeODFFilter::k_ManualMaximum_Key, float64{1.0});
        }},
-      {"non-PNG extension", -3003, ".jpg",
-       [](DataStructure&, Arguments& args) {
+      {.name="non-PNG extension", .errorCode=-3003, .diagnosticFragment=".jpg",
+       .mutate=[](DataStructure&, Arguments& args) {
          args.insertOrAssign(ComputeODFFilter::k_WritePng_Key, true);
          args.insertOrAssign(ComputeODFFilter::k_OutputPngPath_Key, FileSystemPathParameter::ValueType{"odf_sections.jpg"});
        }},

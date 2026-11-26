@@ -111,13 +111,13 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
 
   if(pODFComponents.empty())
   {
-    return {MakeErrorResult<OutputActions>(-12100, "Select at least one ODF component array.")};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12100, "Select at least one ODF component array.")};
   }
 
   const auto* geom = dataStructure.getDataAs<ImageGeom>(pInputImageGeomPath);
   if(geom == nullptr)
   {
-    return {MakeErrorResult<OutputActions>(-12101, "Input geometry must be an ImageGeom.")};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12101, "Input geometry must be an ImageGeom.")};
   }
 
   const usize numX = geom->getNumXCells();
@@ -125,7 +125,7 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
   const usize numZ = geom->getNumZCells();
   if(numX < 2 || numY < 2 || numZ < 2)
   {
-    return {MakeErrorResult<OutputActions>(-12105, "Degenerate geometry rejected (< 2 bins on some axis).")};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12105, "Degenerate geometry rejected (< 2 bins on some axis).")};
   }
 
   const usize expectedTuples = numX * numY * numZ;
@@ -150,7 +150,7 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     }
     if(!onGeom)
     {
-      return {MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
                                                                  "ImageGeom '{}'.",
                                                                  arrayPath.toString(), pInputImageGeomPath.toString()))};
     }
@@ -158,12 +158,12 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     const auto* arr = dataStructure.getDataAs<Float64Array>(arrayPath);
     if(arr == nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12103, fmt::format("Selected array '{}' must be a Float64 DataArray.", arrayPath.toString()))};
+      return {.outputActions=MakeErrorResult<OutputActions>(-12103, fmt::format("Selected array '{}' must be a Float64 DataArray.", arrayPath.toString()))};
     }
 
     if(arr->getNumberOfTuples() != expectedTuples)
     {
-      return {MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
                                                                  "ImageGeom has {} cells.",
                                                                  arrayPath.toString(), arr->getNumberOfTuples(), expectedTuples))};
     }
@@ -185,7 +185,7 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
       static_cast<std::size_t>(pODFComponents.size()) * static_cast<std::size_t>(expectedTuples) * sizeof(double) + static_cast<std::size_t>(numX + numY + numZ + 3) * sizeof(double);
   preflightUpdatedValues.push_back({"Estimated File Size [bytes]", std::to_string(estBytes)});
 
-  return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  return {.outputActions=std::move(resultOutputActions), .outputValues=std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------

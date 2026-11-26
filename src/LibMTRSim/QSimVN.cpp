@@ -266,7 +266,7 @@ QSimVN::ChlrdrResult QSimVN::chlrdr(const Eigen::MatrixXd& r, const Eigen::Vecto
     }
   }
 
-  return {c, ap, bp};
+  return {.ch=c, .ap=ap, .bp=bp};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -230,18 +230,18 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto* materialNames = dataStructure.getDataAs<StringArray>(materialNamesPath);
   if(materialNames == nullptr)
   {
-    return {MakeErrorResult<OutputActions>(-12214, fmt::format("Material Names path '{}' must select a StringArray; the selected object has a different type.", materialNamesPath.toString()))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12214, fmt::format("Material Names path '{}' must select a StringArray; the selected object has a different type.", materialNamesPath.toString()))};
   }
   const usize ensembleCount = crystalStructures.getNumberOfTuples();
   if(materialNames->getNumberOfTuples() != ensembleCount)
   {
     return {
-        MakeErrorResult<OutputActions>(-12215, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. Select arrays with equal ensemble tuple counts.",
+        .outputActions=MakeErrorResult<OutputActions>(-12215, fmt::format("Crystal Structures '{}' contains {} tuples, but Material Names '{}' contains {} tuples. Select arrays with equal ensemble tuple counts.",
                                                            pCrystalStructuresPath.toString(), ensembleCount, materialNamesPath.toString(), materialNames->getNumberOfTuples()))};
   }
   if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= ensembleCount)
   {
-    return {MakeErrorResult<OutputActions>(-12216, fmt::format("Phase Index ({}) must be positive and less than the ensemble tuple count ({}) in '{}' and '{}'.", selectedPhase, ensembleCount,
+    return {.outputActions=MakeErrorResult<OutputActions>(-12216, fmt::format("Phase Index ({}) must be positive and less than the ensemble tuple count ({}) in '{}' and '{}'.", selectedPhase, ensembleCount,
                                                                pCrystalStructuresPath.toString(), materialNamesPath.toString()))};
   }
   // Preflight placeholders expose tuple counts but do not provide crystal values.
@@ -251,7 +251,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const auto allOps = ebsdlib::LaueOps::GetAllOrientationOps();
     if(crystalCode >= allOps.size() || allOps[crystalCode] == nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12217, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase {}. Select a code from 0 through {}.",
+      return {.outputActions=MakeErrorResult<OutputActions>(-12217, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase {}. Select a code from 0 through {}.",
                                                                  pCrystalStructuresPath.toString(), crystalCode, selectedPhase, allOps.size() - 1))};
     }
   }
@@ -267,7 +267,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   {
     if(pBinSizeDeg <= 0.0f)
     {
-      return {MakeErrorResult<OutputActions>(-12200, fmt::format("Bin size must be > 0; got {}.", pBinSizeDeg))};
+      return {.outputActions=MakeErrorResult<OutputActions>(-12200, fmt::format("Bin size must be > 0; got {}.", pBinSizeDeg))};
     }
     binSize = static_cast<double>(pBinSizeDeg);
     const double phi1Quotient = 360.0 / binSize;
@@ -276,7 +276,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(std::abs(phi1Quotient - std::round(phi1Quotient)) > k_DivisorTolerance || std::abs(phiQuotient - std::round(phiQuotient)) > k_DivisorTolerance || std::round(phi1Quotient) <= 0.0 ||
        std::round(phiQuotient) <= 0.0)
     {
-      return {MakeErrorResult<OutputActions>(-12200, fmt::format("Bin size {} deg does not evenly divide 360 and 180. "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12200, fmt::format("Bin size {} deg does not evenly divide 360 and 180. "
                                                                  "Pick a value such that 360/binSize and 180/binSize are "
                                                                  "both positive integers (e.g. 5.0, 2.0, 1.0).",
                                                                  pBinSizeDeg))};
@@ -292,7 +292,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const auto* existingGeom = dataStructure.getDataAs<ImageGeom>(pExistingOdfGeomPath);
     if(existingGeom == nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12206, fmt::format("Existing ODF Image Geometry '{}' must exist and "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12206, fmt::format("Existing ODF Image Geometry '{}' must exist and "
                                                                  "be an ImageGeom.",
                                                                  pExistingOdfGeomPath.toString()))};
     }
@@ -300,14 +300,14 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     constexpr float32 k_SpacingTolerance = 1.0e-6f;
     if(std::abs(spacing[0] - spacing[1]) > k_SpacingTolerance || std::abs(spacing[0] - spacing[2]) > k_SpacingTolerance)
     {
-      return {MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has "
                                                                  "non-uniform spacing ({}, {}, {}) across axes; "
                                                                  "ODF requires uniform bins on all three axes.",
                                                                  pExistingOdfGeomPath.toString(), spacing[0], spacing[1], spacing[2]))};
     }
     if(spacing[0] <= 0.0f)
     {
-      return {MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has zero or negative "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has zero or negative "
                                                                  "spacing ({}); cannot derive a valid bin size.",
                                                                  pExistingOdfGeomPath.toString(), spacing[0]))};
     }
@@ -328,7 +328,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(std::abs(expected360 - std::round(expected360)) > k_DivisorTolerance || std::abs(expected180 - std::round(expected180)) > k_DivisorTolerance ||
        std::round(expected360) != static_cast<double>(nphi1) || std::round(expected180) != static_cast<double>(nPHI) || std::round(expected360) != static_cast<double>(nphi2))
     {
-      return {MakeErrorResult<OutputActions>(-12212, fmt::format("Existing ODF geometry is inconsistent with a "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12212, fmt::format("Existing ODF geometry is inconsistent with a "
                                                                  "valid ODF grid: dims {}x{}x{} (phi1 x PHI x "
                                                                  "phi2) with derived bin size {:.4f} deg "
                                                                  "do not satisfy the 360/binSize (phi1/phi2) and "
@@ -346,7 +346,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const std::size_t totalBinCount = static_cast<std::size_t>(nphi1) * static_cast<std::size_t>(nPHI) * static_cast<std::size_t>(nphi2);
   if(totalBinCount > k_MaxBinCount)
   {
-    return {MakeErrorResult<OutputActions>(-12211, fmt::format("Total bin count {} exceeds the safety limit of {}. Consider a "
+    return {.outputActions=MakeErrorResult<OutputActions>(-12211, fmt::format("Total bin count {} exceeds the safety limit of {}. Consider a "
                                                                "larger bin_size_deg (e.g. 5.0 deg -> 72x36x72 = 186624 bins is "
                                                                "typical; "
                                                                "1.0 deg -> 360x180x360 ~ 23M bins is already above the cap).",
@@ -364,7 +364,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   auto tupleValidityCheck = dataStructure.validateNumberOfTuples(dataPaths);
   if(!tupleValidityCheck)
   {
-    return {MakeErrorResult<OutputActions>(-651, fmt::format("The following DataArrays all must have equal number "
+    return {.outputActions=MakeErrorResult<OutputActions>(-651, fmt::format("The following DataArrays all must have equal number "
                                                              "of tuples but this was not satisfied.\n{}",
                                                              tupleValidityCheck.error()))};
   }
@@ -374,7 +374,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const DataPath phasesParent = pPhasesPath.getParent();
   if(eulerParent != phasesParent)
   {
-    return {MakeErrorResult<OutputActions>(-12205, fmt::format("Cell Euler Angles ('{}') and Cell Phases ('{}') must live "
+    return {.outputActions=MakeErrorResult<OutputActions>(-12205, fmt::format("Cell Euler Angles ('{}') and Cell Phases ('{}') must live "
                                                                "on the same AttributeMatrix.",
                                                                pEulerAnglesPath.toString(), pPhasesPath.toString()))};
   }
@@ -383,7 +383,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const DataPath maskParent = pMaskPath.getParent();
     if(maskParent != eulerParent)
     {
-      return {MakeErrorResult<OutputActions>(-12205, fmt::format("Mask ('{}') must live on the same AttributeMatrix as "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12205, fmt::format("Mask ('{}') must live on the same AttributeMatrix as "
                                                                  "the Cell Euler Angles ('{}').",
                                                                  pMaskPath.toString(), pEulerAnglesPath.toString()))};
     }
@@ -407,7 +407,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const auto& existingGeom = dataStructure.getDataRefAs<ImageGeom>(pExistingOdfGeomPath);
     if(existingGeom.getCellData() == nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12208, fmt::format("Existing ODF Image Geometry '{}' has no cell "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12208, fmt::format("Existing ODF Image Geometry '{}' has no cell "
                                                                  "AttributeMatrix; cannot append a component.",
                                                                  pExistingOdfGeomPath.toString()))};
     }
@@ -419,7 +419,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     const DataPath proposedComponentPath = cellAttrMatPath.createChildPath(pComponentName);
     if(dataStructure.getDataAs<IDataArray>(proposedComponentPath) != nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12209, fmt::format("Component '{}' already exists on the target geometry's cell "
+      return {.outputActions=MakeErrorResult<OutputActions>(-12209, fmt::format("Component '{}' already exists on the target geometry's cell "
                                                                  "AttributeMatrix ('{}'); pick a different component name.",
                                                                  pComponentName, cellAttrMatPath.toString()))};
     }
@@ -430,12 +430,12 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto* metadataObject = dataStructure.getData(metadataGroupPath);
   if((!isAppendMode && cellAttrMatPath == metadataGroupPath) || (metadataObject != nullptr && dataStructure.getDataAs<DataGroup>(metadataGroupPath) == nullptr))
   {
-    return {MakeErrorResult<OutputActions>(
+    return {.outputActions=MakeErrorResult<OutputActions>(
         -12218, fmt::format("ODF metadata path '{}' must be a DataGroup. Choose a different cell Attribute Matrix name or remove the conflicting object.", metadataGroupPath.toString()))};
   }
   if(dataStructure.getData(unitsPath) != nullptr)
   {
-    return {MakeErrorResult<OutputActions>(-12219, fmt::format("ODF units metadata '{}' already exists. Choose a different component name.", unitsPath.toString()))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12219, fmt::format("ODF units metadata '{}' already exists. Choose a different component name.", unitsPath.toString()))};
   }
 
   // 5. Output actions.
@@ -480,7 +480,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const bool saveAsImageGeometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
   if(!writePng && !saveAsImageGeometry)
   {
-    return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+    return {.outputActions=std::move(resultOutputActions), .outputValues=std::move(preflightUpdatedValues)};
   }
   const int32 sectionCount = filterArgs.value<int32>(k_NumSections_Key);
   const int32 sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
@@ -499,29 +499,29 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto limits = ebsdlib::GetODFEulerPlotLimits(crystalStructure);
   if(sectionCount < 2)
   {
-    return {MakeErrorResult<OutputActions>(-12309, fmt::format("Number of Sections ({}) must be at least 2.", sectionCount))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12309, fmt::format("Number of Sections ({}) must be at least 2.", sectionCount))};
   }
   if(sectionsPerRow < 1 || sectionsPerRow > sectionCount)
   {
-    return {MakeErrorResult<OutputActions>(-12310, fmt::format("Sections Per Row ({}) must be in [1, Number of Sections ({})].", sectionsPerRow, sectionCount))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12310, fmt::format("Sections Per Row ({}) must be in [1, Number of Sections ({})].", sectionsPerRow, sectionCount))};
   }
   if(sectionWidth < 128)
   {
-    return {MakeErrorResult<OutputActions>(-12311, fmt::format("Section Width ({}) pixels must be at least 128 pixels.", sectionWidth))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12311, fmt::format("Section Width ({}) pixels must be at least 128 pixels.", sectionWidth))};
   }
 
   auto colorControls = ColorTableUtilities::ExtractControlPoints(colorTablePreset);
   if(colorControls.invalid())
   {
-    return {MakeErrorResult<OutputActions>(-12312, fmt::format("Color Table Preset '{}' is not a valid RGB preset.", colorTablePreset))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12312, fmt::format("Color Table Preset '{}' is not a valid RGB preset.", colorTablePreset))};
   }
   if(scaleMode == 1 && (!std::isfinite(manualMinimum) || !std::isfinite(manualMaximum) || manualMinimum < 0.0 || manualMinimum >= manualMaximum))
   {
-    return {MakeErrorResult<OutputActions>(-12313, fmt::format("Manual MUD range must have finite endpoints and satisfy 0 <= minimum < maximum; received [{}, {}].", manualMinimum, manualMaximum))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12313, fmt::format("Manual MUD range must have finite endpoints and satisfy 0 <= minimum < maximum; received [{}, {}].", manualMinimum, manualMaximum))};
   }
   if(writePng && outputPngPath.extension() != ".png")
   {
-    return {MakeErrorResult<OutputActions>(-12314, fmt::format("Output PNG file '{}' has extension '{}'; use the '.png' extension.", outputPngPath.string(), outputPngPath.extension().string()))};
+    return {.outputActions=MakeErrorResult<OutputActions>(-12314, fmt::format("Output PNG file '{}' has extension '{}'; use the '.png' extension.", outputPngPath.string(), outputPngPath.extension().string()))};
   }
 
   ebsdlib::ODFSectionConfiguration config;
@@ -547,7 +547,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   const auto layout = ebsdlib::ComputeODFSectionLayout(config);
   if(layout.pageWidth <= 0 || layout.pageHeight <= 0)
   {
-    return {MakeErrorResult<OutputActions>(
+    return {.outputActions=MakeErrorResult<OutputActions>(
         -12315, fmt::format("ODF section layout is not representable for Section Width {}, Number of Sections {}, and Sections Per Row {}.", sectionWidth, sectionCount, sectionsPerRow))};
   }
 
@@ -582,7 +582,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
                                                   fmt::format("{} x {} pixels", layout.pageWidth, layout.pageHeight)});
   preflightUpdatedValues.push_back({"Scale Mode", scaleMode == 0 ? std::string{"Automatic"} : fmt::format("Manual: [{}, {}] MUD", manualMinimum, manualMaximum)});
 
-  return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  return {.outputActions=std::move(resultOutputActions), .outputValues=std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------

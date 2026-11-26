@@ -116,7 +116,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     }
   }
 
-  return PGRFResult{mtrIndex, zAll};
+  return PGRFResult{.mtrIndex=mtrIndex, .latentFields=zAll};
 }
 
 } // namespace mtrsim
