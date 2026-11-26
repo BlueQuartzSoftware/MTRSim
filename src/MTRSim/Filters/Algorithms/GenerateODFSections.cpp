@@ -52,8 +52,6 @@ GenerateODFSections::GenerateODFSections(DataStructure& dataStructure, const IFi
 {
 }
 
-
-
 Result<> GenerateODFSections::operator()()
 {
   if(m_ShouldCancel)

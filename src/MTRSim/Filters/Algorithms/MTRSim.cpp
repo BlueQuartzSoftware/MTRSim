@@ -66,7 +66,6 @@ MTRSim::MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesg
 
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 Result<> MTRSim::operator()()
 {

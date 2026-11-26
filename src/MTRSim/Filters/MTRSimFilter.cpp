@@ -199,7 +199,7 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
       cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
     } catch(const std::exception& e)
     {
-      return {.outputActions=MakeErrorResult<OutputActions>(-13520, fmt::format("MTRSim config file error: {}", e.what()))};
+      return {.outputActions = MakeErrorResult<OutputActions>(-13520, fmt::format("MTRSim config file error: {}", e.what()))};
     }
     pVolumeFractions = {cfg.volumeFractions};
     pThetaList = cfg.thetaList;
@@ -217,21 +217,21 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
   const usize numComponents = pOdfArrays.size();
   if(numComponents < 2)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-13501, "MTRSim requires at least 2 ODF component arrays.")};
+    return {.outputActions = MakeErrorResult<OutputActions>(-13501, "MTRSim requires at least 2 ODF component arrays.")};
   }
   if(pVolumeFractions.size() != 1 || pVolumeFractions[0].size() != numComponents)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one "
-                                                               "per ODF component).",
-                                                               numComponents))};
+    return {.outputActions = MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one "
+                                                                                "per ODF component).",
+                                                                                numComponents))};
   }
   for(double v : pVolumeFractions[0])
   {
     if(v < 0.0 || v > 1.0)
     {
-      return {.outputActions=MakeErrorResult<OutputActions>(-13507, fmt::format("Each Volume Fraction value must be in the range "
-                                                                 "[0, 1] (got {:.4f}).",
-                                                                 v))};
+      return {.outputActions = MakeErrorResult<OutputActions>(-13507, fmt::format("Each Volume Fraction value must be in the range "
+                                                                                  "[0, 1] (got {:.4f}).",
+                                                                                  v))};
     }
   }
   double vfSum = 0.0;
@@ -241,23 +241,23 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
   }
   if(std::abs(vfSum - 1.0) > 1.0e-3)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-13503, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
+    return {.outputActions = MakeErrorResult<OutputActions>(-13503, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
   }
   if(pThetaList.size() < numComponents - 1)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-13504, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
+    return {.outputActions = MakeErrorResult<OutputActions>(-13504, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
   }
   for(const auto& row : pThetaList)
   {
     if(row.size() != 3)
     {
-      return {.outputActions=MakeErrorResult<OutputActions>(-13505, "Each Theta List row must have exactly 3 columns.")};
+      return {.outputActions = MakeErrorResult<OutputActions>(-13505, "Each Theta List row must have exactly 3 columns.")};
     }
   }
 
   if(pSpacing[0] <= 0.0f || pSpacing[1] <= 0.0f)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-13506, "Physical Spacing X and Y must be greater than 0.")};
+    return {.outputActions = MakeErrorResult<OutputActions>(-13506, "Physical Spacing X and Y must be greater than 0.")};
   }
 
   const auto dim = [](float len, float sp) { return static_cast<usize>(std::max(std::lround(len / sp), 1L)); };
@@ -288,7 +288,7 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
   preflightUpdatedValues.push_back({"Output Grid (X, Y, Z)", fmt::format("{} x {} x {}", nx, ny, nz)});
   preflightUpdatedValues.push_back({"Number of ODF Components", std::to_string(numComponents)});
 
-  return {.outputActions=std::move(resultOutputActions), .outputValues=std::move(preflightUpdatedValues)};
+  return {.outputActions = std::move(resultOutputActions), .outputValues = std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------

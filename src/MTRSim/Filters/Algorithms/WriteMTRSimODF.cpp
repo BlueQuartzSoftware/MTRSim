@@ -25,7 +25,6 @@ WriteMTRSimODF::WriteMTRSimODF(DataStructure& dataStructure, const IFilter::Mess
 
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 Result<> WriteMTRSimODF::operator()()
 {

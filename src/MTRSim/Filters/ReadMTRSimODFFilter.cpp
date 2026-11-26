@@ -117,7 +117,7 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
     metadata = mtrsim::readODFMetadata(pInputFile, pHdf5PathPrefix);
   } catch(const std::exception& e)
   {
-    return {.outputActions=MakeErrorResult<OutputActions>(-12001, fmt::format("ODF file read failed: {}", e.what()))};
+    return {.outputActions = MakeErrorResult<OutputActions>(-12001, fmt::format("ODF file read failed: {}", e.what()))};
   }
 
   // Axis mapping: phi1 is slowest-varying in the file, phi2 fastest.
@@ -154,7 +154,7 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   preflightUpdatedValues.push_back(
       {"Spacing (X, Y, Z) [deg]", fmt::format("{:.4f}, {:.4f}, {:.4f}", metadata.spacingDegPhi1PHIPhi2[2], metadata.spacingDegPhi1PHIPhi2[1], metadata.spacingDegPhi1PHIPhi2[0])});
 
-  return {.outputActions=std::move(resultOutputActions), .outputValues=std::move(preflightUpdatedValues)};
+  return {.outputActions = std::move(resultOutputActions), .outputValues = std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------

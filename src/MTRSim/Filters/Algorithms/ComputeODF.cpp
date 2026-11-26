@@ -295,7 +295,8 @@ Result<> ComputeODF::operator()()
   std::size_t masterFailureCount = 0;
   std::mutex mergeMutex;
 
-  const mtrsim::ODFBuildParams params{.nphi1=m_InputValues->nphi1, .nPHI=m_InputValues->nPHI, .nphi2=m_InputValues->nphi2, .binSizeDeg=m_InputValues->binSizeDeg, .smoothing=m_InputValues->applySmoothing};
+  const mtrsim::ODFBuildParams params{
+      .nphi1 = m_InputValues->nphi1, .nPHI = m_InputValues->nPHI, .nphi2 = m_InputValues->nphi2, .binSizeDeg = m_InputValues->binSizeDeg, .smoothing = m_InputValues->applySmoothing};
 
   if(numVoxels == 0)
   {

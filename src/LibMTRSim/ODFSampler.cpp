@@ -104,7 +104,7 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
 EulerAngles ODFSampler::sampleOne(const ODFComponent& component, const ODFComponent& uniform)
 {
   const Eigen::MatrixXd row = sampleN(1, component, uniform); // n=1: no observer needed (cancel latency negligible)
-  return EulerAngles{.phi1=row(0, 0), .phi=row(0, 1), .phi2=row(0, 2)};
+  return EulerAngles{.phi1 = row(0, 0), .phi = row(0, 1), .phi2 = row(0, 2)};
 }
 
 } // namespace mtrsim

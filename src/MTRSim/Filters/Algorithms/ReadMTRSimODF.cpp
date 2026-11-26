@@ -23,7 +23,6 @@ ReadMTRSimODF::ReadMTRSimODF(DataStructure& dataStructure, const IFilter::Messag
 
 // -----------------------------------------------------------------------------
 
-
 // -----------------------------------------------------------------------------
 Result<> ReadMTRSimODF::operator()()
 {

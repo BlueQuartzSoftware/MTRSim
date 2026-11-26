@@ -183,8 +183,7 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<PGRFSimulation>(m, "PGRFSimulation", "Orchestrates GPGenerator + AssignmentRule to produce a PGRF simulation.")
       .def(py::init([](Rng& rng) { return new PGRFSimulation(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
-      .def(
-          "run", [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); }, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
+      .def("run", [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); }, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
 
   // -------------------------------------------------------------------------
   // GPGenerator
