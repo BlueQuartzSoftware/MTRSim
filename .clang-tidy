@@ -1,4 +1,4 @@
-# nxcleanup completed P2b
+# nxcleanup completed P2c
 # Shared BlueQuartz clang-tidy configuration (simplnx, SimplnxOoc, SimplnxReview, DREAM3DNX).
 # Only HeaderFilterRegex and the macro allowlist differ between repositories.
 #
@@ -31,20 +31,12 @@
 # nxcleanup P4 check cppcoreguidelines-pro-bounds-array-to-pointer-decay
 # nxcleanup P4 check cppcoreguidelines-special-member-functions
 # nxcleanup P4 check modernize-avoid-c-arrays
-# nxcleanup P2c check modernize-loop-convert
 # nxcleanup P2b check modernize-return-braced-init-list
 # nxcleanup P2c check modernize-use-ranges
-# nxcleanup P2c check modernize-use-std-numbers
 # nxcleanup P2b check performance-unnecessary-value-param
 # nxcleanup P4 check readability-avoid-nested-conditional-operator
-# nxcleanup P2c check readability-braces-around-statements
-# nxcleanup P2c check readability-container-size-empty
 # nxcleanup P2b check readability-convert-member-functions-to-static
 # nxcleanup P4 check readability-identifier-length
-# nxcleanup P2c check readability-implicit-bool-conversion
-# nxcleanup P2c check readability-isolate-declaration
-# nxcleanup P2c check readability-static-definition-in-anonymous-namespace
-# nxcleanup P2c check readability-use-std-min-max
 # nxcleanup P4 naming-kind ClassMethod
 # nxcleanup P4 naming-kind ConstexprVariable
 # nxcleanup P4 naming-kind Function
@@ -65,7 +57,7 @@ Checks: -abseil-*, bugprone-*, -bugprone-easily-swappable-parameters, -boost-*, 
   -modernize-use-nodiscard, -modernize-use-auto, -mpi-*, -objc-*, -openmp-*, performance-*,
   -performance-enum-size, -portability-*, readability-*, -readability-function-cognitive-complexity,
   -readability-function-size, -readability-math-missing-parentheses, -readability-uppercase-literal-suffix,
-  -readability-magic-numbers,-bugprone-argument-comment,-bugprone-chained-comparison,-bugprone-implicit-widening-of-multiplication-result,-bugprone-misplaced-widening-cast,-bugprone-narrowing-conversions,-bugprone-unused-local-non-trivial-variable,-clang-analyzer-optin.performance.Padding,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-do-while,-cppcoreguidelines-macro-usage,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-modernize-avoid-c-arrays,-modernize-loop-convert,-modernize-return-braced-init-list,-modernize-use-ranges,-modernize-use-std-numbers,-performance-unnecessary-value-param,-readability-avoid-nested-conditional-operator,-readability-braces-around-statements,-readability-container-size-empty,-readability-convert-member-functions-to-static,-readability-identifier-length,-readability-implicit-bool-conversion,-readability-isolate-declaration,-readability-static-definition-in-anonymous-namespace,-readability-use-std-min-max,-misc-const-correctness,-misc-include-cleaner
+  -readability-magic-numbers,-bugprone-argument-comment,-bugprone-chained-comparison,-bugprone-implicit-widening-of-multiplication-result,-bugprone-misplaced-widening-cast,-bugprone-narrowing-conversions,-bugprone-unused-local-non-trivial-variable,-clang-analyzer-optin.performance.Padding,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-do-while,-cppcoreguidelines-macro-usage,-cppcoreguidelines-narrowing-conversions,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-special-member-functions,-modernize-avoid-c-arrays,-modernize-return-braced-init-list,-modernize-use-ranges,-performance-unnecessary-value-param,-readability-avoid-nested-conditional-operator,-readability-convert-member-functions-to-static,-readability-identifier-length,-misc-const-correctness,-misc-include-cleaner
 WarningsAsErrors: '*'
 HeaderFilterRegex: .*/MTRSim/(src|test|tests|wrapping|cmake)/.*\.(h|hpp)$
 ExcludeHeaderFilterRegex: .*/3rd[Pp]arty/.*
