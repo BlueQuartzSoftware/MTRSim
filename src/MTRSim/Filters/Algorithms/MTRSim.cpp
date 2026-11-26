@@ -65,7 +65,7 @@ MTRSim::MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesg
 }
 
 // -----------------------------------------------------------------------------
-MTRSim::~MTRSim() noexcept = default;
+
 
 // -----------------------------------------------------------------------------
 Result<> MTRSim::operator()()

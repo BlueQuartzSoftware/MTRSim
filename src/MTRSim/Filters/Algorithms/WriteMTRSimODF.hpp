@@ -32,7 +32,7 @@ class MTRSIM_EXPORT WriteMTRSimODF
 {
 public:
   WriteMTRSimODF(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, WriteMTRSimODFInputValues* inputValues);
-  ~WriteMTRSimODF() noexcept;
+  ~WriteMTRSimODF() noexcept = default;
 
   WriteMTRSimODF(const WriteMTRSimODF&) = delete;
   WriteMTRSimODF(WriteMTRSimODF&&) noexcept = delete;

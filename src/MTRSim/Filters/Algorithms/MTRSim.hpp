@@ -41,7 +41,7 @@ class MTRSIM_EXPORT MTRSim
 {
 public:
   MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, MTRSimInputValues* inputValues);
-  ~MTRSim() noexcept;
+  ~MTRSim() noexcept = default;
 
   MTRSim(const MTRSim&) = delete;
   MTRSim(MTRSim&&) noexcept = delete;

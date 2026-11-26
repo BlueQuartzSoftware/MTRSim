@@ -52,7 +52,7 @@ GenerateODFSections::GenerateODFSections(DataStructure& dataStructure, const IFi
 {
 }
 
-GenerateODFSections::~GenerateODFSections() noexcept = default;
+
 
 Result<> GenerateODFSections::operator()()
 {
