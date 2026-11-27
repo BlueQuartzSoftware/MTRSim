@@ -27,23 +27,23 @@ public:
   MTRSimFilter& operator=(MTRSimFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static constexpr StringLiteral k_UseConfigFile_Key = "use_config_file";
-  static constexpr StringLiteral k_ConfigFilePath_Key = "config_file_path";
-  static constexpr StringLiteral k_InputOdfGeometry_Key = "input_odf_geometry_path";
-  static constexpr StringLiteral k_OdfComponentArrays_Key = "odf_component_arrays";
-  static constexpr StringLiteral k_VolumeFractions_Key = "volume_fractions";
-  static constexpr StringLiteral k_ThetaList_Key = "theta_list";
-  static constexpr StringLiteral k_PhysicalSize_Key = "physical_size";
-  static constexpr StringLiteral k_PhysicalSpacing_Key = "physical_spacing";
-  static constexpr StringLiteral k_UseSeed_Key = "use_seed";
-  static constexpr StringLiteral k_SeedValue_Key = "seed_value";
-  static constexpr StringLiteral k_SeedArrayName_Key = "seed_array_name";
-  static constexpr StringLiteral k_GeneratePolarColoring_Key = "generate_polar_coloring";
-  static constexpr StringLiteral k_OutputGeometry_Key = "output_geometry_path";
-  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
-  static constexpr StringLiteral k_MtrIdsArrayName_Key = "mtr_ids_array_name";
-  static constexpr StringLiteral k_EulersArrayName_Key = "eulers_array_name";
-  static constexpr StringLiteral k_PolarColorsArrayName_Key = "polar_colors_array_name";
+  static constexpr StringLiteralType k_UseConfigFile_Key = "use_config_file";
+  static constexpr StringLiteralType k_ConfigFilePath_Key = "config_file_path";
+  static constexpr StringLiteralType k_InputOdfGeometry_Key = "input_odf_geometry_path";
+  static constexpr StringLiteralType k_OdfComponentArrays_Key = "odf_component_arrays";
+  static constexpr StringLiteralType k_VolumeFractions_Key = "volume_fractions";
+  static constexpr StringLiteralType k_ThetaList_Key = "theta_list";
+  static constexpr StringLiteralType k_PhysicalSize_Key = "physical_size";
+  static constexpr StringLiteralType k_PhysicalSpacing_Key = "physical_spacing";
+  static constexpr StringLiteralType k_UseSeed_Key = "use_seed";
+  static constexpr StringLiteralType k_SeedValue_Key = "seed_value";
+  static constexpr StringLiteralType k_SeedArrayName_Key = "seed_array_name";
+  static constexpr StringLiteralType k_GeneratePolarColoring_Key = "generate_polar_coloring";
+  static constexpr StringLiteralType k_OutputGeometry_Key = "output_geometry_path";
+  static constexpr StringLiteralType k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteralType k_MtrIdsArrayName_Key = "mtr_ids_array_name";
+  static constexpr StringLiteralType k_EulersArrayName_Key = "eulers_array_name";
+  static constexpr StringLiteralType k_PolarColorsArrayName_Key = "polar_colors_array_name";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -100,7 +100,7 @@ public:
    * @brief Returns a copy of the filter.
    * @return
    */
-  UniquePointer clone() const override;
+  UniquePointerType clone() const override;
 
 protected:
   /**

@@ -48,7 +48,7 @@
 #include <vector>
 
 using namespace nx::core;
-using namespace nx::core::UnitTest;
+using namespace nx::core::unit_test;
 
 namespace
 {
@@ -107,8 +107,8 @@ EbsdInputs BuildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
   AttributeMatrix* cellAmPtr = AttributeMatrix::Create(out.data_structure, k_CellAttrMatName, {numVoxels}, ebsdGeomPtr->getId());
   out.cell_attr_mat_path = out.ebsd_geom_path.createChildPath(k_CellAttrMatName);
 
-  Float32Array* eulerArrPtr = Float32Array::CreateWithStore<DataStore<float32>>(out.data_structure, "EulerAngles", {numVoxels}, {3}, cellAmPtr->getId());
-  Int32Array* phaseArrPtr = Int32Array::CreateWithStore<DataStore<int32>>(out.data_structure, "Phases", {numVoxels}, {1}, cellAmPtr->getId());
+  Float32ArrayType* eulerArrPtr = Float32ArrayType::CreateWithStore<DataStore<float32>>(out.data_structure, "EulerAngles", {numVoxels}, {3}, cellAmPtr->getId());
+  Int32ArrayType* phaseArrPtr = Int32ArrayType::CreateWithStore<DataStore<int32>>(out.data_structure, "Phases", {numVoxels}, {1}, cellAmPtr->getId());
 
   constexpr double k_DegToRad = std::numbers::pi / 180.0;
   for(usize i = 0; i < numVoxels; ++i)
@@ -124,7 +124,7 @@ EbsdInputs BuildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
 
   if(maskValues != nullptr)
   {
-    BoolArray* maskArrPtr = BoolArray::CreateWithStore<DataStore<bool>>(out.data_structure, "Mask", {numVoxels}, {1}, cellAmPtr->getId());
+    BoolArrayType* maskArrPtr = BoolArrayType::CreateWithStore<DataStore<bool>>(out.data_structure, "Mask", {numVoxels}, {1}, cellAmPtr->getId());
     for(usize i = 0; i < numVoxels; ++i)
     {
       (*maskArrPtr)[i] = (*maskValues)[i];
@@ -137,7 +137,7 @@ EbsdInputs BuildSyntheticEbsd(const std::vector<std::array<float32, 3>>& eulersD
   AttributeMatrix* ensembleAmPtr = AttributeMatrix::Create(out.data_structure, "EnsembleData", {ensembleCount});
   out.ensemble_attr_mat_path = DataPath({"EnsembleData"});
 
-  UInt32Array* csArrPtr = UInt32Array::CreateWithStore<DataStore<uint32>>(out.data_structure, "CrystalStructures", {ensembleCount}, {1}, ensembleAmPtr->getId());
+  UInt32ArrayType* csArrPtr = UInt32ArrayType::CreateWithStore<DataStore<uint32>>(out.data_structure, "CrystalStructures", {ensembleCount}, {1}, ensembleAmPtr->getId());
   (*csArrPtr)[0] = 999; // phase 0 = "no phase" — never indexed by the algorithm
   (*csArrPtr)[1] = crystalCodeForPhase1;
   out.crystal_structures_path = out.ensemble_attr_mat_path.createChildPath("CrystalStructures");
@@ -178,7 +178,7 @@ Arguments MakeBaseArgs(const EbsdInputs& inputs, bool applySmoothing, float32 bi
 // no errors.
 int32 FirstErrorCode(const IFilter::PreflightResult& r)
 {
-  const auto& errors = r.outputActions.errors();
+  const auto& errors = r.output_actions.errors();
   return errors.empty() ? 0 : errors[0].code;
 }
 
@@ -186,7 +186,7 @@ int32 FirstErrorCode(const IFilter::PreflightResult& r)
 std::pair<double, usize> SumAndNonZeroCount(const DataStructure& dataStructure)
 {
   const DataPath odfPath = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(k_ComponentName);
-  const auto& odfArr = dataStructure.getDataRefAs<Float64Array>(odfPath);
+  const auto& odfArr = dataStructure.getDataRefAs<Float64ArrayType>(odfPath);
   const auto& store = odfArr.getDataStoreRef();
   double sum = 0.0;
   usize nonZero = 0;
@@ -217,7 +217,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Single HCP voxel, no smoothing, produces "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -241,7 +241,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Single Cubic voxel, no smoothing, "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -264,7 +264,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Smoothing distributes per MATLAB weights", 
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -301,7 +301,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD output applies per-row sin(PHI) Jacobia
   argsA.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, std::make_any<ChoicesParameter::ValueType>(0ULL));
   ComputeODFFilter filterA;
   auto preflightA = filterA.preflight(inputsA.data_structure, argsA);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightA.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightA.output_actions);
   auto executeA = filterA.execute(inputsA.data_structure, argsA);
   SIMPLNX_RESULT_REQUIRE_VALID(executeA.result);
 
@@ -310,13 +310,13 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD output applies per-row sin(PHI) Jacobia
   argsB.insertOrAssign(ComputeODFFilter::k_OutputUnits_Key, std::make_any<ChoicesParameter::ValueType>(1ULL));
   ComputeODFFilter filterB;
   auto preflightB = filterB.preflight(inputsB.data_structure, argsB);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightB.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightB.output_actions);
   auto executeB = filterB.execute(inputsB.data_structure, argsB);
   SIMPLNX_RESULT_REQUIRE_VALID(executeB.result);
 
   const DataPath odfPath = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(k_ComponentName);
-  const auto& cdStore = inputsA.data_structure.getDataRefAs<Float64Array>(odfPath).getDataStoreRef();
-  const auto& mudStore = inputsB.data_structure.getDataRefAs<Float64Array>(odfPath).getDataStoreRef();
+  const auto& cdStore = inputsA.data_structure.getDataRefAs<Float64ArrayType>(odfPath).getDataStoreRef();
+  const auto& mudStore = inputsB.data_structure.getDataRefAs<Float64ArrayType>(odfPath).getDataStoreRef();
   REQUIRE(cdStore.getSize() == mudStore.getSize());
 
   constexpr int32_t k_Nphi1 = 72;
@@ -377,12 +377,12 @@ TEST_CASE("MTRSim::ComputeODFFilter: MUD integrates to 8*pi^2 on SO(3)", "[MTRSi
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath odfPath = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(k_ComponentName);
-  const auto& mudStore = inputs.data_structure.getDataRefAs<Float64Array>(odfPath).getDataStoreRef();
+  const auto& mudStore = inputs.data_structure.getDataRefAs<Float64ArrayType>(odfPath).getDataStoreRef();
 
   constexpr int32_t k_Nphi1 = 72;
   constexpr int32_t k_NPhi = 36;
@@ -428,7 +428,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Mask filters voxels", "[MTRSim][ComputeODFF
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -481,7 +481,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Phase 0 voxels are skipped", "[MTRSim][Comp
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -503,7 +503,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Empty mask DataPath disables the mask", "[M
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -519,7 +519,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects bad bin size", "[MTRSim][
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflightResult) == -12200);
 }
 
@@ -535,7 +535,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects euler_angles wrong "
 
   // Add an alternate single-component Float32 array on the same cell AM.
   AttributeMatrix& cellAm = inputs.data_structure.getDataRefAs<AttributeMatrix>(inputs.cell_attr_mat_path);
-  Float32Array::CreateWithStore<DataStore<float32>>(inputs.data_structure, "BadEulers", {1}, {1}, cellAm.getId());
+  Float32ArrayType::CreateWithStore<DataStore<float32>>(inputs.data_structure, "BadEulers", {1}, {1}, cellAm.getId());
   const DataPath badPath = inputs.cell_attr_mat_path.createChildPath("BadEulers");
 
   Arguments args = MakeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
@@ -543,7 +543,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects euler_angles wrong "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   // The ArraySelectionParameter component-shape constraint is enforced by the
   // IFilter::preflight wrapper (code -208 =
   // FilterParameter::Constants::k_Validate_TupleShapeValue) BEFORE
@@ -560,7 +560,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects mismatched attribute matr
   // Phases array, so euler_angles and phases live on different parents.
   ImageGeom& ebsdGeom = inputs.data_structure.getDataRefAs<ImageGeom>(inputs.ebsd_geom_path);
   AttributeMatrix* otherAmPtr = AttributeMatrix::Create(inputs.data_structure, "OtherCellData", {1}, ebsdGeom.getId());
-  Int32Array* otherPhasesPtr = Int32Array::CreateWithStore<DataStore<int32>>(inputs.data_structure, "Phases", {1}, {1}, otherAmPtr->getId());
+  Int32ArrayType* otherPhasesPtr = Int32ArrayType::CreateWithStore<DataStore<int32>>(inputs.data_structure, "Phases", {1}, {1}, otherAmPtr->getId());
   (*otherPhasesPtr)[0] = 1;
   const DataPath otherPhasesPath = inputs.ebsd_geom_path.createChildPath("OtherCellData").createChildPath("Phases");
 
@@ -569,7 +569,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight rejects mismatched attribute matr
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflightResult) == -12205);
 }
 
@@ -580,14 +580,14 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight populates updatedValues", "[MTRSi
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
-  REQUIRE(!preflightResult.outputValues.empty());
+  REQUIRE(!preflightResult.output_values.empty());
 
-  const bool foundBinSize = std::any_of(preflightResult.outputValues.begin(), preflightResult.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bin Size [deg]"; });
+  const bool foundBinSize = std::any_of(preflightResult.output_values.begin(), preflightResult.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bin Size [deg]"; });
   REQUIRE(foundBinSize);
 
-  const bool foundBins = std::any_of(preflightResult.outputValues.begin(), preflightResult.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bins (phi1 x PHI x phi2)"; });
+  const bool foundBins = std::any_of(preflightResult.output_values.begin(), preflightResult.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bins (phi1 x PHI x phi2)"; });
   REQUIRE(foundBins);
 }
 
@@ -628,7 +628,7 @@ ExistingOdfGeom BuildExistingOdfGeom(DataStructure& dataStructure, const std::ar
 
   if(seedComponent1)
   {
-    Float64Array* seedArrPtr = Float64Array::CreateWithStore<DataStore<float64>>(dataStructure, k_ComponentName, tupleShapeZYX, {1}, cellAmPtr->getId());
+    Float64ArrayType* seedArrPtr = Float64ArrayType::CreateWithStore<DataStore<float64>>(dataStructure, k_ComponentName, tupleShapeZYX, {1}, cellAmPtr->getId());
     auto& store = seedArrPtr->getDataStoreRef();
     for(usize i = 0; i < store.getSize(); ++i)
     {
@@ -641,7 +641,7 @@ ExistingOdfGeom BuildExistingOdfGeom(DataStructure& dataStructure, const std::ar
 // Returns (sum, nonZeroCount) over an arbitrary Float64 array path.
 std::pair<double, usize> SumAndNonZeroOf(const DataStructure& dataStructure, const DataPath& path)
 {
-  const auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+  const auto& arr = dataStructure.getDataRefAs<Float64ArrayType>(path);
   const auto& store = arr.getDataStoreRef();
   double sum = 0.0;
   usize nonZero = 0;
@@ -675,8 +675,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Selected phase controls symmetry and masked
   // These general orientations have distinct 5-degree bins for each symmetry operator.
   REQUIRE(nonZero == (selectedPhase == 1 && useMask ? 12 : 24));
   const DataPath componentPath({"ODF", "Cell Data", "Component 1"});
-  REQUIRE_NOTHROW(inputs.data_structure.getDataRefAs<Float64Array>(componentPath));
-  const auto& values = inputs.data_structure.getDataRefAs<Float64Array>(componentPath);
+  REQUIRE_NOTHROW(inputs.data_structure.getDataRefAs<Float64ArrayType>(componentPath));
+  const auto& values = inputs.data_structure.getDataRefAs<Float64ArrayType>(componentPath);
   // The identity operator places the phase-1 orientation at (11, 22, 33) degrees.
   REQUIRE(values[OdfLinear(2, 4, 6, 36, 72)] == Approx(selectedPhase == 2 ? 0.0 : (useMask ? 1.0 / 12.0 : 1.0 / 24.0)).margin(1.0e-12));
 }
@@ -711,8 +711,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Units metadata is initialized by preflight 
   else
   {
     const auto preflight = ComputeODFFilter().preflight(inputs.data_structure, args);
-    SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
-    const auto applied = preflight.outputActions.value().applyAll(inputs.data_structure, IDataAction::Mode::Preflight);
+    SIMPLNX_RESULT_REQUIRE_VALID(preflight.output_actions);
+    const auto applied = preflight.output_actions.value().applyAll(inputs.data_structure, IDataAction::Mode::Preflight);
     SIMPLNX_RESULT_REQUIRE_VALID(applied);
   }
   const auto* unitsArrayPtr = inputs.data_structure.getDataAs<StringArray>(DataPath({"ODF", "ODF Metadata", "Component 1 Units"}));
@@ -750,7 +750,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Rejects invalid ensemble selections", "[MTR
     expectedCode = -12215;
   }
   const auto result = ComputeODFFilter().preflight(inputs.data_structure, args);
-  REQUIRE(result.outputActions.invalid());
+  REQUIRE(result.output_actions.invalid());
   REQUIRE(FirstErrorCode(result) == expectedCode);
 }
 
@@ -768,7 +768,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Preflight defers crystal values for placeho
   REQUIRE(materialNamesPtr != nullptr);
   materialNamesPtr->setStore(std::make_shared<EmptyStringStore>(ShapeType{2}));
   const auto preflight = ComputeODFFilter().preflight(inputs.data_structure, MakeBaseArgs(inputs, false, 5.0F));
-  SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflight.output_actions);
 }
 
 TEST_CASE("MTRSim::ComputeODFFilter: Create mode rejects the reserved metadata group name for cell data", "[MTRSim][ComputeODFFilter]")
@@ -777,7 +777,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Create mode rejects the reserved metadata g
   auto args = MakeBaseArgs(inputs, false, 5.0F);
   args.insertOrAssign(ComputeODFFilter::k_CellAttrMatName_Key, std::string{"ODF Metadata"});
   const auto preflight = ComputeODFFilter().preflight(inputs.data_structure, args);
-  REQUIRE(preflight.outputActions.invalid());
+  REQUIRE(preflight.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflight) == -12218);
 }
 
@@ -840,13 +840,13 @@ TEST_CASE("MTRSim::ComputeODFFilter: Rejects metadata collisions", "[MTRSim][Com
   args.insertOrAssign(ComputeODFFilter::k_OutputMode_Key, ChoicesParameter::ValueType{1});
   args.insertOrAssign(ComputeODFFilter::k_ExistingOdfGeometry_Key, k_OutputGeomPath);
   const auto result = ComputeODFFilter().preflight(inputs.data_structure, args);
-  REQUIRE(result.outputActions.invalid());
+  REQUIRE(result.output_actions.invalid());
   REQUIRE(FirstErrorCode(result) == expectedCode);
 }
 
 TEST_CASE("MTRSim::ComputeODFFilter: Units metadata survives DREAM3D round trip", "[MTRSim][ComputeODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
   const ChoicesParameter::ValueType units = GENERATE(0ULL, 1ULL);
   auto inputs = BuildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, k_HexagonalHigh);
   auto args = MakeBaseArgs(inputs, false, 10.0F);
@@ -885,7 +885,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an "
     Arguments createArgs = MakeBaseArgs(inputs, /*applySmoothing=*/false, /*binSizeDeg=*/5.0f);
     ComputeODFFilter filter;
     auto preflightResult = filter.preflight(inputs.data_structure, createArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
     auto executeResult = filter.execute(inputs.data_structure, createArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
   }
@@ -904,12 +904,12 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, appendArgs);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, appendArgs);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath component2Path = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(kAppendedComponentName);
-  REQUIRE_NOTHROW(inputs.data_structure.getDataRefAs<Float64Array>(component2Path));
+  REQUIRE_NOTHROW(inputs.data_structure.getDataRefAs<Float64ArrayType>(component2Path));
   const auto [sum2, nonZero2] = SumAndNonZeroOf(inputs.data_structure, component2Path);
   REQUIRE(sum2 == Approx(1.0).margin(1.0e-9));
   REQUIRE(nonZero2 == nonZero1Before);
@@ -917,8 +917,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode adds a new component to an "
   // Defense-in-depth: the appended array must have the same tuple count as
   // Component 1 (i.e. it was created against the existing geometry's dims, not
   // a fresh set).
-  const auto& component1Arr = inputs.data_structure.getDataRefAs<Float64Array>(component1Path);
-  const auto& component2Arr = inputs.data_structure.getDataRefAs<Float64Array>(component2Path);
+  const auto& component1Arr = inputs.data_structure.getDataRefAs<Float64ArrayType>(component1Path);
+  const auto& component2Arr = inputs.data_structure.getDataRefAs<Float64ArrayType>(component2Path);
   REQUIRE(component2Arr.getNumberOfTuples() == component1Arr.getNumberOfTuples());
 
   // Component 1 must be unchanged.
@@ -941,9 +941,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-uniform spacing", "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, appendArgs);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   bool found12207 = false;
-  for(const auto& err : preflightResult.outputActions.errors())
+  for(const auto& err : preflightResult.output_actions.errors())
   {
     if(err.code == -12207)
     {
@@ -974,9 +974,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects component-name collisio
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, appendArgs);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   bool found12209 = false;
-  for(const auto& err : preflightResult.outputActions.errors())
+  for(const auto& err : preflightResult.output_actions.errors())
   {
     if(err.code == -12209)
     {
@@ -1001,10 +1001,10 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode preflight reports derived bin s
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, appendArgs);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
-  const auto it = std::find_if(preflightResult.outputValues.begin(), preflightResult.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bin Size [deg]"; });
-  REQUIRE(it != preflightResult.outputValues.end());
+  const auto it = std::find_if(preflightResult.output_values.begin(), preflightResult.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "Bin Size [deg]"; });
+  REQUIRE(it != preflightResult.output_values.end());
   // Derived bin size should be 2.5, NOT 999.0.
   REQUIRE(it->value.find("2.5") != std::string::npos);
   REQUIRE(it->value.find("999") == std::string::npos);
@@ -1017,7 +1017,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Unknown selected crystal code is rejected",
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflightResult) == -12217);
   auto executeResult = filter.execute(inputs.data_structure, args);
   REQUIRE(executeResult.result.invalid());
@@ -1045,7 +1045,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects non-ImageGeom geometry"
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflightResult) == -3);
 }
 
@@ -1070,7 +1070,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Append mode rejects ImageGeom with no cell-
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
   REQUIRE(FirstErrorCode(preflightResult) == -12208);
 }
 
@@ -1149,7 +1149,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
 
   ComputeODFFilter filter;
   auto preflightResult = filter.preflight(inputs.data_structure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(inputs.data_structure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -1199,7 +1199,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
   // Compute output ODF array (default geometry/cell-attr-mat/component path,
   // mirroring sumAndNonZeroCount above).
   const DataPath odfPath = k_OutputGeomPath.createChildPath(k_CellAttrMatName).createChildPath(k_ComponentName);
-  const auto& outArr = inputs.data_structure.getDataRefAs<Float64Array>(odfPath);
+  const auto& outArr = inputs.data_structure.getDataRefAs<Float64ArrayType>(odfPath);
   const auto& outStore = outArr.getDataStoreRef();
   REQUIRE(outStore.getSize() == refValues.size());
 
@@ -1257,7 +1257,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   // The .dream3d file's Mask is stored as uint8 (DREAM3D-NX convention) but
   // ComputeODFFilter expects a Bool mask, so we build a Bool copy in-place
   // before invoking the filter.
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/real_world_microtexture_data.dream3d", unit_test::k_DataDir.view()));
   const fs::path refFile = fs::path(fmt::format("{}/calc_odf_reference_realistic.h5", unit_test::k_DataDir.view()));
@@ -1280,7 +1280,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
     Dream3dImportParameter::ImportData importData(inputFile);
     readArgs.insertOrAssign(ReadDREAM3DFilter::k_ImportFileData, std::make_any<Dream3dImportParameter::ImportData>(importData));
     auto preflight = readFilter.preflight(dataStructure, readArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(preflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(preflight.output_actions);
     auto execute = readFilter.execute(dataStructure, readArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(execute.result);
   }
@@ -1305,11 +1305,11 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
     const usize numTuples = maskBasePtr->getNumberOfTuples();
     auto* cellAmPtr = dataStructure.getDataAs<AttributeMatrix>(cellAttrMatPath);
     REQUIRE(cellAmPtr != nullptr);
-    auto* maskBoolPtr = BoolArray::CreateWithStore<DataStore<bool>>(dataStructure, "MaskBool", {numTuples}, {1}, cellAmPtr->getId());
+    auto* maskBoolPtr = BoolArrayType::CreateWithStore<DataStore<bool>>(dataStructure, "MaskBool", {numTuples}, {1}, cellAmPtr->getId());
     REQUIRE(maskBoolPtr != nullptr);
     auto& boolStore = maskBoolPtr->getDataStoreRef();
 
-    if(const auto* maskU8Ptr = dataStructure.getDataAs<UInt8Array>(maskUInt8Path); maskU8Ptr != nullptr)
+    if(const auto* maskU8Ptr = dataStructure.getDataAs<UInt8ArrayType>(maskUInt8Path); maskU8Ptr != nullptr)
     {
       const auto& u8Store = maskU8Ptr->getDataStoreRef();
       for(usize i = 0; i < numTuples; ++i)
@@ -1317,7 +1317,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
         boolStore.setValue(i, u8Store.getValue(i) != 0);
       }
     }
-    else if(const auto* maskBlPtr = dataStructure.getDataAs<BoolArray>(maskUInt8Path); maskBlPtr != nullptr)
+    else if(const auto* maskBlPtr = dataStructure.getDataAs<BoolArrayType>(maskUInt8Path); maskBlPtr != nullptr)
     {
       const auto& blStore = maskBlPtr->getDataStoreRef();
       for(usize i = 0; i < numTuples; ++i)
@@ -1349,7 +1349,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   args.insertOrAssign(ComputeODFFilter::k_ComponentName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Component 1"}));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
@@ -1358,7 +1358,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   REQUIRE(refComponents.size() == 1);
   const auto& refValues = refComponents[0].values;
 
-  const auto& outArr = dataStructure.getDataRefAs<Float64Array>(DataPath({"ODF", "Cell Data", "Component 1"}));
+  const auto& outArr = dataStructure.getDataRefAs<Float64ArrayType>(DataPath({"ODF", "Cell Data", "Component 1"}));
   const auto& outStore = outArr.getDataStoreRef();
   REQUIRE(outStore.getSize() == refValues.size());
 

@@ -74,7 +74,7 @@ Result<> GenerateODFSections::operator()()
     return {};
   }
 
-  auto controls = ColorTableUtilities::ExtractControlPoints(values.colorTablePreset);
+  auto controls = color_table_utilities::ExtractControlPoints(values.colorTablePreset);
   if(controls.invalid())
   {
     return MakeErrorResult(-12322, fmt::format("Could not resolve color preset '{}' for ODF '{}' and phase {}: {}", values.colorTablePreset, values.odfArrayPath.toString(), values.phaseIndex,
@@ -98,7 +98,7 @@ Result<> GenerateODFSections::operator()()
   config.manualMinimumMUD = values.manualMinimumMUD;
   config.manualMaximumMUD = values.manualMaximumMUD;
   // SIMPLNX presets can use arbitrary scalar positions; EbsdLib accepts normalized positions.
-  const auto binPoints = ColorTableUtilities::NormalizeBinPoints(controls.value());
+  const auto binPoints = color_table_utilities::NormalizeBinPoints(controls.value());
   config.colorControlPoints = std::move(controls.value());
   for(usize colorIndex = 0; colorIndex < binPoints.size(); ++colorIndex)
   {
@@ -146,7 +146,7 @@ Result<> GenerateODFSections::operator()()
       }
     }
     const auto rgbPath = values.outputImageGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
-    auto& outputRgb = m_DataStructure.getDataRefAs<UInt8Array>(rgbPath);
+    auto& outputRgb = m_DataStructure.getDataRefAs<UInt8ArrayType>(rgbPath);
     const auto* rgbaPtr = result.image->getPointer(0);
     const usize width = static_cast<usize>(result.width);
     for(usize row = 0; row < static_cast<usize>(result.height); ++row)

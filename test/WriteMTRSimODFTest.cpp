@@ -55,11 +55,11 @@
 namespace fs = std::filesystem;
 
 using namespace nx::core;
-using namespace nx::core::UnitTest;
+using namespace nx::core::unit_test;
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-compat)", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/simulation_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -86,7 +86,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     readArgs.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
     auto readPreflight = readFilter.preflight(dataStructure, readArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.output_actions);
     auto readExecute = readFilter.execute(dataStructure, readArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
@@ -114,10 +114,10 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(componentPaths));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
 
     // Assert the prefix-preview updated value surfaced.
-    const bool foundPrefixLabel = std::any_of(writePreflight.outputValues.begin(), writePreflight.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
+    const bool foundPrefixLabel = std::any_of(writePreflight.output_values.begin(), writePreflight.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
     REQUIRE(foundPrefixLabel);
 
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
@@ -139,7 +139,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 layout", "[MTRSim][WriteMTRSimODFFilter][AxisMapping]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   // Asymmetric dimensions so an axis permutation cannot accidentally produce
   // the correct answer.
@@ -188,7 +188,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
   constexpr double k_SentinelValue = 42.0;
 
   {
-    auto& componentArray = dataStructure.getDataRefAs<Float64Array>(componentPath);
+    auto& componentArray = dataStructure.getDataRefAs<Float64ArrayType>(componentPath);
     auto& store = componentArray.getDataStoreRef();
     for(std::size_t i = 0; i < store.getSize(); ++i)
     {
@@ -214,7 +214,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(std::vector<DataPath>{componentPath}));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(writeExecute.result);
   }
@@ -250,7 +250,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: zero components rejects at preflight", "[MTRSim][WriteMTRSimODFFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
 
@@ -262,7 +262,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: zero components rejects at preflight", 
   args.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(std::vector<DataPath>{}));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
 }
 
 namespace
@@ -271,7 +271,7 @@ namespace
 // prefix, read back and verify byte-exact equality of the component values.
 void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/{}", unit_test::k_DataDir.view(), fixtureName));
   REQUIRE(fs::exists(inputFile));
@@ -297,7 +297,7 @@ void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
     readArgs.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
     auto readPreflight = readFilter.preflight(dataStructure, readArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.output_actions);
     auto readExecute = readFilter.execute(dataStructure, readArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
@@ -322,7 +322,7 @@ void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(componentPaths));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(writeExecute.result);
   }

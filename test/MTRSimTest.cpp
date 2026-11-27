@@ -34,7 +34,7 @@
 #include <vector>
 
 using namespace nx::core;
-using namespace nx::core::UnitTest;
+using namespace nx::core::unit_test;
 
 namespace
 {
@@ -111,7 +111,7 @@ std::filesystem::path WriteTempConfig(const std::string& jsonText, const std::st
 
 TEST_CASE("MTRSim::MTRSimFilter: Valid preflight builds actions", "[MTRSim][MTRSimFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -120,12 +120,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Valid preflight builds actions", "[MTRSim][MTRS
   Arguments args = MakeValidArgs(compPaths);
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Rejects mismatched Volume Fraction column count", "[MTRSim][MTRSimFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -136,12 +136,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects mismatched Volume Fraction column count
   args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.5, 0.5}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[MTRSim][MTRSimFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -149,7 +149,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   // well-defined.
   for(const auto& path : compPaths)
   {
-    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    auto& arr = dataStructure.getDataRefAs<Float64ArrayType>(path);
     arr.fill(1.0);
   }
 
@@ -160,7 +160,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   std::vector<IFilter::Message> messages;
   const IFilter::MessageHandler handler{[&](const IFilter::Message& message) { messages.push_back(message); }};
@@ -180,12 +180,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   const usize expectedTuples = 100 * 100;
 
   // MTRIds: Int32, 1 component, 10000 tuples.
-  auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
+  auto& mtrIds = dataStructure.getDataRefAs<Int32ArrayType>(cellAm.createChildPath("MTRIds"));
   REQUIRE(mtrIds.getNumberOfComponents() == 1);
   REQUIRE(mtrIds.getNumberOfTuples() == expectedTuples);
 
   // Eulers: Float32, 3 components, 10000 tuples.
-  auto& eulers = dataStructure.getDataRefAs<Float32Array>(cellAm.createChildPath("Eulers"));
+  auto& eulers = dataStructure.getDataRefAs<Float32ArrayType>(cellAm.createChildPath("Eulers"));
   REQUIRE(eulers.getNumberOfComponents() == 3);
   REQUIRE(eulers.getNumberOfTuples() == expectedTuples);
 
@@ -231,7 +231,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   }
 
   // Seed array records 42.
-  auto& seedArray = dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
+  auto& seedArray = dataStructure.getDataRefAs<UInt64ArrayType>(DataPath({"MTRSim SeedValue"}));
   REQUIRE(seedArray[0] == 42);
 
   // Loose volume-fraction wiring check (NOT a statistics check; rigorous VF
@@ -247,7 +247,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
 
 TEST_CASE("MTRSim::MTRSimFilter: Rejects too few Theta List rows", "[MTRSim][MTRSimFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -258,12 +258,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects too few Theta List rows", "[MTRSim][MTR
   args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45, 0.1}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0", "[MTRSim][MTRSimFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -274,20 +274,20 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Volume Fraction not summing to 1.0", "[
   args.insertOrAssign(MTRSimFilter::k_VolumeFractions_Key, DynamicTableParameter::ValueType{{0.2, 0.2, 0.2}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
           "Colors array",
           "[MTRSim][MTRSimFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
   for(const auto& path : compPaths)
   {
-    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    auto& arr = dataStructure.getDataRefAs<Float64ArrayType>(path);
     arr.fill(1.0);
   }
 
@@ -298,7 +298,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
   args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
@@ -306,7 +306,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
   const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
   constexpr usize k_ExpectedTuples = 100 * 100;
 
-  auto& rgb = dataStructure.getDataRefAs<UInt8Array>(cellAm.createChildPath("Polar Colors"));
+  auto& rgb = dataStructure.getDataRefAs<UInt8ArrayType>(cellAm.createChildPath("Polar Colors"));
   REQUIRE(rgb.getNumberOfComponents() == 3);
   REQUIRE(rgb.getNumberOfTuples() == k_ExpectedTuples);
   uint64 sum = 0;
@@ -321,13 +321,13 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring OFF omits Polar "
           "Colors array",
           "[MTRSim][MTRSimFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
   for(const auto& path : compPaths)
   {
-    auto& arr = dataStructure.getDataRefAs<Float64Array>(path);
+    auto& arr = dataStructure.getDataRefAs<Float64ArrayType>(path);
     arr.fill(1.0);
   }
 
@@ -338,18 +338,18 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring OFF omits Polar "
   args.insertOrAssign(MTRSimFilter::k_SeedValue_Key, static_cast<uint64>(42));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
-  REQUIRE(dataStructure.getDataAs<UInt8Array>(cellAm.createChildPath("Polar Colors")) == nullptr);
+  REQUIRE(dataStructure.getDataAs<UInt8ArrayType>(cellAm.createChildPath("Polar Colors")) == nullptr);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count", "[MTRSim][MTRSimFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -362,12 +362,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Rejects Theta List rows with wrong column count
   args.insertOrAssign(MTRSimFilter::k_ThetaList_Key, DynamicTableParameter::ValueType{{0.1, 0.45}, {0.08, 0.37}});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Config-mode preflight VALID and grid size from config", "[MTRSim][MTRSimFilter][Config]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -388,17 +388,17 @@ TEST_CASE("MTRSim::MTRSimFilter: Config-mode preflight VALID and grid size from 
   args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{configPath});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
-  auto& mtrIds = dataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath("MTRIds"));
+  auto& mtrIds = dataStructure.getDataRefAs<Int32ArrayType>(cellAm.createChildPath("MTRIds"));
   REQUIRE(mtrIds.getNumberOfTuples() == 1500);
 
   // Seed array records the config seed (42).
-  auto& seedArray = dataStructure.getDataRefAs<UInt64Array>(DataPath({"MTRSim SeedValue"}));
+  auto& seedArray = dataStructure.getDataRefAs<UInt64ArrayType>(DataPath({"MTRSim SeedValue"}));
   REQUIRE(seedArray[0] == 42);
 
   std::filesystem::remove(configPath);
@@ -406,7 +406,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Config-mode preflight VALID and grid size from 
 
 TEST_CASE("MTRSim::MTRSimFilter: Config-mode missing file rejects at preflight", "[MTRSim][MTRSimFilter][Config][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   const std::vector<DataPath> compPaths = BuildOdfDataStructure(dataStructure, 3);
@@ -420,12 +420,12 @@ TEST_CASE("MTRSim::MTRSimFilter: Config-mode missing file rejects at preflight",
   args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{missing});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 }
 
 TEST_CASE("MTRSim::MTRSimFilter: Config-mode VF/component mismatch rejects at preflight", "[MTRSim][MTRSimFilter][Config][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
   // Select 3 ODF components but provide only 2 volume fractions in the config (fires -13502).
@@ -446,7 +446,7 @@ TEST_CASE("MTRSim::MTRSimFilter: Config-mode VF/component mismatch rejects at pr
   args.insertOrAssign(MTRSimFilter::k_ConfigFilePath_Key, FileSystemPathParameter::ValueType{configPath});
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_INVALID(preflightResult.output_actions);
 
   std::filesystem::remove(configPath);
 }

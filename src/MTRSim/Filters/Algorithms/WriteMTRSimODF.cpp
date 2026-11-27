@@ -52,7 +52,7 @@ Result<> WriteMTRSimODF::operator()()
       return {};
     }
 
-    const auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(m_InputValues->odfComponents[c]);
+    const auto& componentArray = m_DataStructure.getDataRefAs<Float64ArrayType>(m_InputValues->odfComponents[c]);
     const auto& store = componentArray.getDataStoreRef();
 
     m_MessageHandler.sendInfoMessage(fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));

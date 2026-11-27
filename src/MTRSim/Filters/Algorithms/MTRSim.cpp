@@ -73,8 +73,8 @@ Result<> MTRSim::operator()()
 
   // 1. ODF grid geometry (degrees) from the input ODF ImageGeom.
   const auto& odfGeom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputOdfGeometryPath);
-  const SizeVec3 odfDims = odfGeom.getDimensions();  // X=phi2, Y=PHI, Z=phi1
-  const FloatVec3 odfSpacing = odfGeom.getSpacing(); // degrees
+  const SizeVec3Type odfDims = odfGeom.getDimensions();  // X=phi2, Y=PHI, Z=phi1
+  const FloatVec3Type odfSpacing = odfGeom.getSpacing(); // degrees
   const int n2 = static_cast<int>(odfDims[0]);
   const int nPHI = static_cast<int>(odfDims[1]);
   const int n1 = static_cast<int>(odfDims[2]);
@@ -87,7 +87,7 @@ Result<> MTRSim::operator()()
   components.reserve(m_InputValues->odfComponentPaths.size());
   for(const auto& path : m_InputValues->odfComponentPaths)
   {
-    const auto& arr = m_DataStructure.getDataRefAs<Float64Array>(path);
+    const auto& arr = m_DataStructure.getDataRefAs<Float64ArrayType>(path);
     const auto& store = arr.getDataStoreRef();
     std::vector<double> values(store.begin(), store.end());
     components.push_back(mtrsim::gridToODFComponent(values, n1, nPHI, n2, static_cast<double>(odfSpacing[2]), static_cast<double>(odfSpacing[1]), static_cast<double>(odfSpacing[0])));
@@ -133,8 +133,8 @@ Result<> MTRSim::operator()()
 
   // 5. Write MTR ids + Euler arrays (output geometry cell AM).
   const DataPath cellAm = m_InputValues->outputGeometryPath.createChildPath(m_InputValues->cellAttrMatName);
-  auto& mtrIds = m_DataStructure.getDataRefAs<Int32Array>(cellAm.createChildPath(m_InputValues->mtrIdsArrayName));
-  auto& eulers = m_DataStructure.getDataRefAs<Float32Array>(cellAm.createChildPath(m_InputValues->eulersArrayName));
+  auto& mtrIds = m_DataStructure.getDataRefAs<Int32ArrayType>(cellAm.createChildPath(m_InputValues->mtrIdsArrayName));
+  auto& eulers = m_DataStructure.getDataRefAs<Float32ArrayType>(cellAm.createChildPath(m_InputValues->eulersArrayName));
   auto& mtrStore = mtrIds.getDataStoreRef();
   auto& eulerStore = eulers.getDataStoreRef();
 
@@ -173,7 +173,7 @@ Result<> MTRSim::applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataP
   mtrsim::IPFMapper mapper{mtrsim::CrystalSystem::HCP};
   const std::vector<mtrsim::RGBColor> colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, mtrsim::IPFColorScheme::MatLab);
 
-  auto& rgb = m_DataStructure.getDataRefAs<UInt8Array>(cellAttrMatPath.createChildPath(m_InputValues->polarColorsArrayName));
+  auto& rgb = m_DataStructure.getDataRefAs<UInt8ArrayType>(cellAttrMatPath.createChildPath(m_InputValues->polarColorsArrayName));
   auto& store = rgb.getDataStoreRef();
   for(std::size_t i = 0; i < n; ++i)
   {

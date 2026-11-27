@@ -41,7 +41,7 @@ namespace
 class AccumulateWorker
 {
 public:
-  AccumulateWorker(const Float32Array& eulers, const Int32Array& phases, const UInt32Array& crystalStructures, int32 selectedPhase, const MaskCompareUtilities::MaskCompare* mask,
+  AccumulateWorker(const Float32ArrayType& eulers, const Int32ArrayType& phases, const UInt32ArrayType& crystalStructures, int32 selectedPhase, const mask_compare_utilities::MaskCompare* mask,
                    const mtrsim::ODFBuildParams& params, std::vector<double>& masterValues, std::size_t& masterContributingCount, std::size_t& masterTotalDeposits, std::size_t& masterFailureCount,
                    std::mutex& mergeMutex, const std::atomic_bool& shouldCancel, ComputeODF* algorithm)
   : m_Eulers(eulers)
@@ -187,11 +187,11 @@ public:
   }
 
 private:
-  const Float32Array& m_Eulers;
-  const Int32Array& m_Phases;
-  const UInt32Array& m_CrystalStructures;
+  const Float32ArrayType& m_Eulers;
+  const Int32ArrayType& m_Phases;
+  const UInt32ArrayType& m_CrystalStructures;
   const int32 m_SelectedPhase;
-  const MaskCompareUtilities::MaskCompare* m_Mask;
+  const mask_compare_utilities::MaskCompare* m_Mask;
   const mtrsim::ODFBuildParams& m_Params;
   std::vector<double>& m_MasterValues;
   std::size_t& m_MasterContributingCount;
@@ -230,9 +230,9 @@ Result<> ComputeODF::operator()()
   {
     *m_InputValues->contributingVoxelCount = 0;
   }
-  const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32Array>(m_InputValues->eulerAnglesPath);
-  const auto& phases = m_DataStructure.getDataRefAs<Int32Array>(m_InputValues->phasesPath);
-  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(m_InputValues->crystalStructuresPath);
+  const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32ArrayType>(m_InputValues->eulerAnglesPath);
+  const auto& phases = m_DataStructure.getDataRefAs<Int32ArrayType>(m_InputValues->phasesPath);
+  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32ArrayType>(m_InputValues->crystalStructuresPath);
   const int32 selectedPhase = m_InputValues->selectedPhase;
   if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= crystalStructures.getNumberOfTuples())
   {
@@ -252,12 +252,12 @@ Result<> ComputeODF::operator()()
                                                m_InputValues->crystalStructuresPath.toString(), crystalCode, selectedPhase, allOps.size() - 1));
   }
   // Resolve the optional mask once because repeated lookups in the voxel loop are expensive.
-  std::unique_ptr<MaskCompareUtilities::MaskCompare> maskArray = nullptr;
+  std::unique_ptr<mask_compare_utilities::MaskCompare> maskArray = nullptr;
   if(m_InputValues->useMask)
   {
     try
     {
-      maskArray = MaskCompareUtilities::InstantiateMaskCompare(m_DataStructure, m_InputValues->maskPath);
+      maskArray = mask_compare_utilities::InstantiateMaskCompare(m_DataStructure, m_InputValues->maskPath);
     } catch(const std::out_of_range& exception)
     {
       // Direct algorithm callers can bypass the filter's parameter validation.
@@ -269,7 +269,7 @@ Result<> ComputeODF::operator()()
   }
 
   const DataPath outArrayPath = m_InputValues->outputImageGeometry.createChildPath(m_InputValues->cellAttrMatName).createChildPath(m_InputValues->componentName);
-  auto& outArray = m_DataStructure.getDataRefAs<Float64Array>(outArrayPath);
+  auto& outArray = m_DataStructure.getDataRefAs<Float64ArrayType>(outArrayPath);
   auto& outStore = outArray.getDataStoreRef();
 
   const std::size_t binCount = static_cast<std::size_t>(m_InputValues->nphi1) * static_cast<std::size_t>(m_InputValues->nPHI) * static_cast<std::size_t>(m_InputValues->nphi2);

@@ -50,7 +50,7 @@ Result<> ReadMTRSimODF::operator()()
     }
 
     const DataPath componentPath = cellAttrMatPath.createChildPath(fmt::format("component_{}", c));
-    auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(componentPath);
+    auto& componentArray = m_DataStructure.getDataRefAs<Float64ArrayType>(componentPath);
     auto& store = componentArray.getDataStoreRef();
 
     const auto& srcValues = components[c].values;

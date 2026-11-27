@@ -38,7 +38,7 @@
 namespace fs = std::filesystem;
 
 using namespace nx::core;
-using namespace nx::core::UnitTest;
+using namespace nx::core::unit_test;
 
 namespace
 {
@@ -52,7 +52,7 @@ constexpr int32 k_ExpectedNumComponents = 3;
 
 TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadMTRSimODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/simulation_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -71,12 +71,12 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
 
   // Preflight
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   // PreflightUpdatedValues: must surface the prefix label so the UI can preview
   // it.
-  REQUIRE(!preflightResult.outputValues.empty());
-  const bool foundPrefixLabel = std::any_of(preflightResult.outputValues.begin(), preflightResult.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
+  REQUIRE(!preflightResult.output_values.empty());
+  const bool foundPrefixLabel = std::any_of(preflightResult.output_values.begin(), preflightResult.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
   REQUIRE(foundPrefixLabel);
 
   // Execute
@@ -104,13 +104,13 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
   for(int32 c = 0; c < k_ExpectedNumComponents; ++c)
   {
     const DataPath componentPath = cellAttrMatPath.createChildPath(fmt::format("component_{}", c));
-    REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64Array>(componentPath));
-    const auto& componentArray = dataStructure.getDataRefAs<Float64Array>(componentPath);
+    REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64ArrayType>(componentPath));
+    const auto& componentArray = dataStructure.getDataRefAs<Float64ArrayType>(componentPath);
     REQUIRE(componentArray.getNumberOfTuples() == k_ExpectedNumTuples);
     REQUIRE(componentArray.getNumberOfComponents() == 1);
   }
 
-  const auto& component0 = dataStructure.getDataRefAs<Float64Array>(cellAttrMatPath.createChildPath("component_0"));
+  const auto& component0 = dataStructure.getDataRefAs<Float64ArrayType>(cellAttrMatPath.createChildPath("component_0"));
   double sum0 = 0.0;
   for(usize i = 0; i < component0.getSize(); ++i)
   {
@@ -121,7 +121,7 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Valid Filter Execution", "[MTRSim][ReadM
 
 TEST_CASE("MTRSim::ReadMTRSimODFFilter: Missing File", "[MTRSim][ReadMTRSimODFFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
 
@@ -133,12 +133,12 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Missing File", "[MTRSim][ReadMTRSimODFFi
   args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Cell Data"}));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
 }
 
 TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads blank ODF fixture", "[MTRSim][ReadMTRSimODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/blank_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -156,7 +156,7 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads blank ODF fixture", "[MTRSim][Read
   args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
@@ -169,8 +169,8 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads blank ODF fixture", "[MTRSim][Read
   REQUIRE(dims[2] == k_ExpectedNPhi1);
 
   const DataPath componentPath = imageGeomPath.createChildPath(cellAttrMatName).createChildPath("component_0");
-  REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64Array>(componentPath));
-  const auto& component0 = dataStructure.getDataRefAs<Float64Array>(componentPath);
+  REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64ArrayType>(componentPath));
+  const auto& component0 = dataStructure.getDataRefAs<Float64ArrayType>(componentPath);
   REQUIRE(component0.getNumberOfTuples() == k_ExpectedNumTuples);
 
   for(usize i = 0; i < component0.getSize(); ++i)
@@ -181,7 +181,7 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads blank ODF fixture", "[MTRSim][Read
 
 TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads uniform ODF fixture", "[MTRSim][ReadMTRSimODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/uniform_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -199,14 +199,14 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads uniform ODF fixture", "[MTRSim][Re
   args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.outputActions);
+  SIMPLNX_RESULT_REQUIRE_VALID(preflightResult.output_actions);
 
   auto executeResult = filter.execute(dataStructure, args);
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath componentPath = imageGeomPath.createChildPath(cellAttrMatName).createChildPath("component_0");
-  REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64Array>(componentPath));
-  const auto& component0 = dataStructure.getDataRefAs<Float64Array>(componentPath);
+  REQUIRE_NOTHROW(dataStructure.getDataRefAs<Float64ArrayType>(componentPath));
+  const auto& component0 = dataStructure.getDataRefAs<Float64ArrayType>(componentPath);
   REQUIRE(component0.getNumberOfTuples() == k_ExpectedNumTuples);
 
   // The source .mat's ODFval is a normalised ODF (sums to 1.0) but is NOT a
@@ -230,7 +230,7 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Reads uniform ODF fixture", "[MTRSim][Re
 
 TEST_CASE("MTRSim::ReadMTRSimODFFilter: Rejects wrong path prefix", "[MTRSim][ReadMTRSimODFFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/simulation_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -245,5 +245,5 @@ TEST_CASE("MTRSim::ReadMTRSimODFFilter: Rejects wrong path prefix", "[MTRSim][Re
   args.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(std::string{"Cell Data"}));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
 }
