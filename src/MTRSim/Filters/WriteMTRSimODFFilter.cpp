@@ -194,10 +194,10 @@ Result<> WriteMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const A
 {
   WriteMTRSimODFInputValues inputValues;
 
-  inputValues.outputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
-  inputValues.hdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
-  inputValues.inputImageGeometry = filterArgs.value<DataPath>(k_InputImageGeometry_Key);
-  inputValues.odfComponents = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_ODFComponents_Key);
+  inputValues.output_file = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
+  inputValues.hdf5_path_prefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
+  inputValues.input_image_geometry = filterArgs.value<DataPath>(k_InputImageGeometry_Key);
+  inputValues.odf_components = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_ODFComponents_Key);
 
   return WriteMTRSimODF(dataStructure, messageHandler, shouldCancel, &inputValues)();
 }

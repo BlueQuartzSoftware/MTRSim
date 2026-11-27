@@ -14,10 +14,10 @@ namespace nx::core
 
 struct MTRSIM_EXPORT WriteMTRSimODFInputValues
 {
-  std::filesystem::path outputFile;
-  std::string hdf5PathPrefix;
-  DataPath inputImageGeometry;
-  std::vector<DataPath> odfComponents;
+  std::filesystem::path output_file;
+  std::string hdf5_path_prefix;
+  DataPath input_image_geometry;
+  std::vector<DataPath> odf_components;
 };
 
 /**

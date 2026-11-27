@@ -21,10 +21,10 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT ODFFileMetadata
 {
-  int64_t numComponents;                       ///< Number of ODF components stored in the file (>= 1).
-  std::array<int64_t, 3> dimsPhi1PHIPhi2;      ///< Number of bins per axis; phi1
+  int64_t num_components;                       ///< Number of ODF components stored in the file (>= 1).
+  std::array<int64_t, 3> dims_phi1_phi_phi2;      ///< Number of bins per axis; phi1
                                                ///< slowest-varying, phi2 fastest.
-  std::array<double, 3> spacingDegPhi1PHIPhi2; ///< Uniform bin size in DEGREES, one per axis.
+  std::array<double, 3> spacing_deg_phi1_phi_phi2; ///< Uniform bin size in DEGREES, one per axis.
 };
 
 /**
@@ -62,7 +62,7 @@ struct LIBMTRSIM_EXPORT ODFFileComponent
  *                            prefix group, missing dataset, inconsistent bins,
  *                            non-uniform spacing, etc.)
  */
-LIBMTRSIM_EXPORT ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
+LIBMTRSIM_EXPORT ODFFileMetadata ReadOdfMetadata(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
 
 /**
  * @brief Full read of metadata plus every component's ODFval array.
@@ -72,7 +72,7 @@ LIBMTRSIM_EXPORT ODFFileMetadata readODFMetadata(const std::filesystem::path& fi
  *
  * @throws std::runtime_error on any validation or read failure.
  */
-LIBMTRSIM_EXPORT std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
+LIBMTRSIM_EXPORT std::vector<ODFFileComponent> ReadOdfComponents(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
 
 /**
  * @brief Write an HDF5 file round-trip-compatible with the MATLAB ODF format.
@@ -96,7 +96,7 @@ LIBMTRSIM_EXPORT std::vector<ODFFileComponent> readODFComponents(const std::file
  *
  * @throws std::runtime_error on any invalid input or HDF5 error.
  */
-LIBMTRSIM_EXPORT void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2,
+LIBMTRSIM_EXPORT void WriteOdfFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2,
                                    const std::vector<ODFFileComponent>& components, const std::string& pathPrefix = "/ODF_best");
 
 /**
@@ -113,6 +113,6 @@ LIBMTRSIM_EXPORT void writeODFFile(const std::filesystem::path& file, const std:
  * @throws std::runtime_error if the file can't be opened or the field exists
  *         but isn't an int64 scalar.
  */
-LIBMTRSIM_EXPORT std::optional<int64_t> tryReadFixtureVersion(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
+LIBMTRSIM_EXPORT std::optional<int64_t> TryReadFixtureVersion(const std::filesystem::path& file, const std::string& pathPrefix = "/ODF_best");
 
 } // namespace mtrsim

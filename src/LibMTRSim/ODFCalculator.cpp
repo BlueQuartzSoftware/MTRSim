@@ -175,10 +175,10 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
   }
 
   ODFComponent result;
-  result.odfVal = std::move(odfVal);
-  result.phi1Bins = std::move(phi1Bins);
-  result.phiBins = std::move(phiBins);
-  result.phi2Bins = std::move(phi2Bins);
+  result.odf_val = std::move(odfVal);
+  result.phi1_bins = std::move(phi1Bins);
+  result.phi_bins = std::move(phiBins);
+  result.phi2_bins = std::move(phi2Bins);
   return result;
 }
 

@@ -785,9 +785,9 @@ TEST_CASE("MTRSim::ComputeODFFilter: Execution validates selected crystal metada
 {
   auto inputs = BuildSyntheticEbsd({{{11.0F, 22.0F, 33.0F}}}, {1}, 999);
   ComputeODFInputValues values{};
-  values.eulerAnglesPath = inputs.euler_angles_path;
-  values.phasesPath = inputs.phases_path;
-  values.crystalStructuresPath = inputs.crystal_structures_path;
+  values.euler_angles_path = inputs.euler_angles_path;
+  values.phases_path = inputs.phases_path;
+  values.crystal_structures_path = inputs.crystal_structures_path;
   int32 expectedCode = -12217;
   SECTION("unknown selected code")
   {
@@ -801,12 +801,12 @@ TEST_CASE("MTRSim::ComputeODFFilter: Execution validates selected crystal metada
   }
   SECTION("phase zero")
   {
-    values.selectedPhase = 0;
+    values.selected_phase = 0;
     expectedCode = -12216;
   }
   SECTION("phase outside tuple range")
   {
-    values.selectedPhase = 2;
+    values.selected_phase = 2;
     expectedCode = -12216;
   }
   const std::atomic_bool shouldCancel = false;
@@ -1177,7 +1177,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
     WARN("Reference HDF5 not present at " << refPath.string() << " - " << regenerateMsg);
     return;
   }
-  const std::optional<int64> refFixtureVersion = mtrsim::tryReadFixtureVersion(refPath.string());
+  const std::optional<int64> refFixtureVersion = mtrsim::TryReadFixtureVersion(refPath.string());
   if(!refFixtureVersion.has_value())
   {
     WARN("Reference HDF5 at " << refPath.string() << " has no /ODF_best/fixture_version field "
@@ -1192,7 +1192,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Targeted MATLAB calc_ODF.m bin-by-bin "
     return;
   }
 
-  const auto refComponents = mtrsim::readODFComponents(refPath.string());
+  const auto refComponents = mtrsim::ReadOdfComponents(refPath.string());
   REQUIRE(refComponents.size() == 1);
   const auto& refValues = refComponents[0].values;
 
@@ -1354,7 +1354,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Realistic 640x640 HCP scan validation "
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   // --- Diff bin-by-bin against the MATLAB reference
-  const auto refComponents = mtrsim::readODFComponents(refFile);
+  const auto refComponents = mtrsim::ReadOdfComponents(refFile);
   REQUIRE(refComponents.size() == 1);
   const auto& refValues = refComponents[0].values;
 

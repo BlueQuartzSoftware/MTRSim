@@ -30,12 +30,12 @@ namespace mtrsim
 
 PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpacing)
 {
-  const int nTotal = static_cast<int>(component.odfVal.size());
+  const int nTotal = static_cast<int>(component.odf_val.size());
   if(nTotal < 1)
   {
     throw std::invalid_argument("PoleFigure::fromODF — empty ODFComponent");
   }
-  if(component.phi1Bins.size() != static_cast<Eigen::Index>(nTotal) || component.phiBins.size() != static_cast<Eigen::Index>(nTotal) || component.phi2Bins.size() != static_cast<Eigen::Index>(nTotal))
+  if(component.phi1_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi2_bins.size() != static_cast<Eigen::Index>(nTotal))
   {
     throw std::invalid_argument("PoleFigure::fromODF — ODFComponent bin "
                                 "vectors have inconsistent sizes");
@@ -66,14 +66,14 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpac
 
   for(int m = 0; m < nTotal; ++m)
   {
-    const double v = component.odfVal[m];
+    const double v = component.odf_val[m];
     if(v <= 0.0)
     {
       continue;
     }
 
-    const double phi1M = component.phi1Bins[m];
-    const double phiM = component.phiBins[m];
+    const double phi1M = component.phi1_bins[m];
+    const double phiM = component.phi_bins[m];
 
     // ── [0001] direction in sample frame: last row of G ──────────────────────
     // G[2,0] = sin(phi1)*sin(PHI), G[2,1] = −cos(phi1)*sin(PHI), G[2,2] =

@@ -158,29 +158,29 @@ EBSDData MTRDataLoader::load(const std::string& directoryPath)
   // ───────────────────────────────────────────────────────
   EBSDData data;
 
-  data.spatialCoords.resize(n, 2);
+  data.spatial_coords.resize(n, 2);
   for(int i = 0; i < n; ++i)
   {
-    data.spatialCoords(i, 0) = xVals[static_cast<std::size_t>(i)];
-    data.spatialCoords(i, 1) = yVals[static_cast<std::size_t>(i)];
+    data.spatial_coords(i, 0) = xVals[static_cast<std::size_t>(i)];
+    data.spatial_coords(i, 1) = yVals[static_cast<std::size_t>(i)];
   }
 
-  data.eulerAngles.resize(n, 3);
+  data.euler_angles.resize(n, 3);
   for(int i = 0; i < n; ++i)
   {
     const std::size_t base = static_cast<std::size_t>(i * nColsEuler);
-    data.eulerAngles(i, 0) = eulerFlat[base];
-    data.eulerAngles(i, 1) = eulerFlat[base + 1];
-    data.eulerAngles(i, 2) = eulerFlat[base + 2];
+    data.euler_angles(i, 0) = eulerFlat[base];
+    data.euler_angles(i, 1) = eulerFlat[base + 1];
+    data.euler_angles(i, 2) = eulerFlat[base + 2];
   }
 
-  data.parentIds.resize(n);
-  data.isMTR.resize(n);
+  data.parent_ids.resize(n);
+  data.is_mtr.resize(n);
   for(int i = 0; i < n; ++i)
   {
     const std::size_t si = static_cast<std::size_t>(i);
-    data.parentIds[i] = static_cast<int>(parentVals[si]);
-    data.isMTR[i] = (boolVals[si] != 0.0);
+    data.parent_ids[i] = static_cast<int>(parentVals[si]);
+    data.is_mtr[i] = (boolVals[si] != 0.0);
   }
 
   return data;

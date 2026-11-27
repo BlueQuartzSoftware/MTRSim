@@ -66,21 +66,21 @@ Result<> GenerateODFSections::operator()()
     return {};
   }
 
-  const auto& inputArray = m_DataStructure.getDataRefAs<IDataArray>(values.odfArrayPath);
-  auto ebsdValues = ebsdlib::DoubleArrayType::CreateArray(inputArray.getNumberOfTuples(), {1ULL}, values.odfArrayPath.toString(), true);
+  const auto& inputArray = m_DataStructure.getDataRefAs<IDataArray>(values.odf_array_path);
+  auto ebsdValues = ebsdlib::DoubleArrayType::CreateArray(inputArray.getNumberOfTuples(), {1ULL}, values.odf_array_path.toString(), true);
   ExecuteDataFunction(CopyODFToDouble{}, inputArray.getDataType(), inputArray, *ebsdValues, m_ShouldCancel);
   if(m_ShouldCancel)
   {
     return {};
   }
 
-  auto controls = color_table_utilities::ExtractControlPoints(values.colorTablePreset);
+  auto controls = color_table_utilities::ExtractControlPoints(values.color_table_preset);
   if(controls.invalid())
   {
-    return MakeErrorResult(-12322, fmt::format("Could not resolve color preset '{}' for ODF '{}' and phase {}: {}", values.colorTablePreset, values.odfArrayPath.toString(), values.phaseIndex,
+    return MakeErrorResult(-12322, fmt::format("Could not resolve color preset '{}' for ODF '{}' and phase {}: {}", values.color_table_preset, values.odf_array_path.toString(), values.phase_index,
                                                controls.errors().front().message));
   }
-  const auto& imageGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.inputImageGeometryPath);
+  const auto& imageGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.input_image_geometry_path);
   const auto origin = imageGeom.getOrigin();
   const auto spacing = imageGeom.getSpacing();
   ebsdlib::ODFSectionConfiguration config;
@@ -90,13 +90,13 @@ Result<> GenerateODFSections::operator()()
   config.grid.originDeg = {origin[2], origin[1], origin[0]};
   config.grid.spacingDeg = {spacing[2], spacing[1], spacing[0]};
   config.grid.units = values.units;
-  config.grid.laueOpsIndex = values.crystalStructure;
-  config.sectionCount = static_cast<usize>(values.numberOfSections);
-  config.sectionsPerRow = static_cast<usize>(values.sectionsPerRow);
-  config.sectionWidth = values.sectionWidth;
-  config.scaleMode = values.scaleMode;
-  config.manualMinimumMUD = values.manualMinimumMUD;
-  config.manualMaximumMUD = values.manualMaximumMUD;
+  config.grid.laueOpsIndex = values.crystal_structure;
+  config.sectionCount = static_cast<usize>(values.number_of_sections);
+  config.sectionsPerRow = static_cast<usize>(values.sections_per_row);
+  config.sectionWidth = values.section_width;
+  config.scaleMode = values.scale_mode;
+  config.manualMinimumMUD = values.manual_minimum_mud;
+  config.manualMaximumMUD = values.manual_maximum_mud;
   // SIMPLNX presets can use arbitrary scalar positions; EbsdLib accepts normalized positions.
   const auto binPoints = color_table_utilities::NormalizeBinPoints(controls.value());
   config.colorControlPoints = std::move(controls.value());
@@ -105,8 +105,8 @@ Result<> GenerateODFSections::operator()()
     config.colorControlPoints[colorIndex * 4] = binPoints[colorIndex];
   }
   config.title = values.title;
-  config.materialName = values.materialName;
-  config.phaseNumber = values.phaseIndex;
+  config.materialName = values.material_name;
+  config.phaseNumber = values.phase_index;
 
   m_MessageHandler.sendInfoMessage("Composing ODF sections");
   if(m_ShouldCancel)
@@ -117,7 +117,7 @@ Result<> GenerateODFSections::operator()()
   if(!result)
   {
     return MakeErrorResult(-12321,
-                           fmt::format("Could not render ODF '{}' for phase {}: {} (EbsdLib code {}).", values.odfArrayPath.toString(), values.phaseIndex, result.errorMessage, result.errorCode));
+                           fmt::format("Could not render ODF '{}' for phase {}: {} (EbsdLib code {}).", values.odf_array_path.toString(), values.phase_index, result.errorMessage, result.errorCode));
   }
   m_MessageHandler.sendInfoMessage(fmt::format("ODF section scale: minimum MUD = {}, maximum MUD = {}.", result.appliedMinimumMUD, result.appliedMaximumMUD));
   if(m_ShouldCancel)
@@ -125,7 +125,7 @@ Result<> GenerateODFSections::operator()()
     return {};
   }
 
-  if(values.saveAsImageGeometry)
+  if(values.save_as_image_geometry)
   {
     m_MessageHandler.sendInfoMessage("Copying ODF section RGB pixels");
     if(m_ShouldCancel)
@@ -133,7 +133,7 @@ Result<> GenerateODFSections::operator()()
       return {};
     }
     // Deferred preflight reserves the largest page. Actual phase data determines the final dimensions.
-    auto& outputGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.outputImageGeometryPath);
+    auto& outputGeom = m_DataStructure.getDataRefAs<ImageGeom>(values.output_image_geometry_path);
     outputGeom.setDimensions({static_cast<usize>(result.width), static_cast<usize>(result.height), 1});
     auto& cellData = outputGeom.getCellDataRef();
     const ShapeType tupleShape = {1, static_cast<usize>(result.height), static_cast<usize>(result.width)};
@@ -145,7 +145,7 @@ Result<> GenerateODFSections::operator()()
         return resizeResult;
       }
     }
-    const auto rgbPath = values.outputImageGeometryPath.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
+    const auto rgbPath = values.output_image_geometry_path.createChildPath("Cell Data").createChildPath("ODF Sections RGB");
     auto& outputRgb = m_DataStructure.getDataRefAs<UInt8ArrayType>(rgbPath);
     const auto* rgbaPtr = result.image->getPointer(0);
     const usize width = static_cast<usize>(result.width);
@@ -164,14 +164,14 @@ Result<> GenerateODFSections::operator()()
       }
     }
   }
-  if(values.writePng)
+  if(values.write_png)
   {
     m_MessageHandler.sendInfoMessage("Writing ODF section PNG");
     if(m_ShouldCancel)
     {
       return {};
     }
-    auto atomicResult = AtomicFile::Create(values.outputPngPath);
+    auto atomicResult = AtomicFile::Create(values.output_png_path);
     if(atomicResult.invalid())
     {
       return ConvertResult(std::move(atomicResult));
@@ -180,7 +180,7 @@ Result<> GenerateODFSections::operator()()
     const auto pngResult = PngWriter::WriteColorImage(atomicFile.tempFilePath().string(), result.width, result.height, 4, result.image->getPointer(0));
     if(pngResult.first < 0)
     {
-      return MakeErrorResult(-12330, fmt::format("Could not write ODF section PNG '{}': {} (writer code {}).", values.outputPngPath.string(), pngResult.second, pngResult.first));
+      return MakeErrorResult(-12330, fmt::format("Could not write ODF section PNG '{}': {} (writer code {}).", values.output_png_path.string(), pngResult.second, pngResult.first));
     }
     if(m_ShouldCancel)
     {

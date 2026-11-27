@@ -72,7 +72,7 @@ Result<> MTRSim::operator()()
   m_MessageHandler.sendInfoMessage("Reading ODF geometry...");
 
   // 1. ODF grid geometry (degrees) from the input ODF ImageGeom.
-  const auto& odfGeom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputOdfGeometryPath);
+  const auto& odfGeom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->input_odf_geometry_path);
   const SizeVec3Type odfDims = odfGeom.getDimensions();  // X=phi2, Y=PHI, Z=phi1
   const FloatVec3Type odfSpacing = odfGeom.getSpacing(); // degrees
   const int n2 = static_cast<int>(odfDims[0]);
@@ -84,26 +84,26 @@ Result<> MTRSim::operator()()
   // layout gridToODFComponent expects, so we copy values in their natural
   // order.
   std::vector<mtrsim::ODFComponent> components;
-  components.reserve(m_InputValues->odfComponentPaths.size());
-  for(const auto& path : m_InputValues->odfComponentPaths)
+  components.reserve(m_InputValues->odf_component_paths.size());
+  for(const auto& path : m_InputValues->odf_component_paths)
   {
     const auto& arr = m_DataStructure.getDataRefAs<Float64ArrayType>(path);
     const auto& store = arr.getDataStoreRef();
     std::vector<double> values(store.begin(), store.end());
-    components.push_back(mtrsim::gridToODFComponent(values, n1, nPHI, n2, static_cast<double>(odfSpacing[2]), static_cast<double>(odfSpacing[1]), static_cast<double>(odfSpacing[0])));
+    components.push_back(mtrsim::GridToOdfComponent(values, n1, nPHI, n2, static_cast<double>(odfSpacing[2]), static_cast<double>(odfSpacing[1]), static_cast<double>(odfSpacing[0])));
   }
 
   // 3. SimulationParams — always built from m_InputValues, which executeImpl has
   // already populated from either the config file or the manual UI fields.
   mtrsim::SimulationParams params;
-  params.xLen = m_InputValues->physicalSize[0];
-  params.yLen = m_InputValues->physicalSize[1];
-  params.zLen = m_InputValues->physicalSize[2];
-  params.dx = m_InputValues->physicalSpacing[0];
-  params.dy = m_InputValues->physicalSpacing[1];
-  params.dz = m_InputValues->physicalSpacing[2];
-  params.volumeFractions = m_InputValues->volumeFractions[0]; // 1 row
-  params.thetaList = m_InputValues->thetaList;
+  params.x_len = m_InputValues->physical_size[0];
+  params.y_len = m_InputValues->physical_size[1];
+  params.z_len = m_InputValues->physical_size[2];
+  params.dx = m_InputValues->physical_spacing[0];
+  params.dy = m_InputValues->physical_spacing[1];
+  params.dz = m_InputValues->physical_spacing[2];
+  params.volume_fractions = m_InputValues->volume_fractions[0]; // 1 row
+  params.theta_list = m_InputValues->theta_list;
   params.seed = m_InputValues->seed;
   // The rng below is seeded from m_InputValues->seed; SimulationParams::seed is
   // not consulted by simulateMTR, but we populate it for completeness.
@@ -120,7 +120,7 @@ Result<> MTRSim::operator()()
   mtrsim::MTRSimResult sim;
   try
   {
-    sim = mtrsim::simulateMTR(params, components, rng, n1, nPHI, n2, &observer);
+    sim = mtrsim::SimulateMtr(params, components, rng, n1, nPHI, n2, &observer);
   } catch(const std::exception& e)
   {
     return MakeErrorResult(-13550, fmt::format("MTR simulation failed: {}", e.what()));
@@ -132,16 +132,16 @@ Result<> MTRSim::operator()()
   }
 
   // 5. Write MTR ids + Euler arrays (output geometry cell AM).
-  const DataPath cellAm = m_InputValues->outputGeometryPath.createChildPath(m_InputValues->cellAttrMatName);
-  auto& mtrIds = m_DataStructure.getDataRefAs<Int32ArrayType>(cellAm.createChildPath(m_InputValues->mtrIdsArrayName));
-  auto& eulers = m_DataStructure.getDataRefAs<Float32ArrayType>(cellAm.createChildPath(m_InputValues->eulersArrayName));
+  const DataPath cellAm = m_InputValues->output_geometry_path.createChildPath(m_InputValues->cell_attr_mat_name);
+  auto& mtrIds = m_DataStructure.getDataRefAs<Int32ArrayType>(cellAm.createChildPath(m_InputValues->mtr_ids_array_name));
+  auto& eulers = m_DataStructure.getDataRefAs<Float32ArrayType>(cellAm.createChildPath(m_InputValues->eulers_array_name));
   auto& mtrStore = mtrIds.getDataStoreRef();
   auto& eulerStore = eulers.getDataStoreRef();
 
-  const std::size_t n = sim.mtrIndex.size();
+  const std::size_t n = sim.mtr_index.size();
   for(std::size_t i = 0; i < n; ++i)
   {
-    mtrStore[i] = sim.mtrIndex[i];
+    mtrStore[i] = sim.mtr_index[i];
     eulerStore[i * 3 + 0] = static_cast<float>(sim.phi1[i]);
     eulerStore[i * 3 + 1] = static_cast<float>(sim.phi[i]);
     eulerStore[i * 3 + 2] = static_cast<float>(sim.phi2[i]);
@@ -149,7 +149,7 @@ Result<> MTRSim::operator()()
 
   m_MessageHandler.sendInfoMessage("MTR simulation complete.");
 
-  if(m_InputValues->generatePolarColoring)
+  if(m_InputValues->generate_polar_coloring)
   {
     m_MessageHandler.sendInfoMessage("Computing polar coloring...");
     auto colorResult = applyPolarColoring(sim, cellAm);
@@ -173,7 +173,7 @@ Result<> MTRSim::applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataP
   mtrsim::IPFMapper mapper{mtrsim::CrystalSystem::HCP};
   const std::vector<mtrsim::RGBColor> colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, mtrsim::IPFColorScheme::MatLab);
 
-  auto& rgb = m_DataStructure.getDataRefAs<UInt8ArrayType>(cellAttrMatPath.createChildPath(m_InputValues->polarColorsArrayName));
+  auto& rgb = m_DataStructure.getDataRefAs<UInt8ArrayType>(cellAttrMatPath.createChildPath(m_InputValues->polar_colors_array_name));
   auto& store = rgb.getDataStoreRef();
   for(std::size_t i = 0; i < n; ++i)
   {

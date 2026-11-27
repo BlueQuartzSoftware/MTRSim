@@ -24,7 +24,7 @@ namespace mtrsim
  *   phiBins[ix]  = (iPHI + 0.5) *   pi / nPHI
  *   phi2Bins[ix] = (i2   + 0.5) * 2*pi / n2
  */
-LIBMTRSIM_EXPORT ODFComponent buildUniformODF(int n1, int nPHI, int n2);
+LIBMTRSIM_EXPORT ODFComponent BuildUniformOdf(int n1, int nPHI, int n2);
 
 /**
  * @brief Reconstruct an ODF component from flat grid data + degree spacing.
@@ -36,7 +36,7 @@ LIBMTRSIM_EXPORT ODFComponent buildUniformODF(int n1, int nPHI, int n2);
  * @param stepDeg1,stepDegPHI,stepDeg2  Bin sizes [degrees] (geometry spacing).
  * @return ODFComponent with bin centres [rad] and values normalized to sum 1.
  */
-LIBMTRSIM_EXPORT ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2);
+LIBMTRSIM_EXPORT ODFComponent GridToOdfComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2);
 
 /**
  * @brief Remap a per-voxel vector from simulation order to SIMPLNX z,y,x order.
@@ -48,7 +48,7 @@ LIBMTRSIM_EXPORT ODFComponent gridToODFComponent(const std::vector<double>& valu
  * @tparam T element type (int or double).
  */
 template <typename T>
-std::vector<T> remapSimToZYX(const std::vector<T>& in, int nx, int ny, int nz)
+std::vector<T> RemapSimToZyx(const std::vector<T>& in, int nx, int ny, int nz)
 {
   std::vector<T> out(in.size());
   for(int iz = 0; iz < nz; ++iz)
@@ -75,7 +75,7 @@ struct LIBMTRSIM_EXPORT MTRSimResult
   int ny = 0;
   int nz = 0;
   bool cancelled = false;        ///< true if the run was aborted via ISimulationObserver
-  std::vector<int32_t> mtrIndex; ///< 1-based component id per voxel, length N
+  std::vector<int32_t> mtr_index; ///< 1-based component id per voxel, length N
   std::vector<double> phi1;      ///< Euler phi1 [rad] per voxel, length N
   std::vector<double> phi;       ///< Euler PHI  [rad] per voxel, length N
   std::vector<double> phi2;      ///< Euler phi2 [rad] per voxel, length N
@@ -93,7 +93,7 @@ struct LIBMTRSIM_EXPORT MTRSimResult
  * @param rng            Seeded RNG (mt19937_64).
  * @param n1,nPHI,n2     Bin counts of the ODF grid (for the uniform reference).
  */
-LIBMTRSIM_EXPORT MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2,
+LIBMTRSIM_EXPORT MTRSimResult SimulateMtr(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2,
                                           ISimulationObserver* observer = nullptr);
 
 } // namespace mtrsim

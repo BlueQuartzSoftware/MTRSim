@@ -65,7 +65,7 @@ public:
   /**
    * @brief Defines the optional section presentation title.
    */
-  static constexpr StringLiteralType k_ODF_Image_Title_Key = "odf_title";
+  static constexpr StringLiteralType k_OdfImageTitleKey = "odf_title";
   /**
    * @brief Selects the number of constant-phi2 panels.
    */

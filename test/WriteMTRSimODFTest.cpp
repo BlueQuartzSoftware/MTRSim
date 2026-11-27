@@ -93,7 +93,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
 
   // Determine the component paths that were created so we can pass them to the
   // writer.
-  const auto origComponents = mtrsim::readODFComponents(inputFile);
+  const auto origComponents = mtrsim::ReadOdfComponents(inputFile);
   REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
@@ -127,7 +127,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
   REQUIRE(fs::exists(outputFile));
 
   // Byte-exact comparison via libmtrsim.
-  auto roundComponents = mtrsim::readODFComponents(outputFile);
+  auto roundComponents = mtrsim::ReadOdfComponents(outputFile);
   REQUIRE(origComponents.size() == roundComponents.size());
   for(std::size_t c = 0; c < origComponents.size(); ++c)
   {
@@ -222,14 +222,14 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
   REQUIRE(fs::exists(outputFile));
 
   // Read back the metadata and verify axis mapping was reversed correctly.
-  auto meta = mtrsim::readODFMetadata(outputFile);
-  REQUIRE(meta.numComponents == 1);
-  REQUIRE(meta.dimsPhi1PHIPhi2 == std::array<int64_t, 3>{static_cast<int64_t>(k_NumPhi1), static_cast<int64_t>(k_NumPHI), static_cast<int64_t>(k_NumPhi2)});
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[0] - static_cast<double>(k_SpacingPhi1Deg)) < 1e-9);
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[1] - static_cast<double>(k_SpacingPHIDeg)) < 1e-9);
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[2] - static_cast<double>(k_SpacingPhi2Deg)) < 1e-9);
+  auto meta = mtrsim::ReadOdfMetadata(outputFile);
+  REQUIRE(meta.num_components == 1);
+  REQUIRE(meta.dims_phi1_phi_phi2 == std::array<int64_t, 3>{static_cast<int64_t>(k_NumPhi1), static_cast<int64_t>(k_NumPHI), static_cast<int64_t>(k_NumPhi2)});
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[0] - static_cast<double>(k_SpacingPhi1Deg)) < 1e-9);
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[1] - static_cast<double>(k_SpacingPHIDeg)) < 1e-9);
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[2] - static_cast<double>(k_SpacingPhi2Deg)) < 1e-9);
 
-  auto comps = mtrsim::readODFComponents(outputFile);
+  auto comps = mtrsim::ReadOdfComponents(outputFile);
   REQUIRE(comps.size() == 1);
   const auto& vals = comps[0].values;
   REQUIRE(vals.size() == k_NumPhi1 * k_NumPHI * k_NumPhi2);
@@ -302,7 +302,7 @@ void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
 
-  const auto origComponents = mtrsim::readODFComponents(inputFile, readPrefix);
+  const auto origComponents = mtrsim::ReadOdfComponents(inputFile, readPrefix);
   REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
@@ -334,10 +334,10 @@ void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
   // (Only meaningful when writePrefix != "/ODF_best".)
   if(writePrefix != "/ODF_best")
   {
-    REQUIRE_THROWS(mtrsim::readODFMetadata(outputFile));
+    REQUIRE_THROWS(mtrsim::ReadOdfMetadata(outputFile));
   }
 
-  auto roundComponents = mtrsim::readODFComponents(outputFile, writePrefix);
+  auto roundComponents = mtrsim::ReadOdfComponents(outputFile, writePrefix);
   REQUIRE(origComponents.size() == roundComponents.size());
   for(std::size_t c = 0; c < origComponents.size(); ++c)
   {

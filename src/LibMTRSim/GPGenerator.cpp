@@ -8,7 +8,7 @@
 namespace mtrsim
 {
 
-GPGenerator::GPGenerator(std::mt19937_64& rng, CorrelationFn corrFn)
+GPGenerator::GPGenerator(std::mt19937_64& rng, CorrelationFnType corrFn)
 : m_Rng(rng)
 , m_CorrFn(std::move(corrFn))
 {

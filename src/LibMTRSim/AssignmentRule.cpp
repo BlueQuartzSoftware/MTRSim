@@ -85,9 +85,9 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
   const int numGaussians = numComponents - 1;
 
   AssignmentRuleThresholds result;
-  result.numGaussians = numGaussians;
-  result.minThresholds = Eigen::MatrixXd::Zero(numComponents, numGaussians);
-  result.maxThresholds = Eigen::MatrixXd::Zero(numComponents, numGaussians);
+  result.num_gaussians = numGaussians;
+  result.min_thresholds = Eigen::MatrixXd::Zero(numComponents, numGaussians);
+  result.max_thresholds = Eigen::MatrixXd::Zero(numComponents, numGaussians);
 
   // Degenerate case: single component gets everything
   if(numComponents == 1)
@@ -112,8 +112,8 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     const double q = BisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[0]);
     t(goi) = q;
 
-    result.minThresholds.row(0) = s.transpose();
-    result.maxThresholds.row(0) = t.transpose();
+    result.min_thresholds.row(0) = s.transpose();
+    result.max_thresholds.row(0) = t.transpose();
   }
 
   // ── Intermediate components (MATLAB loop aix = 2:num_components-1) ─────────
@@ -126,7 +126,7 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     Eigen::VectorXd s = Eigen::VectorXd::Constant(numGaussians, -k_Inf);
     for(int i = 0; i < coi; ++i)
     {
-      s(i) = result.maxThresholds(i, i);
+      s(i) = result.max_thresholds(i, i);
     }
     Eigen::VectorXd t = Eigen::VectorXd::Constant(numGaussians, k_Inf);
 
@@ -136,8 +136,8 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     const double q = BisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[coi]);
     t(goi) = q;
 
-    result.minThresholds.row(coi) = s.transpose();
-    result.maxThresholds.row(coi) = t.transpose();
+    result.min_thresholds.row(coi) = s.transpose();
+    result.max_thresholds.row(coi) = t.transpose();
   }
 
   // ── Last component (MATLAB coi = num_components)
@@ -148,12 +148,12 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     Eigen::VectorXd s = Eigen::VectorXd::Constant(numGaussians, -k_Inf);
     for(int i = 0; i < coi; ++i)
     {
-      s(i) = result.maxThresholds(i, i);
+      s(i) = result.max_thresholds(i, i);
     }
     const Eigen::VectorXd t = Eigen::VectorXd::Constant(numGaussians, k_Inf);
 
-    result.minThresholds.row(coi) = s.transpose();
-    result.maxThresholds.row(coi) = t.transpose();
+    result.min_thresholds.row(coi) = s.transpose();
+    result.max_thresholds.row(coi) = t.transpose();
   }
 
   return result;
@@ -171,7 +171,7 @@ Eigen::VectorXi AssignmentRule::evaluate(const Eigen::MatrixXd& z, const Assignm
 {
   const int n = static_cast<int>(z.rows());
   const int numGaussians = static_cast<int>(z.cols());
-  const int numComponents = static_cast<int>(thresholds.minThresholds.rows());
+  const int numComponents = static_cast<int>(thresholds.min_thresholds.rows());
 
   Eigen::VectorXi assignments = Eigen::VectorXi::Zero(n);
 
@@ -190,7 +190,7 @@ Eigen::VectorXi AssignmentRule::evaluate(const Eigen::MatrixXd& z, const Assignm
     {
       for(int k = 0; k < numGaussians; ++k)
       {
-        if(z(i, k) < thresholds.minThresholds(j, k) || z(i, k) > thresholds.maxThresholds(j, k))
+        if(z(i, k) < thresholds.min_thresholds(j, k) || z(i, k) > thresholds.max_thresholds(j, k))
         {
           componentList[static_cast<std::size_t>(j)] = 0;
           break; // once eliminated, no need to check remaining Gaussians for

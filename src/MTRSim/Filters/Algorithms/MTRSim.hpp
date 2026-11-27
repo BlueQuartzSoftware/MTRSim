@@ -15,19 +15,19 @@ namespace nx::core
 
 struct MTRSIM_EXPORT MTRSimInputValues
 {
-  DataPath inputOdfGeometryPath;
-  std::vector<DataPath> odfComponentPaths;
-  std::vector<std::vector<double>> volumeFractions; // 1 row x N cols
-  std::vector<std::vector<double>> thetaList;       // M rows x 3 cols
-  std::vector<float32> physicalSize;                // [x,y,z] microns
-  std::vector<float32> physicalSpacing;             // [x,y,z] microns
+  DataPath input_odf_geometry_path;
+  std::vector<DataPath> odf_component_paths;
+  std::vector<std::vector<double>> volume_fractions; // 1 row x N cols
+  std::vector<std::vector<double>> theta_list;       // M rows x 3 cols
+  std::vector<float32> physical_size;                // [x,y,z] microns
+  std::vector<float32> physical_spacing;             // [x,y,z] microns
   uint64 seed{};
-  bool generatePolarColoring{};
-  DataPath outputGeometryPath;
-  std::string cellAttrMatName;
-  std::string mtrIdsArrayName;
-  std::string eulersArrayName;
-  std::string polarColorsArrayName;
+  bool generate_polar_coloring{};
+  DataPath output_geometry_path;
+  std::string cell_attr_mat_name;
+  std::string mtr_ids_array_name;
+  std::string eulers_array_name;
+  std::string polar_colors_array_name;
 };
 
 /**

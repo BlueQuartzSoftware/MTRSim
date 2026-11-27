@@ -13,13 +13,13 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT AssignmentRuleThresholds
 {
-  int numGaussians = 0;
+  int num_gaussians = 0;
 
   // min_thresholds(component, gaussian)  — shape [numComponents x numGaussians]
-  Eigen::MatrixXd minThresholds;
+  Eigen::MatrixXd min_thresholds;
 
   // max_thresholds(component, gaussian)  — shape [numComponents x numGaussians]
-  Eigen::MatrixXd maxThresholds;
+  Eigen::MatrixXd max_thresholds;
 };
 
 /**

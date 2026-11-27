@@ -114,7 +114,7 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   mtrsim::ODFFileMetadata metadata{};
   try
   {
-    metadata = mtrsim::readODFMetadata(pInputFile, pHdf5PathPrefix);
+    metadata = mtrsim::ReadOdfMetadata(pInputFile, pHdf5PathPrefix);
   } catch(const std::exception& e)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-12001, fmt::format("ODF file read failed: {}", e.what()))};
@@ -122,10 +122,10 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
 
   // Axis mapping: phi1 is slowest-varying in the file, phi2 fastest.
   // ImageGeom XYZ must have phi2 as X (fastest), PHI as Y, phi1 as Z (slowest).
-  const std::vector<usize> imageGeomDimsXYZ = {static_cast<usize>(metadata.dimsPhi1PHIPhi2[2]), static_cast<usize>(metadata.dimsPhi1PHIPhi2[1]), static_cast<usize>(metadata.dimsPhi1PHIPhi2[0])};
+  const std::vector<usize> imageGeomDimsXYZ = {static_cast<usize>(metadata.dims_phi1_phi_phi2[2]), static_cast<usize>(metadata.dims_phi1_phi_phi2[1]), static_cast<usize>(metadata.dims_phi1_phi_phi2[0])};
   const std::vector<float32> imageGeomOrigin = {0.0f, 0.0f, 0.0f};
-  const std::vector<float32> imageGeomSpacingXYZ = {static_cast<float32>(metadata.spacingDegPhi1PHIPhi2[2]), static_cast<float32>(metadata.spacingDegPhi1PHIPhi2[1]),
-                                                    static_cast<float32>(metadata.spacingDegPhi1PHIPhi2[0])};
+  const std::vector<float32> imageGeomSpacingXYZ = {static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[2]), static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[1]),
+                                                    static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[0])};
 
   // Tuple shape for the cell-data arrays is ZYX-ordered (simplnx convention).
   // This ordering also matches the row-major layout of
@@ -140,7 +140,7 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   }
 
   const DataPath cellAttrMatPath = pOutputImageGeomPath.createChildPath(pCellAttrMatName);
-  for(int64_t c = 0; c < metadata.numComponents; ++c)
+  for(int64_t c = 0; c < metadata.num_components; ++c)
   {
     DataPath componentPath = cellAttrMatPath.createChildPath(fmt::format("component_{}", c));
     auto createArrayAction = std::make_unique<CreateArrayAction>(DataType::float64, arrayTupleShapeZYX, componentShape, componentPath);
@@ -148,11 +148,11 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   }
 
   preflightUpdatedValues.push_back({"HDF5 Path Prefix", pHdf5PathPrefix});
-  preflightUpdatedValues.push_back({"Components Found", std::to_string(metadata.numComponents)});
-  preflightUpdatedValues.push_back({"Bins (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", metadata.dimsPhi1PHIPhi2[0], metadata.dimsPhi1PHIPhi2[1], metadata.dimsPhi1PHIPhi2[2])});
-  preflightUpdatedValues.push_back({"ImageGeom Dimensions (X, Y, Z)", fmt::format("{} x {} x {}", metadata.dimsPhi1PHIPhi2[2], metadata.dimsPhi1PHIPhi2[1], metadata.dimsPhi1PHIPhi2[0])});
+  preflightUpdatedValues.push_back({"Components Found", std::to_string(metadata.num_components)});
+  preflightUpdatedValues.push_back({"Bins (phi1 x PHI x phi2)", fmt::format("{} x {} x {}", metadata.dims_phi1_phi_phi2[0], metadata.dims_phi1_phi_phi2[1], metadata.dims_phi1_phi_phi2[2])});
+  preflightUpdatedValues.push_back({"ImageGeom Dimensions (X, Y, Z)", fmt::format("{} x {} x {}", metadata.dims_phi1_phi_phi2[2], metadata.dims_phi1_phi_phi2[1], metadata.dims_phi1_phi_phi2[0])});
   preflightUpdatedValues.push_back(
-      {"Spacing (X, Y, Z) [deg]", fmt::format("{:.4f}, {:.4f}, {:.4f}", metadata.spacingDegPhi1PHIPhi2[2], metadata.spacingDegPhi1PHIPhi2[1], metadata.spacingDegPhi1PHIPhi2[0])});
+      {"Spacing (X, Y, Z) [deg]", fmt::format("{:.4f}, {:.4f}, {:.4f}", metadata.spacing_deg_phi1_phi_phi2[2], metadata.spacing_deg_phi1_phi_phi2[1], metadata.spacing_deg_phi1_phi_phi2[0])});
 
   return {.output_actions = std::move(resultOutputActions), .output_values = std::move(preflightUpdatedValues)};
 }
@@ -163,10 +163,10 @@ Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Ar
 {
   ReadMTRSimODFInputValues inputValues;
 
-  inputValues.inputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_InputFile_Key);
-  inputValues.hdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
-  inputValues.outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
-  inputValues.cellAttrMatName = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
+  inputValues.input_file = filterArgs.value<FileSystemPathParameter::ValueType>(k_InputFile_Key);
+  inputValues.hdf5_path_prefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
+  inputValues.output_image_geometry_path = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
+  inputValues.cell_attr_mat_name = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
 
   return ReadMTRSimODF(dataStructure, messageHandler, shouldCancel, &inputValues)();
 }

@@ -16,10 +16,10 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT ODFComponent
 {
-  Eigen::VectorXd odfVal;   ///< Probability mass for each Euler-space bin (N_bins,)
-  Eigen::VectorXd phi1Bins; ///< phi1 bin centres [rad]
-  Eigen::VectorXd phiBins;  ///< PHI  bin centres [rad]
-  Eigen::VectorXd phi2Bins; ///< phi2 bin centres [rad]
+  Eigen::VectorXd odf_val;   ///< Probability mass for each Euler-space bin (N_bins,)
+  Eigen::VectorXd phi1_bins; ///< phi1 bin centres [rad]
+  Eigen::VectorXd phi_bins;  ///< PHI  bin centres [rad]
+  Eigen::VectorXd phi2_bins; ///< phi2 bin centres [rad]
 };
 
 /**

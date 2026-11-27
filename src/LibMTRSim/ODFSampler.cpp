@@ -30,23 +30,23 @@ ODFSampler::ODFSampler(std::mt19937_64& rng)
 
 Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const ODFComponent& uniform, ISimulationObserver* observer)
 {
-  const int nBins = static_cast<int>(component.odfVal.size());
+  const int nBins = static_cast<int>(component.odf_val.size());
   if(nBins < 1)
   {
     throw std::invalid_argument("ODFSampler::sampleN — odfVal is empty");
   }
-  if(uniform.phi1Bins.size() != static_cast<Eigen::Index>(nBins) || uniform.phiBins.size() != static_cast<Eigen::Index>(nBins) || uniform.phi2Bins.size() != static_cast<Eigen::Index>(nBins))
+  if(uniform.phi1_bins.size() != static_cast<Eigen::Index>(nBins) || uniform.phi_bins.size() != static_cast<Eigen::Index>(nBins) || uniform.phi2_bins.size() != static_cast<Eigen::Index>(nBins))
   {
     throw std::invalid_argument("ODFSampler::sampleN — uniform bin vectors do not match odfVal size");
   }
 
   // ── Build normalised CDF ──────────────────────────────────────────────────
-  const double total = component.odfVal.sum();
+  const double total = component.odf_val.sum();
   std::vector<double> cdf(static_cast<std::size_t>(nBins) + 1);
   cdf[0] = 0.0;
   for(int j = 0; j < nBins; ++j)
   {
-    cdf[static_cast<std::size_t>(j) + 1] = cdf[static_cast<std::size_t>(j)] + component.odfVal[j] / total;
+    cdf[static_cast<std::size_t>(j) + 1] = cdf[static_cast<std::size_t>(j)] + component.odf_val[j] / total;
   }
 
   // ── Draw N uniform samples and map to bin indices ─────────────────────────
@@ -75,7 +75,7 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
 
   // ── Infer bin width from the uniform ODF bin centres ─────────────────────
   // For standard 5° spacing: binWidth ≈ 5*π/180 rad.
-  const double binWidth = (nBins > 1) ? (uniform.phi1Bins[1] - uniform.phi1Bins[0]) : (5.0 * std::acos(-1.0) / 180.0);
+  const double binWidth = (nBins > 1) ? (uniform.phi1_bins[1] - uniform.phi1_bins[0]) : (5.0 * std::acos(-1.0) / 180.0);
 
   // ── Assign bin-centre coordinates with independent per-angle jitter ───────
   std::uniform_real_distribution<double> jitter(-0.5 * binWidth, 0.5 * binWidth);
@@ -88,9 +88,9 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
       return Eigen::MatrixXd(0, 3);
     }
     const int b = binIdx[static_cast<std::size_t>(i)];
-    result(i, 0) = uniform.phi1Bins[b] + jitter(m_Rng);
-    result(i, 1) = uniform.phiBins[b] + jitter(m_Rng);
-    result(i, 2) = uniform.phi2Bins[b] + jitter(m_Rng);
+    result(i, 0) = uniform.phi1_bins[b] + jitter(m_Rng);
+    result(i, 1) = uniform.phi_bins[b] + jitter(m_Rng);
+    result(i, 2) = uniform.phi2_bins[b] + jitter(m_Rng);
   }
 
   return result;

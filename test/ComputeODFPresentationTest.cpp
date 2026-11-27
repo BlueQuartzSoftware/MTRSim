@@ -145,12 +145,12 @@ DataStructure CreateDeferredMetadataDataStructure()
 GenerateODFSectionsInputValues ExecutionInputValues()
 {
   GenerateODFSectionsInputValues values;
-  values.inputImageGeometryPath = k_OdfGeometryPath;
-  values.odfArrayPath = k_OdfArrayPath;
-  values.crystalStructure = ebsdlib::CrystalStructure::Hexagonal_High;
-  values.materialName = "Titanium (Alpha)";
+  values.input_image_geometry_path = k_OdfGeometryPath;
+  values.odf_array_path = k_OdfArrayPath;
+  values.crystal_structure = ebsdlib::CrystalStructure::Hexagonal_High;
+  values.material_name = "Titanium (Alpha)";
   values.title = "ODF Sections";
-  values.sectionWidth = 128;
+  values.section_width = 128;
   return values;
 }
 
@@ -166,15 +166,15 @@ DataStructure ComputeNumericData()
 
 Result<> RenderExisting(DataStructure& data, const GenerateODFSectionsInputValues& values)
 {
-  if(values.saveAsImageGeometry)
+  if(values.save_as_image_geometry)
   {
     ebsdlib::ODFSectionConfiguration config;
-    config.grid.laueOpsIndex = values.crystalStructure;
-    config.sectionCount = static_cast<usize>(values.numberOfSections);
-    config.sectionsPerRow = static_cast<usize>(values.sectionsPerRow);
-    config.sectionWidth = values.sectionWidth;
+    config.grid.laueOpsIndex = values.crystal_structure;
+    config.sectionCount = static_cast<usize>(values.number_of_sections);
+    config.sectionsPerRow = static_cast<usize>(values.sections_per_row);
+    config.sectionWidth = values.section_width;
     const auto layout = ebsdlib::ComputeODFSectionLayout(config);
-    const CreateImageGeometryAction geometryAction(values.outputImageGeometryPath, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1}, "Cell Data");
+    const CreateImageGeometryAction geometryAction(values.output_image_geometry_path, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1}, "Cell Data");
     const auto geometryCreated = geometryAction.apply(data, IDataAction::Mode::Execute);
     SIMPLNX_RESULT_REQUIRE_VALID(geometryCreated);
     const CreateArrayAction arrayAction(DataType::uint8, {1, static_cast<usize>(layout.pageHeight), static_cast<usize>(layout.pageWidth)}, {3}, k_RgbPath);
@@ -591,7 +591,7 @@ TEST_CASE("MTRSim::ComputeODFFilter: Internal presentation adapts Float32 and Fl
   auto values = ExecutionInputValues();
   const auto result64 = RenderExisting(data64, values);
   SIMPLNX_RESULT_REQUIRE_VALID(result64);
-  values.odfArrayPath = floatPath;
+  values.odf_array_path = floatPath;
   const auto result32 = RenderExisting(data32, values);
   SIMPLNX_RESULT_REQUIRE_VALID(result32);
   const auto* rgb32Ptr = data32.getDataAs<UInt8ArrayType>(k_RgbPath);
@@ -619,8 +619,8 @@ TEST_CASE("MTRSim::ComputeODFFilter: Invalid presentation values preserve an exi
   // Values outside the rendered crop still require validation.
   (*odfPtr)[odfPtr->getSize() - 1] = value;
   auto values = ExecutionInputValues();
-  values.writePng = true;
-  values.outputPngPath = output.png;
+  values.write_png = true;
+  values.output_png_path = output.png;
   const auto result = RenderExisting(data, values);
   SIMPLNX_RESULT_REQUIRE_INVALID(result);
   const auto& message = result.errors().front().message;

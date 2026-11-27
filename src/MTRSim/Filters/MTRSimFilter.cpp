@@ -196,14 +196,14 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
     mtrsim::SimulationParams cfg;
     try
     {
-      cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
+      cfg = mtrsim::ParseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
     } catch(const std::exception& e)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-13520, fmt::format("MTRSim config file error: {}", e.what()))};
     }
-    pVolumeFractions = {cfg.volumeFractions};
-    pThetaList = cfg.thetaList;
-    pSize = {static_cast<float32>(cfg.xLen), static_cast<float32>(cfg.yLen), static_cast<float32>(cfg.zLen)};
+    pVolumeFractions = {cfg.volume_fractions};
+    pThetaList = cfg.theta_list;
+    pSize = {static_cast<float32>(cfg.x_len), static_cast<float32>(cfg.y_len), static_cast<float32>(cfg.z_len)};
     pSpacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
   }
   else
@@ -296,14 +296,14 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
                                    const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   MTRSimInputValues inputValues;
-  inputValues.inputOdfGeometryPath = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
-  inputValues.odfComponentPaths = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
-  inputValues.generatePolarColoring = filterArgs.value<bool>(k_GeneratePolarColoring_Key);
-  inputValues.outputGeometryPath = filterArgs.value<DataPath>(k_OutputGeometry_Key);
-  inputValues.cellAttrMatName = filterArgs.value<std::string>(k_CellAttrMatName_Key);
-  inputValues.mtrIdsArrayName = filterArgs.value<std::string>(k_MtrIdsArrayName_Key);
-  inputValues.eulersArrayName = filterArgs.value<std::string>(k_EulersArrayName_Key);
-  inputValues.polarColorsArrayName = filterArgs.value<std::string>(k_PolarColorsArrayName_Key);
+  inputValues.input_odf_geometry_path = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
+  inputValues.odf_component_paths = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
+  inputValues.generate_polar_coloring = filterArgs.value<bool>(k_GeneratePolarColoring_Key);
+  inputValues.output_geometry_path = filterArgs.value<DataPath>(k_OutputGeometry_Key);
+  inputValues.cell_attr_mat_name = filterArgs.value<std::string>(k_CellAttrMatName_Key);
+  inputValues.mtr_ids_array_name = filterArgs.value<std::string>(k_MtrIdsArrayName_Key);
+  inputValues.eulers_array_name = filterArgs.value<std::string>(k_EulersArrayName_Key);
+  inputValues.polar_colors_array_name = filterArgs.value<std::string>(k_PolarColorsArrayName_Key);
 
   // Resolve ALL simulation parameters (volume fractions, theta, size, spacing, seed)
   // from whichever source the user has selected — config file or manual fields.
@@ -315,15 +315,15 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
     mtrsim::SimulationParams cfg;
     try
     {
-      cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
+      cfg = mtrsim::ParseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
     } catch(const std::exception& e)
     {
       return MakeErrorResult(-13521, fmt::format("MTRSim config file error: {}", e.what()));
     }
-    inputValues.volumeFractions = {cfg.volumeFractions};
-    inputValues.thetaList = cfg.thetaList;
-    inputValues.physicalSize = {static_cast<float32>(cfg.xLen), static_cast<float32>(cfg.yLen), static_cast<float32>(cfg.zLen)};
-    inputValues.physicalSpacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
+    inputValues.volume_fractions = {cfg.volume_fractions};
+    inputValues.theta_list = cfg.theta_list;
+    inputValues.physical_size = {static_cast<float32>(cfg.x_len), static_cast<float32>(cfg.y_len), static_cast<float32>(cfg.z_len)};
+    inputValues.physical_spacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
     seed = cfg.seed;
     if(seed == 0) // seed:0 (or absent) means "generate one"
     {
@@ -332,10 +332,10 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
   }
   else
   {
-    inputValues.volumeFractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
-    inputValues.thetaList = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
-    inputValues.physicalSize = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
-    inputValues.physicalSpacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
+    inputValues.volume_fractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
+    inputValues.theta_list = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
+    inputValues.physical_size = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
+    inputValues.physical_spacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
     seed = filterArgs.value<uint64>(k_SeedValue_Key);
     if(!filterArgs.value<bool>(k_UseSeed_Key))
     {

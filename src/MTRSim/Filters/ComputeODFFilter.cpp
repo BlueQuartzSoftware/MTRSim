@@ -172,7 +172,7 @@ Parameters ComputeODFFilter::parameters() const
   params.insert(std::make_unique<DataGroupCreationParameter>(k_OutputPresentationGeometry_Key, "Output Image Geometry", "Path for the RGB montage geometry.", DataPath({"ODF Sections"})));
 
   params.insertSeparator(Parameters::Separator{"Presentation"});
-  params.insert(std::make_unique<StringParameter>(k_ODF_Image_Title_Key, "ODF Figure Title", "Title drawn above the ODF section montage.", "ODF Sections"));
+  params.insert(std::make_unique<StringParameter>(k_OdfImageTitleKey, "ODF Figure Title", "Title drawn above the ODF section montage.", "ODF Sections"));
   params.insert(std::make_unique<Int32ParameterType>(k_NumSections_Key, "Number of Sections", "Number of constant-phi2 sections.", 6));
   params.insert(std::make_unique<Int32ParameterType>(k_SectionsPerRow_Key, "Sections Per Row", "Number of section panels in each row.", 2));
   params.insert(std::make_unique<Int32ParameterType>(k_SectionWidth_Key, "Section Width (pixels)", "Width of each ODF section panel in pixels.", 768));
@@ -541,7 +541,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   config.manualMinimumMUD = manualMinimum;
   config.manualMaximumMUD = manualMaximum;
   config.colorControlPoints = std::move(colorControls.value());
-  config.title = filterArgs.value<StringParameter::ValueType>(k_ODF_Image_Title_Key);
+  config.title = filterArgs.value<StringParameter::ValueType>(k_OdfImageTitleKey);
   if(hasMaterialName)
   {
     config.materialName = (*materialNamesPtr)[static_cast<usize>(selectedPhase)];
@@ -598,29 +598,29 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
 
   ComputeODFInputValues inputValues;
   usize contributingVoxelCount = 0;
-  inputValues.contributingVoxelCount = &contributingVoxelCount;
+  inputValues.contributing_voxel_count = &contributingVoxelCount;
 
-  inputValues.selectedPhase = filterArgs.value<int32>(k_PhaseIndex_Key);
-  inputValues.applySmoothing = filterArgs.value<bool>(k_ApplySmoothing_Key);
-  inputValues.outputUnits = filterArgs.value<ChoicesParameter::ValueType>(k_OutputUnits_Key);
-  inputValues.useMask = filterArgs.value<bool>(k_UseMask_Key);
-  inputValues.eulerAnglesPath = filterArgs.value<DataPath>(k_EulerAngles_Key);
-  inputValues.phasesPath = filterArgs.value<DataPath>(k_Phases_Key);
-  inputValues.crystalStructuresPath = filterArgs.value<DataPath>(k_CrystalStructures_Key);
-  inputValues.maskPath = filterArgs.value<DataPath>(k_MaskArrayPath_Key);
-  inputValues.componentName = filterArgs.value<DataObjectNameParameter::ValueType>(k_ComponentName_Key);
+  inputValues.selected_phase = filterArgs.value<int32>(k_PhaseIndex_Key);
+  inputValues.apply_smoothing = filterArgs.value<bool>(k_ApplySmoothing_Key);
+  inputValues.output_units = filterArgs.value<ChoicesParameter::ValueType>(k_OutputUnits_Key);
+  inputValues.use_mask = filterArgs.value<bool>(k_UseMask_Key);
+  inputValues.euler_angles_path = filterArgs.value<DataPath>(k_EulerAngles_Key);
+  inputValues.phases_path = filterArgs.value<DataPath>(k_Phases_Key);
+  inputValues.crystal_structures_path = filterArgs.value<DataPath>(k_CrystalStructures_Key);
+  inputValues.mask_path = filterArgs.value<DataPath>(k_MaskArrayPath_Key);
+  inputValues.component_name = filterArgs.value<DataObjectNameParameter::ValueType>(k_ComponentName_Key);
 
   if(!isAppendMode)
   {
-    inputValues.binSizeDeg = static_cast<double>(filterArgs.value<float32>(k_BinSizeDeg_Key));
-    inputValues.outputImageGeometry = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
-    inputValues.cellAttrMatName = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
+    inputValues.bin_size_deg = static_cast<double>(filterArgs.value<float32>(k_BinSizeDeg_Key));
+    inputValues.output_image_geometry = filterArgs.value<DataPath>(k_OutputImageGeometry_Key);
+    inputValues.cell_attr_mat_name = filterArgs.value<DataObjectNameParameter::ValueType>(k_CellAttrMatName_Key);
 
     // Pre-compute axis dims here so the algorithm does not have to repeat it.
     // Preflight has already validated that binSizeDeg cleanly divides 360 and
     // 180, so std::round is exact.
-    inputValues.nphi1 = static_cast<int32_t>(std::round(360.0 / inputValues.binSizeDeg));
-    inputValues.nPHI = static_cast<int32_t>(std::round(180.0 / inputValues.binSizeDeg));
+    inputValues.nphi1 = static_cast<int32_t>(std::round(360.0 / inputValues.bin_size_deg));
+    inputValues.n_phi = static_cast<int32_t>(std::round(180.0 / inputValues.bin_size_deg));
     inputValues.nphi2 = inputValues.nphi1;
   }
   else
@@ -631,11 +631,11 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
     const auto& existingGeom = dataStructure.getDataRefAs<ImageGeom>(pExistingOdfGeomPath);
     const FloatVec3Type spacing = existingGeom.getSpacing();
 
-    inputValues.outputImageGeometry = pExistingOdfGeomPath;
-    inputValues.cellAttrMatName = existingGeom.getCellDataPath().getTargetName();
-    inputValues.binSizeDeg = static_cast<double>(spacing[0]);
+    inputValues.output_image_geometry = pExistingOdfGeomPath;
+    inputValues.cell_attr_mat_name = existingGeom.getCellDataPath().getTargetName();
+    inputValues.bin_size_deg = static_cast<double>(spacing[0]);
     inputValues.nphi2 = static_cast<int32_t>(existingGeom.getNumXCells());
-    inputValues.nPHI = static_cast<int32_t>(existingGeom.getNumYCells());
+    inputValues.n_phi = static_cast<int32_t>(existingGeom.getNumYCells());
     inputValues.nphi1 = static_cast<int32_t>(existingGeom.getNumZCells());
   }
 
@@ -650,7 +650,7 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
     return MergeResults(
         std::move(result),
         MakeErrorResult(-12324, fmt::format("Cannot create ODF presentation for phase {}: no voxels contributed. Check the phase labels and mask, or disable both presentation outputs.",
-                                            inputValues.selectedPhase)));
+                                            inputValues.selected_phase)));
   }
 
   const auto materialNamesPath = filterArgs.value<DataPath>(k_MaterialNames_Key);
@@ -659,28 +659,28 @@ Result<> ComputeODFFilter::executeImpl(DataStructure& dataStructure, const Argum
   {
     return MergeResults(std::move(result),
                         MakeErrorResult(-12323, fmt::format("Material Names '{}' values for phase {} are not available during ODF presentation. Execute the upstream material-data reader first.",
-                                                            materialNamesPath.toString(), inputValues.selectedPhase)));
+                                                            materialNamesPath.toString(), inputValues.selected_phase)));
   }
 
   GenerateODFSectionsInputValues presentationValues;
-  presentationValues.inputImageGeometryPath = inputValues.outputImageGeometry;
-  presentationValues.odfArrayPath = inputValues.outputImageGeometry.createChildPath(inputValues.cellAttrMatName).createChildPath(inputValues.componentName);
-  presentationValues.units = inputValues.outputUnits == 0 ? ebsdlib::ODFValueUnits::CountDensity : ebsdlib::ODFValueUnits::MUD;
-  presentationValues.phaseIndex = inputValues.selectedPhase;
-  presentationValues.crystalStructure = dataStructure.getDataRefAs<UInt32ArrayType>(inputValues.crystalStructuresPath)[static_cast<usize>(inputValues.selectedPhase)];
-  presentationValues.materialName = materialNames[static_cast<usize>(inputValues.selectedPhase)];
-  presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_ODF_Image_Title_Key);
-  presentationValues.numberOfSections = filterArgs.value<int32>(k_NumSections_Key);
-  presentationValues.sectionsPerRow = filterArgs.value<int32>(k_SectionsPerRow_Key);
-  presentationValues.sectionWidth = filterArgs.value<int32>(k_SectionWidth_Key);
-  presentationValues.colorTablePreset = filterArgs.value<CreateColorMapParameter::ValueType>(k_ColorTablePreset_Key);
-  presentationValues.scaleMode = filterArgs.value<ChoicesParameter::ValueType>(k_ScaleMode_Key) == 0 ? ebsdlib::ODFScaleMode::Automatic : ebsdlib::ODFScaleMode::Manual;
-  presentationValues.manualMinimumMUD = filterArgs.value<float64>(k_ManualMinimum_Key);
-  presentationValues.manualMaximumMUD = filterArgs.value<float64>(k_ManualMaximum_Key);
-  presentationValues.writePng = filterArgs.value<bool>(k_WritePng_Key);
-  presentationValues.outputPngPath = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputPngPath_Key);
-  presentationValues.saveAsImageGeometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
-  presentationValues.outputImageGeometryPath = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
+  presentationValues.input_image_geometry_path = inputValues.output_image_geometry;
+  presentationValues.odf_array_path = inputValues.output_image_geometry.createChildPath(inputValues.cell_attr_mat_name).createChildPath(inputValues.component_name);
+  presentationValues.units = inputValues.output_units == 0 ? ebsdlib::ODFValueUnits::CountDensity : ebsdlib::ODFValueUnits::MUD;
+  presentationValues.phase_index = inputValues.selected_phase;
+  presentationValues.crystal_structure = dataStructure.getDataRefAs<UInt32ArrayType>(inputValues.crystal_structures_path)[static_cast<usize>(inputValues.selected_phase)];
+  presentationValues.material_name = materialNames[static_cast<usize>(inputValues.selected_phase)];
+  presentationValues.title = filterArgs.value<StringParameter::ValueType>(k_OdfImageTitleKey);
+  presentationValues.number_of_sections = filterArgs.value<int32>(k_NumSections_Key);
+  presentationValues.sections_per_row = filterArgs.value<int32>(k_SectionsPerRow_Key);
+  presentationValues.section_width = filterArgs.value<int32>(k_SectionWidth_Key);
+  presentationValues.color_table_preset = filterArgs.value<CreateColorMapParameter::ValueType>(k_ColorTablePreset_Key);
+  presentationValues.scale_mode = filterArgs.value<ChoicesParameter::ValueType>(k_ScaleMode_Key) == 0 ? ebsdlib::ODFScaleMode::Automatic : ebsdlib::ODFScaleMode::Manual;
+  presentationValues.manual_minimum_mud = filterArgs.value<float64>(k_ManualMinimum_Key);
+  presentationValues.manual_maximum_mud = filterArgs.value<float64>(k_ManualMaximum_Key);
+  presentationValues.write_png = filterArgs.value<bool>(k_WritePng_Key);
+  presentationValues.output_png_path = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputPngPath_Key);
+  presentationValues.save_as_image_geometry = filterArgs.value<bool>(k_SaveAsImageGeometry_Key);
+  presentationValues.output_image_geometry_path = filterArgs.value<DataPath>(k_OutputPresentationGeometry_Key);
 
   return MergeResults(std::move(result), GenerateODFSections(dataStructure, messageHandler, shouldCancel, &presentationValues)());
 }

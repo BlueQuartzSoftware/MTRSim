@@ -8,7 +8,7 @@
 namespace mtrsim
 {
 
-SimulationParams parseConfigJson(const std::filesystem::path& path)
+SimulationParams ParseConfigJson(const std::filesystem::path& path)
 {
   std::ifstream f(path);
   if(!f.is_open())
@@ -21,15 +21,15 @@ SimulationParams parseConfigJson(const std::filesystem::path& path)
     const nlohmann::json j = nlohmann::json::parse(f);
     if(j.contains("xLen"))
     {
-      params.xLen = j["xLen"].get<double>();
+      params.x_len = j["xLen"].get<double>();
     }
     if(j.contains("yLen"))
     {
-      params.yLen = j["yLen"].get<double>();
+      params.y_len = j["yLen"].get<double>();
     }
     if(j.contains("zLen"))
     {
-      params.zLen = j["zLen"].get<double>();
+      params.z_len = j["zLen"].get<double>();
     }
     if(j.contains("dx"))
     {
@@ -45,19 +45,19 @@ SimulationParams parseConfigJson(const std::filesystem::path& path)
     }
     if(j.contains("volumeFractions"))
     {
-      params.volumeFractions = j["volumeFractions"].get<std::vector<double>>();
+      params.volume_fractions = j["volumeFractions"].get<std::vector<double>>();
     }
     if(j.contains("thetaList"))
     {
-      params.thetaList = j["thetaList"].get<std::vector<std::vector<double>>>();
+      params.theta_list = j["thetaList"].get<std::vector<std::vector<double>>>();
     }
     if(j.contains("nuggetVariance"))
     {
-      params.nuggetVariance = j["nuggetVariance"].get<std::vector<double>>();
+      params.nugget_variance = j["nuggetVariance"].get<std::vector<double>>();
     }
     if(j.contains("odfInputPath"))
     {
-      params.odfInputPath = j["odfInputPath"].get<std::string>();
+      params.odf_input_path = j["odfInputPath"].get<std::string>();
     }
     if(j.contains("seed"))
     {

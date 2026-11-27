@@ -38,18 +38,18 @@ PGRFSimulation::PGRFSimulation(std::mt19937_64& rng)
 PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserver* observer)
 {
   // ── Grid dimensions ──────────────────────────────────────────────────────
-  const int nx = static_cast<int>(std::round(params.xLen / params.dx));
-  const int ny = static_cast<int>(std::round(params.yLen / params.dy));
-  const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
+  const int nx = static_cast<int>(std::round(params.x_len / params.dx));
+  const int ny = static_cast<int>(std::round(params.y_len / params.dy));
+  const int nz = std::max(static_cast<int>(std::round(params.z_len / params.dz)), 1);
   const int n = nx * ny * nz;
-  const int numComponents = static_cast<int>(params.volumeFractions.size());
+  const int numComponents = static_cast<int>(params.volume_fractions.size());
   const int numGaussians = numComponents - 1;
 
   if(numGaussians < 1)
   {
     throw std::invalid_argument("PGRFSimulation: need at least 2 volume fraction components");
   }
-  if(static_cast<int>(params.thetaList.size()) < numGaussians)
+  if(static_cast<int>(params.theta_list.size()) < numGaussians)
   {
     throw std::invalid_argument("PGRFSimulation: thetaList must have one row per latent Gaussian");
   }
@@ -65,7 +65,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     observer->info("PGRFSimulation: selecting assignment rule thresholds...");
   }
   AssignmentRule ar(m_Rng);
-  const AssignmentRuleThresholds thresholds = ar.selectThresholds(params.volumeFractions);
+  const AssignmentRuleThresholds thresholds = ar.selectThresholds(params.volume_fractions);
 
   // ── Exponential correlation function: rho(lag, theta) = exp(-|lag|/theta) ─
   // Matches MATLAB: corr_func_name = 'exp', boundary_conditions = 'nonperiodic'
@@ -88,7 +88,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
       observer->updateProgress(h, numGaussians, fmt::format("Simulating latent Gaussian field {}/{}", h + 1, numGaussians));
     }
 
-    const auto& thetaRow = params.thetaList[static_cast<std::size_t>(h)];
+    const auto& thetaRow = params.theta_list[static_cast<std::size_t>(h)];
     if(thetaRow.size() < 3)
     {
       throw std::invalid_argument("PGRFSimulation: each thetaList row must have 3 elements [theta_x, "
@@ -112,11 +112,11 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     const int count = (mtrIndex.array() == j).count();
     if(observer != nullptr)
     {
-      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(n), params.volumeFractions[static_cast<std::size_t>(j - 1)]));
+      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(n), params.volume_fractions[static_cast<std::size_t>(j - 1)]));
     }
   }
 
-  return PGRFResult{.mtrIndex = mtrIndex, .latentFields = zAll};
+  return PGRFResult{.mtr_index = mtrIndex, .latent_fields = zAll};
 }
 
 } // namespace mtrsim

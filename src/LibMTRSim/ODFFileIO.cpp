@@ -314,7 +314,7 @@ std::string JoinPath(const std::string& normalizedPrefix, const std::string& lea
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::string& pathPrefix)
+ODFFileMetadata ReadOdfMetadata(const std::filesystem::path& file, const std::string& pathPrefix)
 {
   if(!std::filesystem::exists(file))
   {
@@ -446,18 +446,18 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
   constexpr double k_RadToDeg = 180.0 / std::numbers::pi;
 
   ODFFileMetadata md{};
-  md.numComponents = numComponents;
-  md.dimsPhi1PHIPhi2 = {nphi1, nPHI, nphi2};
-  md.spacingDegPhi1PHIPhi2 = {stepPhi1 * k_RadToDeg, stepPHI * k_RadToDeg, stepPhi2 * k_RadToDeg};
+  md.num_components = numComponents;
+  md.dims_phi1_phi_phi2 = {nphi1, nPHI, nphi2};
+  md.spacing_deg_phi1_phi_phi2 = {stepPhi1 * k_RadToDeg, stepPHI * k_RadToDeg, stepPhi2 * k_RadToDeg};
   return md;
 }
 
-std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& file, const std::string& pathPrefix)
+std::vector<ODFFileComponent> ReadOdfComponents(const std::filesystem::path& file, const std::string& pathPrefix)
 {
   const std::string prefix = NormalizePathPrefix(pathPrefix);
 
   // Full validation up front — throws if anything is wrong.
-  const ODFFileMetadata md = readODFMetadata(file, prefix);
+  const ODFFileMetadata md = ReadOdfMetadata(file, prefix);
 
   // Re-suppress HDF5 default error printing for our own file ops
   H5ErrorSuppressor suppressErrors;
@@ -468,11 +468,11 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
     throw std::runtime_error("ODFFileIO: cannot open HDF5 file: " + file.string());
   }
 
-  const std::size_t expectedSize = static_cast<std::size_t>(md.dimsPhi1PHIPhi2[0]) * static_cast<std::size_t>(md.dimsPhi1PHIPhi2[1]) * static_cast<std::size_t>(md.dimsPhi1PHIPhi2[2]);
+  const std::size_t expectedSize = static_cast<std::size_t>(md.dims_phi1_phi_phi2[0]) * static_cast<std::size_t>(md.dims_phi1_phi_phi2[1]) * static_cast<std::size_t>(md.dims_phi1_phi_phi2[2]);
 
   std::vector<ODFFileComponent> out;
-  out.reserve(static_cast<std::size_t>(md.numComponents));
-  for(int64_t j = 0; j < md.numComponents; ++j)
+  out.reserve(static_cast<std::size_t>(md.num_components));
+  for(int64_t j = 0; j < md.num_components; ++j)
   {
     const std::string base = ComponentGroupName(prefix, j);
     std::vector<double> buf = ReadDoubleVector(f.get(), base + "/ODFval");
@@ -491,7 +491,7 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
   return out;
 }
 
-void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2, const std::vector<ODFFileComponent>& components,
+void WriteOdfFile(const std::filesystem::path& file, const std::array<int64_t, 3>& dimsPhi1PHIPhi2, const std::array<double, 3>& spacingDegPhi1PHIPhi2, const std::vector<ODFFileComponent>& components,
                   const std::string& pathPrefix)
 {
   if(components.empty())
@@ -575,7 +575,7 @@ void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3
   }
 }
 
-std::optional<int64_t> tryReadFixtureVersion(const std::filesystem::path& file, const std::string& pathPrefix)
+std::optional<int64_t> TryReadFixtureVersion(const std::filesystem::path& file, const std::string& pathPrefix)
 {
   if(!std::filesystem::exists(file))
   {

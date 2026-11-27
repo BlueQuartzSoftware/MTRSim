@@ -18,24 +18,24 @@ namespace nx::core
  */
 struct MTRSIM_EXPORT GenerateODFSectionsInputValues
 {
-  DataPath inputImageGeometryPath;
-  DataPath odfArrayPath;
+  DataPath input_image_geometry_path;
+  DataPath odf_array_path;
   ebsdlib::ODFValueUnits units = ebsdlib::ODFValueUnits::MUD;
-  uint32 crystalStructure = 0;
-  std::string materialName;
-  int32 phaseIndex = 1;
+  uint32 crystal_structure = 0;
+  std::string material_name;
+  int32 phase_index = 1;
   std::string title;
-  int32 numberOfSections = 6;
-  int32 sectionsPerRow = 3;
-  int32 sectionWidth = 512;
-  std::string colorTablePreset = "Rainbow Blended White";
-  ebsdlib::ODFScaleMode scaleMode = ebsdlib::ODFScaleMode::Automatic;
-  float64 manualMinimumMUD = 0.0;
-  float64 manualMaximumMUD = 1.0;
-  bool writePng = false;
-  std::filesystem::path outputPngPath;
-  bool saveAsImageGeometry = true;
-  DataPath outputImageGeometryPath = DataPath({"ODF Sections"});
+  int32 number_of_sections = 6;
+  int32 sections_per_row = 3;
+  int32 section_width = 512;
+  std::string color_table_preset = "Rainbow Blended White";
+  ebsdlib::ODFScaleMode scale_mode = ebsdlib::ODFScaleMode::Automatic;
+  float64 manual_minimum_mud = 0.0;
+  float64 manual_maximum_mud = 1.0;
+  bool write_png = false;
+  std::filesystem::path output_png_path;
+  bool save_as_image_geometry = true;
+  DataPath output_image_geometry_path = DataPath({"ODF Sections"});
 };
 
 /**
