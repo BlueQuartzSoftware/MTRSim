@@ -113,7 +113,7 @@ Parameters MTRSimFilter::parameters() const
   params.insert(std::make_unique<MultiArraySelectionParameter>(k_OdfComponentArrays_Key, "ODF Component Arrays",
                                                                "Ordered list of per-component ODF cell arrays. Order maps to Volume "
                                                                "Fraction columns.",
-                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypeSetType{IArray::ArrayType::DataArray},
+                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedArrayTypes{IArray::ArrayType::DataArray},
                                                                GetAllNumericTypes(), MultiArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Random Number Seed Parameters"});

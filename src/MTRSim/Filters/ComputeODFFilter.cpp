@@ -104,12 +104,14 @@ Parameters ComputeODFFilter::parameters() const
                                                           "Per-voxel Bunge Euler angles (phi1, PHI, phi2) in radians. Must be a "
                                                           "3-component Float32 array on a cell-level "
                                                           "AttributeMatrix.",
-                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::float32}, ArraySelectionParameter::AllowedComponentShapesType{{3}}));
+                                                          DataPath{}, GetDataArrayOnlyTypes(), ArraySelectionParameter::AllowedDataTypes{DataType::float32},
+                                                          ArraySelectionParameter::AllowedComponentShapesType{{3}}));
   params.insert(std::make_unique<ArraySelectionParameter>(k_Phases_Key, "Cell Phases",
                                                           "Per-voxel phase label (1-based; 0 marks excluded voxels). Must be a "
                                                           "1-component Int32 array on the same "
                                                           "AttributeMatrix as the Euler angles.",
-                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::int32}, ArraySelectionParameter::AllowedComponentShapesType{{1}}));
+                                                          DataPath{}, GetDataArrayOnlyTypes(), ArraySelectionParameter::AllowedDataTypes{DataType::int32},
+                                                          ArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Optional Data Mask"});
   params.insertLinkableParameter(
@@ -118,7 +120,7 @@ Parameters ComputeODFFilter::parameters() const
                                                           "Per-voxel boolean mask. Must be a 1-component Bool array on the same "
                                                           "AttributeMatrix as the Euler angles. Only "
                                                           "consulted when 'Use Mask Array' is enabled.",
-                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::boolean, DataType::uint8},
+                                                          DataPath{}, GetDataArrayOnlyTypes(), ArraySelectionParameter::AllowedDataTypes{DataType::boolean, DataType::uint8},
                                                           ArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Required Input Ensemble Data"});
@@ -128,7 +130,8 @@ Parameters ComputeODFFilter::parameters() const
                                                           "Cubic_High). Must be a 1-component "
                                                           "UInt32 array on the ensemble-level AttributeMatrix; indexed by phase "
                                                           "label.",
-                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::uint32}, ArraySelectionParameter::AllowedComponentShapesType{{1}}));
+                                                          DataPath{}, GetDataArrayOnlyTypes(), ArraySelectionParameter::AllowedDataTypes{DataType::uint32},
+                                                          ArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Output Mode"});
   params.insertLinkableParameter(std::make_unique<ChoicesParameter>(k_OutputMode_Key, "Output Mode",
