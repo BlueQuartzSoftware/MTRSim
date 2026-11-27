@@ -56,7 +56,7 @@ public:
   /**
    * @brief Releases the algorithm resources.
    */
-  ~GenerateODFSections() noexcept;
+  ~GenerateODFSections() noexcept = default;
 
   GenerateODFSections(const GenerateODFSections&) = delete;
   GenerateODFSections(GenerateODFSections&&) noexcept = delete;

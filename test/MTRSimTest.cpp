@@ -50,22 +50,22 @@ const std::string k_CellAttrMatName = "Cell Data";
 // DataPaths.
 std::vector<DataPath> BuildOdfDataStructure(DataStructure& dataStructure, usize numComponents)
 {
-  ImageGeom* imageGeom = ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
-  REQUIRE(imageGeom->setSpacing({5.0f, 5.0f, 5.0f}).valid());
-  REQUIRE(imageGeom->setOrigin({0.0f, 0.0f, 0.0f}).valid());
-  imageGeom->setDimensions({k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
+  ImageGeom* imageGeomPtr = ImageGeom::Create(dataStructure, k_OdfGeomPath.getTargetName());
+  REQUIRE(imageGeomPtr->setSpacing({5.0f, 5.0f, 5.0f}).valid());
+  REQUIRE(imageGeomPtr->setOrigin({0.0f, 0.0f, 0.0f}).valid());
+  imageGeomPtr->setDimensions({k_NPhi2, k_NPHI, k_NPhi1}); // X(phi2), Y(PHI), Z(phi1)
 
   // ZYX tuple shape (slowest to fastest)
   const ShapeType tupleShape = {k_NPhi1, k_NPHI, k_NPhi2};
 
-  AttributeMatrix* cellAM = AttributeMatrix::Create(dataStructure, k_CellAttrMatName, tupleShape, imageGeom->getId());
+  AttributeMatrix* cellAmPtr = AttributeMatrix::Create(dataStructure, k_CellAttrMatName, tupleShape, imageGeomPtr->getId());
 
   std::vector<DataPath> compPaths;
   const DataPath cellAttrMatPath = k_OdfGeomPath.createChildPath(k_CellAttrMatName);
   for(usize c = 0; c < numComponents; ++c)
   {
     const std::string name = fmt::format("component_{}", c);
-    CreateTestDataArray<float64>(dataStructure, name, tupleShape, {1}, cellAM->getId());
+    CreateTestDataArray<float64>(dataStructure, name, tupleShape, {1}, cellAmPtr->getId());
     compPaths.push_back(cellAttrMatPath.createChildPath(name));
   }
   return compPaths;
@@ -211,23 +211,23 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute wires simulation to output arrays", "[M
   REQUIRE(distinct >= 2);
 
   // Euler values finite and within Bunge bounds (interleaved 3/voxel).
-  constexpr float twoPi = 2.0f * std::numbers::pi_v<float>;
+  constexpr float k_TwoPi = 2.0f * std::numbers::pi_v<float>;
 
   const auto& eulerStore = eulers.getDataStoreRef();
   for(usize t = 0; t < expectedTuples; ++t)
   {
     const float phi1 = eulerStore[t * 3 + 0];
-    const float Phi = eulerStore[t * 3 + 1];
+    const float phi = eulerStore[t * 3 + 1];
     const float phi2 = eulerStore[t * 3 + 2];
     REQUIRE(std::isfinite(phi1));
-    REQUIRE(std::isfinite(Phi));
+    REQUIRE(std::isfinite(phi));
     REQUIRE(std::isfinite(phi2));
     REQUIRE(phi1 >= 0.0f);
-    REQUIRE(phi1 <= twoPi);
-    REQUIRE(Phi >= 0.0f);
-    REQUIRE(Phi <= std::numbers::pi_v<float>);
+    REQUIRE(phi1 <= k_TwoPi);
+    REQUIRE(phi >= 0.0f);
+    REQUIRE(phi <= std::numbers::pi_v<float>);
     REQUIRE(phi2 >= 0.0f);
-    REQUIRE(phi2 <= twoPi);
+    REQUIRE(phi2 <= k_TwoPi);
   }
 
   // Seed array records 42.
@@ -304,11 +304,11 @@ TEST_CASE("MTRSim::MTRSimFilter: Execute with polar coloring ON fills Polar "
   SIMPLNX_RESULT_REQUIRE_VALID(executeResult.result);
 
   const DataPath cellAm = DataPath({"MTR Microstructure"}).createChildPath("Cell Data");
-  constexpr usize expectedTuples = 100 * 100;
+  constexpr usize k_ExpectedTuples = 100 * 100;
 
   auto& rgb = dataStructure.getDataRefAs<UInt8Array>(cellAm.createChildPath("Polar Colors"));
   REQUIRE(rgb.getNumberOfComponents() == 3);
-  REQUIRE(rgb.getNumberOfTuples() == expectedTuples);
+  REQUIRE(rgb.getNumberOfTuples() == k_ExpectedTuples);
   uint64 sum = 0;
   for(usize i = 0; i < rgb.getSize(); ++i)
   {

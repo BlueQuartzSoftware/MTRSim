@@ -65,7 +65,6 @@ MTRSim::MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesg
 }
 
 // -----------------------------------------------------------------------------
-MTRSim::~MTRSim() noexcept = default;
 
 // -----------------------------------------------------------------------------
 Result<> MTRSim::operator()()
@@ -139,8 +138,8 @@ Result<> MTRSim::operator()()
   auto& mtrStore = mtrIds.getDataStoreRef();
   auto& eulerStore = eulers.getDataStoreRef();
 
-  const std::size_t N = sim.mtrIndex.size();
-  for(std::size_t i = 0; i < N; ++i)
+  const std::size_t n = sim.mtrIndex.size();
+  for(std::size_t i = 0; i < n; ++i)
   {
     mtrStore[i] = sim.mtrIndex[i];
     eulerStore[i * 3 + 0] = static_cast<float>(sim.phi1[i]);
@@ -166,17 +165,17 @@ Result<> MTRSim::operator()()
 // -----------------------------------------------------------------------------
 Result<> MTRSim::applyPolarColoring(const mtrsim::MTRSimResult& sim, const DataPath& cellAttrMatPath)
 {
-  const std::size_t N = sim.phi1.size();
-  Eigen::VectorXd phi1 = Eigen::Map<const Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(N));
-  Eigen::VectorXd phi = Eigen::Map<const Eigen::VectorXd>(sim.phi.data(), static_cast<Eigen::Index>(N));
-  Eigen::VectorXd phi2 = Eigen::Map<const Eigen::VectorXd>(sim.phi2.data(), static_cast<Eigen::Index>(N));
+  const std::size_t n = sim.phi1.size();
+  Eigen::VectorXd phi1 = Eigen::Map<const Eigen::VectorXd>(sim.phi1.data(), static_cast<Eigen::Index>(n));
+  Eigen::VectorXd phi = Eigen::Map<const Eigen::VectorXd>(sim.phi.data(), static_cast<Eigen::Index>(n));
+  Eigen::VectorXd phi2 = Eigen::Map<const Eigen::VectorXd>(sim.phi2.data(), static_cast<Eigen::Index>(n));
 
   mtrsim::IPFMapper mapper{mtrsim::CrystalSystem::HCP};
   const std::vector<mtrsim::RGBColor> colors = mapper.eulerToColors(phi1, phi, phi2, {0.0, 0.0, 1.0}, mtrsim::IPFColorScheme::MatLab);
 
   auto& rgb = m_DataStructure.getDataRefAs<UInt8Array>(cellAttrMatPath.createChildPath(m_InputValues->polarColorsArrayName));
   auto& store = rgb.getDataStoreRef();
-  for(std::size_t i = 0; i < N; ++i)
+  for(std::size_t i = 0; i < n; ++i)
   {
     store[i * 3 + 0] = colors[i].r;
     store[i * 3 + 1] = colors[i].g;

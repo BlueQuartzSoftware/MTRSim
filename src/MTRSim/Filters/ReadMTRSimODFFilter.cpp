@@ -97,8 +97,8 @@ IFilter::UniquePointer ReadMTRSimODFFilter::clone() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
-                                                            const ExecutionContext& executionContext) const
+IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure& /*dataStructure*/, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                            const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pInputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_InputFile_Key);
   auto pHdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
@@ -117,7 +117,7 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
     metadata = mtrsim::readODFMetadata(pInputFile, pHdf5PathPrefix);
   } catch(const std::exception& e)
   {
-    return {MakeErrorResult<OutputActions>(-12001, fmt::format("ODF file read failed: {}", e.what()))};
+    return {.outputActions = MakeErrorResult<OutputActions>(-12001, fmt::format("ODF file read failed: {}", e.what()))};
   }
 
   // Axis mapping: phi1 is slowest-varying in the file, phi2 fastest.
@@ -154,12 +154,12 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
   preflightUpdatedValues.push_back(
       {"Spacing (X, Y, Z) [deg]", fmt::format("{:.4f}, {:.4f}, {:.4f}", metadata.spacingDegPhi1PHIPhi2[2], metadata.spacingDegPhi1PHIPhi2[1], metadata.spacingDegPhi1PHIPhi2[0])});
 
-  return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  return {.outputActions = std::move(resultOutputActions), .outputValues = std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------
-Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler,
-                                          const std::atomic_bool& shouldCancel, const ExecutionContext& executionContext) const
+Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                          const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   ReadMTRSimODFInputValues inputValues;
 
@@ -172,7 +172,7 @@ Result<> ReadMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Ar
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> ReadMTRSimODFFilter::FromSIMPLJson(const nlohmann::json& json)
+Result<Arguments> ReadMTRSimODFFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = ReadMTRSimODFFilter().getDefaultArguments();
 

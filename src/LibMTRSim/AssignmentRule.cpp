@@ -25,7 +25,7 @@ constexpr int k_MaxBisectIter = 2000;
 // Bisect q in (qMin, qMax) so that qsimvn(identity, sTmp, tTmp with
 // tTmp[goi]=q) == poi. tTmp is passed by value — the caller receives the final
 // tTmp back via the reference returned.
-double bisectThreshold(QSimVN& qsimvn, const Eigen::MatrixXd& identity, const Eigen::VectorXd& sTmp, Eigen::VectorXd& tTmp, int goi, double poi)
+double BisectThreshold(QSimVN& qsimvn, const Eigen::MatrixXd& identity, const Eigen::VectorXd& sTmp, Eigen::VectorXd& tTmp, int goi, double poi)
 {
   double q = 0.0;
   double qMin = k_QMin0;
@@ -109,7 +109,7 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     Eigen::VectorXd sTmp = s;
     Eigen::VectorXd tTmp = t;
 
-    const double q = bisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[0]);
+    const double q = BisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[0]);
     t(goi) = q;
 
     result.minThresholds.row(0) = s.transpose();
@@ -133,7 +133,7 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
     Eigen::VectorXd sTmp = s;
     Eigen::VectorXd tTmp = t;
 
-    const double q = bisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[coi]);
+    const double q = BisectThreshold(qsimvn, identity, sTmp, tTmp, goi, volumeFractions[coi]);
     t(goi) = q;
 
     result.minThresholds.row(coi) = s.transpose();
@@ -169,15 +169,15 @@ AssignmentRuleThresholds AssignmentRule::selectThresholds(const std::vector<doub
 
 Eigen::VectorXi AssignmentRule::evaluate(const Eigen::MatrixXd& z, const AssignmentRuleThresholds& thresholds) const
 {
-  const int N = static_cast<int>(z.rows());
+  const int n = static_cast<int>(z.rows());
   const int numGaussians = static_cast<int>(z.cols());
   const int numComponents = static_cast<int>(thresholds.minThresholds.rows());
 
-  Eigen::VectorXi assignments = Eigen::VectorXi::Zero(N);
+  Eigen::VectorXi assignments = Eigen::VectorXi::Zero(n);
 
   std::vector<int> componentList(static_cast<std::size_t>(numComponents));
 
-  for(int i = 0; i < N; ++i)
+  for(int i = 0; i < n; ++i)
   {
     // Initialise component list to {1, 2, ..., numComponents} (1-based)
     for(int j = 0; j < numComponents; ++j)

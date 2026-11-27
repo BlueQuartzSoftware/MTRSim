@@ -31,7 +31,7 @@ class MTRSIM_EXPORT ReadMTRSimODF
 {
 public:
   ReadMTRSimODF(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, ReadMTRSimODFInputValues* inputValues);
-  ~ReadMTRSimODF() noexcept;
+  ~ReadMTRSimODF() noexcept = default;
 
   ReadMTRSimODF(const ReadMTRSimODF&) = delete;
   ReadMTRSimODF(ReadMTRSimODF&&) noexcept = delete;

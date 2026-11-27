@@ -24,7 +24,6 @@ WriteMTRSimODF::WriteMTRSimODF(DataStructure& dataStructure, const IFilter::Mess
 }
 
 // -----------------------------------------------------------------------------
-WriteMTRSimODF::~WriteMTRSimODF() noexcept = default;
 
 // -----------------------------------------------------------------------------
 Result<> WriteMTRSimODF::operator()()

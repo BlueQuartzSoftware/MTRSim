@@ -41,7 +41,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
   const int nx = static_cast<int>(std::round(params.xLen / params.dx));
   const int ny = static_cast<int>(std::round(params.yLen / params.dy));
   const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
-  const int N = nx * ny * nz;
+  const int n = nx * ny * nz;
   const int numComponents = static_cast<int>(params.volumeFractions.size());
   const int numGaussians = numComponents - 1;
 
@@ -56,7 +56,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
 
   if(observer != nullptr)
   {
-    observer->info(fmt::format("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} latent fields", nx, ny, nz, N, numComponents, numGaussians));
+    observer->info(fmt::format("PGRFSimulation: grid {}x{}x{} = {} voxels, {} components, {} latent fields", nx, ny, nz, n, numComponents, numGaussians));
   }
 
   // ── Select assignment-rule thresholds ────────────────────────────────────
@@ -75,7 +75,7 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
 
   // ── Simulate each latent Gaussian field ──────────────────────────────────
   // Stationary mean: mu_const = 0 for all fields (matches MATLAB default)
-  Eigen::MatrixXd zAll = Eigen::MatrixXd::Zero(N, numGaussians);
+  Eigen::MatrixXd zAll = Eigen::MatrixXd::Zero(n, numGaussians);
 
   for(int h = 0; h < numGaussians; ++h)
   {
@@ -112,11 +112,11 @@ PGRFResult PGRFSimulation::run(const SimulationParams& params, ISimulationObserv
     const int count = (mtrIndex.array() == j).count();
     if(observer != nullptr)
     {
-      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(N), params.volumeFractions[static_cast<std::size_t>(j - 1)]));
+      observer->info(fmt::format("  P{} empirical = {:.3f}  (target {:.3f})", j, static_cast<double>(count) / static_cast<double>(n), params.volumeFractions[static_cast<std::size_t>(j - 1)]));
     }
   }
 
-  return PGRFResult{mtrIndex, zAll};
+  return PGRFResult{.mtrIndex = mtrIndex, .latentFields = zAll};
 }
 
 } // namespace mtrsim

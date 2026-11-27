@@ -54,8 +54,8 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
   const int nTotal = nBins1 * nBinsPHI * nBins2;                       // 186 624
 
   const double radSpacing = degSpacing * std::numbers::pi / 180.0;
-  const double k_TwoPiOver = 2.0 * std::numbers::pi / static_cast<double>(nBins1);
-  const double k_PiOver = std::numbers::pi / static_cast<double>(nBinsPHI);
+  const double kTwoPiOver = 2.0 * std::numbers::pi / static_cast<double>(nBins1);
+  const double kPiOver = std::numbers::pi / static_cast<double>(nBinsPHI);
 
   // ── Pre-compute bin centres for the output ODFComponent ──────────────────
   Eigen::VectorXd phi1Bins(nTotal);
@@ -67,9 +67,9 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
     const int i1 = ix / (nBinsPHI * nBins2);
     const int iPHI = (ix % (nBinsPHI * nBins2)) / nBins2;
     const int i2 = ix % nBins2;
-    phi1Bins[ix] = (i1 + 0.5) * k_TwoPiOver;
-    phiBins[ix] = (iPHI + 0.5) * k_PiOver;
-    phi2Bins[ix] = (i2 + 0.5) * k_TwoPiOver;
+    phi1Bins[ix] = (i1 + 0.5) * kTwoPiOver;
+    phiBins[ix] = (iPHI + 0.5) * kPiOver;
+    phi2Bins[ix] = (i2 + 0.5) * kTwoPiOver;
   }
 
   // ── Symmetry expansion via EbsdLib (Hexagonal_High = MATLAB default) ──────
@@ -77,14 +77,14 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
   // ComputeGBCDMetricBased): construct an `EulerD`, transform to an
   // `OrientationMatrix<double>`, and compose with `LaueOps::getMatSymOpD(k)`.
   const std::vector<ebsdlib::LaueOps::Pointer> allOps = ebsdlib::LaueOps::GetAllOrientationOps();
-  const ebsdlib::LaueOps::Pointer laueOps = allOps[ebsdlib::CrystalStructure::Hexagonal_High];
+  const ebsdlib::LaueOps::Pointer& laueOps = allOps[ebsdlib::CrystalStructure::Hexagonal_High];
   const std::size_t numOps = laueOps->getNumSymOps();
 
-  const int N_input = static_cast<int>(phi1in.size());
-  const int N = N_input * static_cast<int>(numOps);
+  const int nInput = static_cast<int>(phi1in.size());
+  const int n = nInput * static_cast<int>(numOps);
 
   // ── Smoothing factors ─────────────────────────────────────────────────────
-  const double normFactor = 1.0 / static_cast<double>(N);
+  const double normFactor = 1.0 / static_cast<double>(n);
   const double centerFactor = 0.332;
   const double faceFactor = 0.448 / 6.0;
   const double edgeFactor = 0.16 / 12.0;
@@ -102,24 +102,24 @@ ODFComponent ODFCalculator::compute(const Eigen::VectorXd& phi1in, const Eigen::
   // ── Accumulate ODF ────────────────────────────────────────────────────────
   Eigen::VectorXd odfVal = Eigen::VectorXd::Zero(nTotal);
 
-  for(int i = 0; i < N_input; ++i)
+  for(int i = 0; i < nInput; ++i)
   {
     // Build the passive G matrix for the input orientation. EbsdLib's
     // `Euler::toOrientationMatrix()` applies the |x|<1e-7 → 0 eps-snap
     // we want to match the MATLAB reference.
     const ebsdlib::EulerDType eu(phi1in[i], phiIn[i], phi2in[i]);
-    const ebsdlib::Matrix3X3D Gpassive = eu.toOrientationMatrix().toGMatrix();
+    const ebsdlib::Matrix3X3D gpassive = eu.toOrientationMatrix().toGMatrix();
 
     for(std::size_t k = 0; k < numOps; ++k)
     {
       // `getMatSymOpD(k)` returns the ACTIVE form; transpose for passive.
       // Symmetric variant: R = O_passive * G_passive_input.
-      const ebsdlib::Matrix3X3D Op_active = laueOps->getMatSymOpD(k);
-      const ebsdlib::Matrix3X3D R = Op_active.transpose() * Gpassive;
+      const ebsdlib::Matrix3X3D opActive = laueOps->getMatSymOpD(k);
+      const ebsdlib::Matrix3X3D r = opActive.transpose() * gpassive;
 
       // Extract Euler back via canonical om2eu (handles degenerate-PHI
       // and the eps-snap correctly, matching MATLAB after commit 8bbd6e).
-      const ebsdlib::OrientationMatrixDType om(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
+      const ebsdlib::OrientationMatrixDType om(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]);
       const ebsdlib::EulerDType outEu = om.toEuler();
 
       // Compute 0-based bin indices (clamp to valid range)

@@ -22,7 +22,6 @@ ReadMTRSimODF::ReadMTRSimODF(DataStructure& dataStructure, const IFilter::Messag
 }
 
 // -----------------------------------------------------------------------------
-ReadMTRSimODF::~ReadMTRSimODF() noexcept = default;
 
 // -----------------------------------------------------------------------------
 Result<> ReadMTRSimODF::operator()()

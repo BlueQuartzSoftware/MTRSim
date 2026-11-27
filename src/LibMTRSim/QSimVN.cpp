@@ -17,14 +17,14 @@ namespace
 {
 
 // MATLAB sign(): -1, 0, or +1
-inline double matlabSign(double x)
+inline double MatlabSign(double x)
 {
   return (x > 0.0) ? 1.0 : (x < 0.0 ? -1.0 : 0.0);
 }
 
 // Build quasi-random Halton base vector: sqrt of first (n-1) primes.
 // Matches MATLAB: ps = sqrt(primes(5*n*log(n+1)/4)); q = ps(1:n-1)
-Eigen::VectorXd primeBasesForDim(int n)
+Eigen::VectorXd PrimeBasesForDim(int n)
 {
   const int need = n - 1;
   if(need <= 0)
@@ -63,34 +63,34 @@ Eigen::VectorXd primeBasesForDim(int n)
 // Max absolute error < 1.15e-9 over (0, 1).
 // Reference: P. J. Acklam, "An algorithm for computing the inverse normal
 // cumulative distribution function", 2003.
-double normalCDFInverse(double p)
+double NormalCdfInverse(double p)
 {
   // Coefficients for the central-region rational approximation
-  static constexpr double a[] = {-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00};
-  static constexpr double b[] = {-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01};
+  static constexpr double k_A[] = {-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00};
+  static constexpr double k_B[] = {-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01};
   // Coefficients for the tail rational approximation
-  static constexpr double c[] = {-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00};
-  static constexpr double d[] = {7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00};
+  static constexpr double k_C[] = {-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00};
+  static constexpr double k_D[] = {7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00};
 
-  constexpr double p_low = 0.02425;
-  constexpr double p_high = 1.0 - p_low;
+  constexpr double k_PLow = 0.02425;
+  constexpr double k_PHigh = 1.0 - k_PLow;
 
-  if(p < p_low)
+  if(p < k_PLow)
   {
     // Lower tail
     const double q = std::sqrt(-2.0 * std::log(p));
-    return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+    return (((((k_C[0] * q + k_C[1]) * q + k_C[2]) * q + k_C[3]) * q + k_C[4]) * q + k_C[5]) / ((((k_D[0] * q + k_D[1]) * q + k_D[2]) * q + k_D[3]) * q + 1.0);
   }
-  if(p <= p_high)
+  if(p <= k_PHigh)
   {
     // Central region
     const double q = p - 0.5;
     const double r = q * q;
-    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0);
+    return (((((k_A[0] * r + k_A[1]) * r + k_A[2]) * r + k_A[3]) * r + k_A[4]) * r + k_A[5]) * q / (((((k_B[0] * r + k_B[1]) * r + k_B[2]) * r + k_B[3]) * r + k_B[4]) * r + 1.0);
   }
   // Upper tail — mirror of lower tail
   const double q = std::sqrt(-2.0 * std::log(1.0 - p));
-  return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0);
+  return -(((((k_C[0] * q + k_C[1]) * q + k_C[2]) * q + k_C[3]) * q + k_C[4]) * q + k_C[5]) / ((((k_D[0] * q + k_D[1]) * q + k_D[2]) * q + k_D[3]) * q + 1.0);
 }
 
 } // anonymous namespace
@@ -105,17 +105,17 @@ QSimVN::QSimVN(std::mt19937_64& rng)
 // ─────────────────────────────────────────────────────────────────────────────
 // Static helpers
 
-double QSimVN::phi(double z)
+double QSimVN::Phi(double z)
 {
   // Phi(z) = P(Z <= z) for Z ~ N(0,1).  MATLAB: erfc(-z/sqrt(2))/2
-  return std::erfc(-z / std::sqrt(2.0)) / 2.0;
+  return std::erfc(-z / std::numbers::sqrt2) / 2.0;
 }
 
-double QSimVN::phiInv(double p)
+double QSimVN::PhiInv(double p)
 {
   // Inverse normal CDF.  MATLAB: -sqrt(2)*erfcinv(2*p)  =  normalCDFInverse(p)
   p = std::clamp(p, 1e-15, 1.0 - 1e-15);
-  return normalCDFInverse(p);
+  return NormalCdfInverse(p);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -170,7 +170,7 @@ QSimVN::ChlrdrResult QSimVN::chlrdr(const Eigen::MatrixXd& r, const Eigen::Vecto
         const double s = (k > 0) ? c.row(i).head(k).dot(y.head(k)) : 0.0;
         const double ai = (ap(i) - s) / cii;
         const double bi = (bp(i) - s) / cii; // corrected from MATLAB bug
-        const double de = phi(bi) - phi(ai);
+        const double de = Phi(bi) - Phi(ai);
         if(de <= dem)
         {
           ckk = cii;
@@ -266,7 +266,7 @@ QSimVN::ChlrdrResult QSimVN::chlrdr(const Eigen::MatrixXd& r, const Eigen::Vecto
     }
   }
 
-  return {c, ap, bp};
+  return {.ch = c, .ap = ap, .bp = bp};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ double QSimVN::mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, c
   // MATLAB loop: for i = 2:n  (1-based).  C++ loop variable k = i-1, 0-based.
   for(int k = 1; k < n; ++k)
   {
-    y(k - 1) = phiInv(c + x(k - 1) * dc);
+    y(k - 1) = PhiInv(c + x(k - 1) * dc);
 
     // MATLAB: s = ch(i, 1:i-1) * y(1:i-1)  →  C++: ch.row(k).head(k) .
     // y.head(k)
@@ -293,24 +293,24 @@ double QSimVN::mvndns(int n, const Eigen::MatrixXd& ch, double ci, double dci, c
     const double ai = a(k) - s;
     const double bi = b(k) - s;
 
-    double newC;
+    double newC = NAN;
     if(std::abs(ai) < cn * ct)
     {
-      newC = phi(ai / ct);
+      newC = Phi(ai / ct);
     }
     else
     {
-      newC = (1.0 + matlabSign(ai)) / 2.0;
+      newC = (1.0 + MatlabSign(ai)) / 2.0;
     }
 
-    double newD;
+    double newD = NAN;
     if(std::abs(bi) < cn * ct)
     {
-      newD = phi(bi / ct);
+      newD = Phi(bi / ct);
     }
     else
     {
-      newD = (1.0 + matlabSign(bi)) / 2.0;
+      newD = (1.0 + MatlabSign(bi)) / 2.0;
     }
 
     dc = newD - newC;
@@ -336,24 +336,24 @@ std::pair<double, double> QSimVN::compute(int m, const Eigen::MatrixXd& r, const
   const double b0 = bs(0);
   const double cn = 37.5;
 
-  double ci;
+  double ci = NAN;
   if(std::abs(a0) < cn * ct0)
   {
-    ci = phi(a0 / ct0);
+    ci = Phi(a0 / ct0);
   }
   else
   {
-    ci = (1.0 + matlabSign(a0)) / 2.0;
+    ci = (1.0 + MatlabSign(a0)) / 2.0;
   }
 
-  double di;
+  double di = NAN;
   if(std::abs(b0) < cn * ct0)
   {
-    di = phi(b0 / ct0);
+    di = Phi(b0 / ct0);
   }
   else
   {
-    di = (1.0 + matlabSign(b0)) / 2.0;
+    di = (1.0 + MatlabSign(b0)) / 2.0;
   }
 
   const double dci = di - ci;
@@ -364,7 +364,7 @@ std::pair<double, double> QSimVN::compute(int m, const Eigen::MatrixXd& r, const
   const int nv = std::max(m / ns, 1); // integer division matches MATLAB floor(m/ns)
 
   // Quasi-random Halton base vector: sqrt of first (n-1) primes
-  const Eigen::VectorXd q = primeBasesForDim(n);
+  const Eigen::VectorXd q = PrimeBasesForDim(n);
 
   std::uniform_real_distribution<double> uniform(0.0, 1.0);
 

@@ -52,13 +52,13 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
   // ── Draw N uniform samples and map to bin indices ─────────────────────────
   // Poll the cancel flag at most once per 4096 samples (~microsecond latency);
   // the modulo check short-circuits before any RNG draw so it cannot perturb results.
-  constexpr int kCheck = 4096;
+  constexpr int k_Check = 4096;
   std::uniform_real_distribution<double> uDist(0.0, 1.0);
   std::vector<int> binIdx(static_cast<std::size_t>(n));
 
   for(int i = 0; i < n; ++i)
   {
-    if(observer != nullptr && (i % kCheck) == 0 && observer->shouldCancel())
+    if(observer != nullptr && (i % k_Check) == 0 && observer->shouldCancel())
     {
       return Eigen::MatrixXd(0, 3);
     }
@@ -83,7 +83,7 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
   Eigen::MatrixXd result(n, 3);
   for(int i = 0; i < n; ++i)
   {
-    if(observer != nullptr && (i % kCheck) == 0 && observer->shouldCancel())
+    if(observer != nullptr && (i % k_Check) == 0 && observer->shouldCancel())
     {
       return Eigen::MatrixXd(0, 3);
     }
@@ -104,7 +104,7 @@ Eigen::MatrixXd ODFSampler::sampleN(int n, const ODFComponent& component, const 
 EulerAngles ODFSampler::sampleOne(const ODFComponent& component, const ODFComponent& uniform)
 {
   const Eigen::MatrixXd row = sampleN(1, component, uniform); // n=1: no observer needed (cancel latency negligible)
-  return EulerAngles{row(0, 0), row(0, 1), row(0, 2)};
+  return EulerAngles{.phi1 = row(0, 0), .phi = row(0, 1), .phi2 = row(0, 2)};
 }
 
 } // namespace mtrsim

@@ -122,12 +122,12 @@ public:
         reportProgress();
         continue;
       }
-      const ebsdlib::LaueOps::Pointer laueOps = allOps[code];
+      const ebsdlib::LaueOps::Pointer& laueOps = allOps[code];
       const std::size_t numOps = laueOps->getNumSymOps();
 
       // Promote single-precision EBSD inputs to double immediately.
       const ebsdlib::EulerDType inputEu(static_cast<double>(m_Eulers[3 * i + 0]), static_cast<double>(m_Eulers[3 * i + 1]), static_cast<double>(m_Eulers[3 * i + 2]));
-      const ebsdlib::Matrix3X3D Gpassive = inputEu.toOrientationMatrix().toGMatrix();
+      const ebsdlib::Matrix3X3D gpassive = inputEu.toOrientationMatrix().toGMatrix();
 
       symEulers.resize(numOps);
 
@@ -138,12 +138,12 @@ public:
         {
           // EbsdLib stores the ACTIVE symmetry operator; transpose for passive.
           // Symmetric variant: R = O_passive * G_passive_input.
-          const ebsdlib::Matrix3X3D Op_active = laueOps->getMatSymOpD(k);
-          const ebsdlib::Matrix3X3D R = Op_active.transpose() * Gpassive;
+          const ebsdlib::Matrix3X3D opActive = laueOps->getMatSymOpD(k);
+          const ebsdlib::Matrix3X3D r = opActive.transpose() * gpassive;
 
           // Extract Euler back via canonical om2eu (handles degenerate-PHI
           // and the eps-snap correctly). Wrap into [0, 2π) / [0, π] / [0, 2π).
-          const ebsdlib::OrientationMatrixDType om(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
+          const ebsdlib::OrientationMatrixDType om(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]);
           const ebsdlib::EulerDType outEu = om.toEuler();
 
           // Pragmatic conversion: ODFBuilder::accumulate currently consumes a
@@ -295,7 +295,8 @@ Result<> ComputeODF::operator()()
   std::size_t masterFailureCount = 0;
   std::mutex mergeMutex;
 
-  const mtrsim::ODFBuildParams params{m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2, m_InputValues->binSizeDeg, m_InputValues->applySmoothing};
+  const mtrsim::ODFBuildParams params{
+      .nphi1 = m_InputValues->nphi1, .nPHI = m_InputValues->nPHI, .nphi2 = m_InputValues->nphi2, .binSizeDeg = m_InputValues->binSizeDeg, .smoothing = m_InputValues->applySmoothing};
 
   if(numVoxels == 0)
   {

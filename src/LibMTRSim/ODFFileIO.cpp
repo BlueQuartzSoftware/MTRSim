@@ -81,10 +81,10 @@ private:
   hid_t m_Id{-1};
 };
 
-using FileHandle = H5Handle<&H5Fclose>;
-using GroupHandle = H5Handle<&H5Gclose>;
-using DatasetHandle = H5Handle<&H5Dclose>;
-using DataspaceHandle = H5Handle<&H5Sclose>;
+using FileHandleType = H5Handle<&H5Fclose>;
+using GroupHandleType = H5Handle<&H5Gclose>;
+using DatasetHandleType = H5Handle<&H5Dclose>;
+using DataspaceHandleType = H5Handle<&H5Sclose>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RAII scope guard: save the current HDF5 auto-error-printing state, disable
@@ -120,9 +120,9 @@ private:
 // Low-level HDF5 read/write helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-int64_t readScalarInt64(hid_t loc, const std::string& path)
+int64_t ReadScalarInt64(hid_t loc, const std::string& path)
 {
-  DatasetHandle ds{H5Dopen2(loc, path.c_str(), H5P_DEFAULT)};
+  DatasetHandleType ds{H5Dopen2(loc, path.c_str(), H5P_DEFAULT)};
   if(!ds.valid())
   {
     throw std::runtime_error("HDF5: cannot open dataset: " + path);
@@ -135,15 +135,15 @@ int64_t readScalarInt64(hid_t loc, const std::string& path)
   return value;
 }
 
-std::vector<double> readDoubleVector(hid_t loc, const std::string& path)
+std::vector<double> ReadDoubleVector(hid_t loc, const std::string& path)
 {
-  DatasetHandle ds{H5Dopen2(loc, path.c_str(), H5P_DEFAULT)};
+  DatasetHandleType ds{H5Dopen2(loc, path.c_str(), H5P_DEFAULT)};
   if(!ds.valid())
   {
     throw std::runtime_error("HDF5: cannot open dataset: " + path);
   }
 
-  DataspaceHandle space{H5Dget_space(ds.get())};
+  DataspaceHandleType space{H5Dget_space(ds.get())};
   if(!space.valid())
   {
     throw std::runtime_error("HDF5: cannot get dataspace for dataset: " + path);
@@ -178,14 +178,14 @@ std::vector<double> readDoubleVector(hid_t loc, const std::string& path)
   return buf;
 }
 
-void writeScalarInt64(hid_t loc, const std::string& name, int64_t value)
+void WriteScalarInt64(hid_t loc, const std::string& name, int64_t value)
 {
-  DataspaceHandle space{H5Screate(H5S_SCALAR)};
+  DataspaceHandleType space{H5Screate(H5S_SCALAR)};
   if(!space.valid())
   {
     throw std::runtime_error("HDF5: failed to create scalar dataspace for: " + name);
   }
-  DatasetHandle ds{H5Dcreate2(loc, name.c_str(), H5T_NATIVE_INT64, space.get(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
+  DatasetHandleType ds{H5Dcreate2(loc, name.c_str(), H5T_NATIVE_INT64, space.get(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
   if(!ds.valid())
   {
     throw std::runtime_error("HDF5: failed to create scalar int64 dataset: " + name);
@@ -196,15 +196,15 @@ void writeScalarInt64(hid_t loc, const std::string& name, int64_t value)
   }
 }
 
-void writeDoubleVector(hid_t loc, const std::string& name, const std::vector<double>& buf)
+void WriteDoubleVector(hid_t loc, const std::string& name, const std::vector<double>& buf)
 {
   const hsize_t dims[1] = {static_cast<hsize_t>(buf.size())};
-  DataspaceHandle space{H5Screate_simple(1, dims, nullptr)};
+  DataspaceHandleType space{H5Screate_simple(1, dims, nullptr)};
   if(!space.valid())
   {
     throw std::runtime_error("HDF5: failed to create simple dataspace for: " + name);
   }
-  DatasetHandle ds{H5Dcreate2(loc, name.c_str(), H5T_NATIVE_DOUBLE, space.get(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
+  DatasetHandleType ds{H5Dcreate2(loc, name.c_str(), H5T_NATIVE_DOUBLE, space.get(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
   if(!ds.valid())
   {
     throw std::runtime_error("HDF5: failed to create double dataset: " + name);
@@ -224,7 +224,7 @@ constexpr double k_SpacingTolRad = 1.0e-12;
 // Verify a bin-edge array is strictly monotonically increasing and uniformly
 // spaced (step consistent within k_SpacingTolRad). Returns the uniform step in
 // radians. Throws on any violation.
-double validateUniformBins(const std::vector<double>& edges, const std::string& axisName)
+double ValidateUniformBins(const std::vector<double>& edges, const std::string& axisName)
 {
   if(edges.size() < 2)
   {
@@ -253,7 +253,7 @@ double validateUniformBins(const std::vector<double>& edges, const std::string& 
 }
 
 // Byte-exact compare of two double arrays. Sizes must match first.
-bool byteEqual(const std::vector<double>& a, const std::vector<double>& b)
+bool ByteEqual(const std::vector<double>& a, const std::vector<double>& b)
 {
   if(a.size() != b.size())
   {
@@ -272,7 +272,7 @@ bool byteEqual(const std::vector<double>& a, const std::vector<double>& b)
 //   "ODF_best"    -> "/ODF_best"
 //   "/ODF_best/"  -> "/ODF_best"
 //   "/a/b/"       -> "/a/b"
-std::string normalizePathPrefix(const std::string& prefix)
+std::string NormalizePathPrefix(const std::string& prefix)
 {
   if(prefix.empty())
   {
@@ -290,7 +290,7 @@ std::string normalizePathPrefix(const std::string& prefix)
   return out;
 }
 
-std::string componentGroupName(const std::string& normalizedPrefix, int64_t idx)
+std::string ComponentGroupName(const std::string& normalizedPrefix, int64_t idx)
 {
   if(normalizedPrefix == "/")
   {
@@ -299,7 +299,7 @@ std::string componentGroupName(const std::string& normalizedPrefix, int64_t idx)
   return normalizedPrefix + "/component_" + std::to_string(idx);
 }
 
-std::string joinPath(const std::string& normalizedPrefix, const std::string& leaf)
+std::string JoinPath(const std::string& normalizedPrefix, const std::string& leaf)
 {
   if(normalizedPrefix == "/")
   {
@@ -321,13 +321,13 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
     throw std::runtime_error("ODFFileIO: file does not exist: " + file.string());
   }
 
-  const std::string prefix = normalizePathPrefix(pathPrefix);
+  const std::string prefix = NormalizePathPrefix(pathPrefix);
 
   // Suppress HDF5's default stderr error printing; we surface errors via
   // exceptions with our own messages.
   H5ErrorSuppressor suppressErrors;
 
-  FileHandle f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
+  FileHandleType f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
   if(!f.valid())
   {
     throw std::runtime_error("ODFFileIO: cannot open HDF5 file: " + file.string());
@@ -348,7 +348,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
     }
   }
 
-  const int64_t numComponents = readScalarInt64(f.get(), joinPath(prefix, "num_components"));
+  const int64_t numComponents = ReadScalarInt64(f.get(), JoinPath(prefix, "num_components"));
   if(numComponents < 1)
   {
     throw std::runtime_error("ODFFileIO: num_components must be >= 1, got " + std::to_string(numComponents));
@@ -357,7 +357,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
   // Verify every expected component group exists
   for(int64_t j = 0; j < numComponents; ++j)
   {
-    const std::string group = componentGroupName(prefix, j);
+    const std::string group = ComponentGroupName(prefix, j);
     const htri_t exists = H5Lexists(f.get(), group.c_str(), H5P_DEFAULT);
     if(exists < 0)
     {
@@ -370,14 +370,14 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
   }
 
   // Read component_0's bin arrays as the reference
-  const std::string c0 = componentGroupName(prefix, 0);
-  std::vector<double> refPhi1 = readDoubleVector(f.get(), c0 + "/phi1_bins");
-  std::vector<double> refPHI = readDoubleVector(f.get(), c0 + "/PHI_bins");
-  std::vector<double> refPhi2 = readDoubleVector(f.get(), c0 + "/phi2_bins");
+  const std::string c0 = ComponentGroupName(prefix, 0);
+  std::vector<double> refPhi1 = ReadDoubleVector(f.get(), c0 + "/phi1_bins");
+  std::vector<double> refPHI = ReadDoubleVector(f.get(), c0 + "/PHI_bins");
+  std::vector<double> refPhi2 = ReadDoubleVector(f.get(), c0 + "/phi2_bins");
 
-  const double stepPhi1 = validateUniformBins(refPhi1, "phi1");
-  const double stepPHI = validateUniformBins(refPHI, "PHI");
-  const double stepPhi2 = validateUniformBins(refPhi2, "phi2");
+  const double stepPhi1 = ValidateUniformBins(refPhi1, "phi1");
+  const double stepPHI = ValidateUniformBins(refPHI, "PHI");
+  const double stepPhi2 = ValidateUniformBins(refPhi2, "phi2");
 
   const int64_t nphi1 = static_cast<int64_t>(refPhi1.size()) - 1;
   const int64_t nPHI = static_cast<int64_t>(refPHI.size()) - 1;
@@ -387,35 +387,35 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
   // Validate all components: bins byte-identical, ODFval size correct
   for(int64_t j = 0; j < numComponents; ++j)
   {
-    const std::string base = componentGroupName(prefix, j);
+    const std::string base = ComponentGroupName(prefix, j);
 
     if(j > 0)
     {
-      const std::vector<double> phi1Arr = readDoubleVector(f.get(), base + "/phi1_bins");
-      const std::vector<double> PHIArr = readDoubleVector(f.get(), base + "/PHI_bins");
-      const std::vector<double> phi2Arr = readDoubleVector(f.get(), base + "/phi2_bins");
+      const std::vector<double> phi1Arr = ReadDoubleVector(f.get(), base + "/phi1_bins");
+      const std::vector<double> phiArr = ReadDoubleVector(f.get(), base + "/PHI_bins");
+      const std::vector<double> phi2Arr = ReadDoubleVector(f.get(), base + "/phi2_bins");
 
-      if(!byteEqual(phi1Arr, refPhi1))
+      if(!ByteEqual(phi1Arr, refPhi1))
       {
         throw std::runtime_error("ODFFileIO: phi1_bins differs from component_0 in " + base);
       }
-      if(!byteEqual(PHIArr, refPHI))
+      if(!ByteEqual(phiArr, refPHI))
       {
         throw std::runtime_error("ODFFileIO: PHI_bins differs from component_0 in " + base);
       }
-      if(!byteEqual(phi2Arr, refPhi2))
+      if(!ByteEqual(phi2Arr, refPhi2))
       {
         throw std::runtime_error("ODFFileIO: phi2_bins differs from component_0 in " + base);
       }
     }
 
     const std::string odfvalPath = base + "/ODFval";
-    DatasetHandle ds{H5Dopen2(f.get(), odfvalPath.c_str(), H5P_DEFAULT)};
+    DatasetHandleType ds{H5Dopen2(f.get(), odfvalPath.c_str(), H5P_DEFAULT)};
     if(!ds.valid())
     {
       throw std::runtime_error("ODFFileIO: missing ODFval in " + base);
     }
-    DataspaceHandle space{H5Dget_space(ds.get())};
+    DataspaceHandleType space{H5Dget_space(ds.get())};
     if(!space.valid())
     {
       throw std::runtime_error("ODFFileIO: cannot get dataspace for ODFval in " + base);
@@ -445,7 +445,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
 
   constexpr double k_RadToDeg = 180.0 / std::numbers::pi;
 
-  ODFFileMetadata md;
+  ODFFileMetadata md{};
   md.numComponents = numComponents;
   md.dimsPhi1PHIPhi2 = {nphi1, nPHI, nphi2};
   md.spacingDegPhi1PHIPhi2 = {stepPhi1 * k_RadToDeg, stepPHI * k_RadToDeg, stepPhi2 * k_RadToDeg};
@@ -454,7 +454,7 @@ ODFFileMetadata readODFMetadata(const std::filesystem::path& file, const std::st
 
 std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& file, const std::string& pathPrefix)
 {
-  const std::string prefix = normalizePathPrefix(pathPrefix);
+  const std::string prefix = NormalizePathPrefix(pathPrefix);
 
   // Full validation up front — throws if anything is wrong.
   const ODFFileMetadata md = readODFMetadata(file, prefix);
@@ -462,7 +462,7 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
   // Re-suppress HDF5 default error printing for our own file ops
   H5ErrorSuppressor suppressErrors;
 
-  FileHandle f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
+  FileHandleType f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
   if(!f.valid())
   {
     throw std::runtime_error("ODFFileIO: cannot open HDF5 file: " + file.string());
@@ -474,8 +474,8 @@ std::vector<ODFFileComponent> readODFComponents(const std::filesystem::path& fil
   out.reserve(static_cast<std::size_t>(md.numComponents));
   for(int64_t j = 0; j < md.numComponents; ++j)
   {
-    const std::string base = componentGroupName(prefix, j);
-    std::vector<double> buf = readDoubleVector(f.get(), base + "/ODFval");
+    const std::string base = ComponentGroupName(prefix, j);
+    std::vector<double> buf = ReadDoubleVector(f.get(), base + "/ODFval");
     if(buf.size() != expectedSize)
     {
       // readODFMetadata should already have caught this, but verify.
@@ -499,7 +499,7 @@ void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3
     throw std::runtime_error("ODFFileIO::writeODFFile: components vector is empty");
   }
 
-  const std::string prefix = normalizePathPrefix(pathPrefix);
+  const std::string prefix = NormalizePathPrefix(pathPrefix);
   for(std::size_t i = 0; i < 3; ++i)
   {
     if(dimsPhi1PHIPhi2[i] <= 0)
@@ -534,10 +534,10 @@ void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3
     return edges;
   };
   const std::vector<double> phi1Edges = buildEdges(dimsPhi1PHIPhi2[0], spacingDegPhi1PHIPhi2[0]);
-  const std::vector<double> PHIEdges = buildEdges(dimsPhi1PHIPhi2[1], spacingDegPhi1PHIPhi2[1]);
+  const std::vector<double> phiEdges = buildEdges(dimsPhi1PHIPhi2[1], spacingDegPhi1PHIPhi2[1]);
   const std::vector<double> phi2Edges = buildEdges(dimsPhi1PHIPhi2[2], spacingDegPhi1PHIPhi2[2]);
 
-  FileHandle f{H5Fcreate(file.string().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)};
+  FileHandleType f{H5Fcreate(file.string().c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT)};
   if(!f.valid())
   {
     throw std::runtime_error("ODFFileIO::writeODFFile: cannot create HDF5 file: " + file.string());
@@ -546,7 +546,7 @@ void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3
   // When the normalized prefix is "/" we write directly to the file root and
   // skip the enclosing group. Otherwise we create the prefix group once and
   // write num_components + component_N subgroups inside it.
-  GroupHandle odfGroup;
+  GroupHandleType odfGroup;
   hid_t containerId = f.get();
   if(prefix != "/")
   {
@@ -558,20 +558,20 @@ void writeODFFile(const std::filesystem::path& file, const std::array<int64_t, 3
     containerId = odfGroup.get();
   }
 
-  writeScalarInt64(containerId, "num_components", static_cast<int64_t>(components.size()));
+  WriteScalarInt64(containerId, "num_components", static_cast<int64_t>(components.size()));
 
   for(std::size_t j = 0; j < components.size(); ++j)
   {
     const std::string name = "component_" + std::to_string(j);
-    GroupHandle compGroup{H5Gcreate2(containerId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
+    GroupHandleType compGroup{H5Gcreate2(containerId, name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT)};
     if(!compGroup.valid())
     {
       throw std::runtime_error("ODFFileIO::writeODFFile: cannot create group " + name);
     }
-    writeDoubleVector(compGroup.get(), "ODFval", components[j].values);
-    writeDoubleVector(compGroup.get(), "phi1_bins", phi1Edges);
-    writeDoubleVector(compGroup.get(), "PHI_bins", PHIEdges);
-    writeDoubleVector(compGroup.get(), "phi2_bins", phi2Edges);
+    WriteDoubleVector(compGroup.get(), "ODFval", components[j].values);
+    WriteDoubleVector(compGroup.get(), "phi1_bins", phi1Edges);
+    WriteDoubleVector(compGroup.get(), "PHI_bins", phiEdges);
+    WriteDoubleVector(compGroup.get(), "phi2_bins", phi2Edges);
   }
 }
 
@@ -582,12 +582,12 @@ std::optional<int64_t> tryReadFixtureVersion(const std::filesystem::path& file, 
     throw std::runtime_error("ODFFileIO::tryReadFixtureVersion: file does not exist: " + file.string());
   }
 
-  const std::string prefix = normalizePathPrefix(pathPrefix);
-  const std::string versionPath = joinPath(prefix, "fixture_version");
+  const std::string prefix = NormalizePathPrefix(pathPrefix);
+  const std::string versionPath = JoinPath(prefix, "fixture_version");
 
   H5ErrorSuppressor suppressErrors;
 
-  FileHandle f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
+  FileHandleType f{H5Fopen(file.string().c_str(), H5F_ACC_RDONLY, H5P_DEFAULT)};
   if(!f.valid())
   {
     throw std::runtime_error("ODFFileIO::tryReadFixtureVersion: cannot open HDF5 file: " + file.string());
@@ -603,7 +603,7 @@ std::optional<int64_t> tryReadFixtureVersion(const std::filesystem::path& file, 
   {
     return std::nullopt;
   }
-  return readScalarInt64(f.get(), versionPath);
+  return ReadScalarInt64(f.get(), versionPath);
 }
 
 } // namespace mtrsim

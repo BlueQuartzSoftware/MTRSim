@@ -21,8 +21,8 @@ struct MTRSIM_EXPORT MTRSimInputValues
   std::vector<std::vector<double>> thetaList;       // M rows x 3 cols
   std::vector<float32> physicalSize;                // [x,y,z] microns
   std::vector<float32> physicalSpacing;             // [x,y,z] microns
-  uint64 seed;
-  bool generatePolarColoring;
+  uint64 seed{};
+  bool generatePolarColoring{};
   DataPath outputGeometryPath;
   std::string cellAttrMatName;
   std::string mtrIdsArrayName;
@@ -41,7 +41,7 @@ class MTRSIM_EXPORT MTRSim
 {
 public:
   MTRSim(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, MTRSimInputValues* inputValues);
-  ~MTRSim() noexcept;
+  ~MTRSim() noexcept = default;
 
   MTRSim(const MTRSim&) = delete;
   MTRSim(MTRSim&&) noexcept = delete;
