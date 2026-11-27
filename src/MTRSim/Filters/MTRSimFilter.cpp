@@ -101,11 +101,11 @@ Parameters MTRSimFilter::parameters() const
                                                           thetaInfo));
   }
   params.insert(std::make_unique<VectorFloat32ParameterType>(k_PhysicalSize_Key, "Physical Size (microns)",
-                                                         "Domain extent X, Y, Z in microns. Set Z = 0 to generate a single-layer "
-                                                         "(2D) microstructure.",
-                                                         std::vector<float32>{38.1f, 12.7f, 0.0f}, std::vector<std::string>{"X", "Y", "Z"}));
+                                                             "Domain extent X, Y, Z in microns. Set Z = 0 to generate a single-layer "
+                                                             "(2D) microstructure.",
+                                                             std::vector<float32>{38.1f, 12.7f, 0.0f}, std::vector<std::string>{"X", "Y", "Z"}));
   params.insert(std::make_unique<VectorFloat32ParameterType>(k_PhysicalSpacing_Key, "Physical Spacing (microns)", "Voxel spacing X,Y,Z.", std::vector<float32>{0.02f, 0.02f, 0.02f},
-                                                         std::vector<std::string>{"X", "Y", "Z"}));
+                                                             std::vector<std::string>{"X", "Y", "Z"}));
 
   params.insertSeparator(Parameters::Separator{"Input ODF"});
   params.insert(std::make_unique<GeometrySelectionParameter>(k_InputOdfGeometry_Key, "Input ODF Geometry", "Image Geometry holding the ODF (from the Read/Compute ODF filters).", DataPath{},
@@ -222,16 +222,16 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*data
   if(pVolumeFractions.size() != 1 || pVolumeFractions[0].size() != numComponents)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one "
-                                                                                "per ODF component).",
-                                                                                numComponents))};
+                                                                                 "per ODF component).",
+                                                                                 numComponents))};
   }
   for(double v : pVolumeFractions[0])
   {
     if(v < 0.0 || v > 1.0)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-13507, fmt::format("Each Volume Fraction value must be in the range "
-                                                                                  "[0, 1] (got {:.4f}).",
-                                                                                  v))};
+                                                                                   "[0, 1] (got {:.4f}).",
+                                                                                   v))};
     }
   }
   double vfSum = 0.0;

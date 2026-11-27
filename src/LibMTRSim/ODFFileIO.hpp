@@ -21,9 +21,9 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT ODFFileMetadata
 {
-  int64_t num_components;                       ///< Number of ODF components stored in the file (>= 1).
-  std::array<int64_t, 3> dims_phi1_phi_phi2;      ///< Number of bins per axis; phi1
-                                               ///< slowest-varying, phi2 fastest.
+  int64_t num_components;                          ///< Number of ODF components stored in the file (>= 1).
+  std::array<int64_t, 3> dims_phi1_phi_phi2;       ///< Number of bins per axis; phi1
+                                                   ///< slowest-varying, phi2 fastest.
   std::array<double, 3> spacing_deg_phi1_phi_phi2; ///< Uniform bin size in DEGREES, one per axis.
 };
 

@@ -122,7 +122,8 @@ IFilter::PreflightResult ReadMTRSimODFFilter::preflightImpl(const DataStructure&
 
   // Axis mapping: phi1 is slowest-varying in the file, phi2 fastest.
   // ImageGeom XYZ must have phi2 as X (fastest), PHI as Y, phi1 as Z (slowest).
-  const std::vector<usize> imageGeomDimsXYZ = {static_cast<usize>(metadata.dims_phi1_phi_phi2[2]), static_cast<usize>(metadata.dims_phi1_phi_phi2[1]), static_cast<usize>(metadata.dims_phi1_phi_phi2[0])};
+  const std::vector<usize> imageGeomDimsXYZ = {static_cast<usize>(metadata.dims_phi1_phi_phi2[2]), static_cast<usize>(metadata.dims_phi1_phi_phi2[1]),
+                                               static_cast<usize>(metadata.dims_phi1_phi_phi2[0])};
   const std::vector<float32> imageGeomOrigin = {0.0f, 0.0f, 0.0f};
   const std::vector<float32> imageGeomSpacingXYZ = {static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[2]), static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[1]),
                                                     static_cast<float32>(metadata.spacing_deg_phi1_phi_phi2[0])};

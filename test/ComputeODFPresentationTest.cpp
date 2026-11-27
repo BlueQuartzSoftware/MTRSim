@@ -174,7 +174,8 @@ Result<> RenderExisting(DataStructure& data, const GenerateODFSectionsInputValue
     config.sectionsPerRow = static_cast<usize>(values.sections_per_row);
     config.sectionWidth = values.section_width;
     const auto layout = ebsdlib::ComputeODFSectionLayout(config);
-    const CreateImageGeometryAction geometryAction(values.output_image_geometry_path, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1}, "Cell Data");
+    const CreateImageGeometryAction geometryAction(values.output_image_geometry_path, {static_cast<usize>(layout.pageWidth), static_cast<usize>(layout.pageHeight), 1}, {0, 0, 0}, {1, 1, 1},
+                                                   "Cell Data");
     const auto geometryCreated = geometryAction.apply(data, IDataAction::Mode::Execute);
     SIMPLNX_RESULT_REQUIRE_VALID(geometryCreated);
     const CreateArrayAction arrayAction(DataType::uint8, {1, static_cast<usize>(layout.pageHeight), static_cast<usize>(layout.pageWidth)}, {3}, k_RgbPath);

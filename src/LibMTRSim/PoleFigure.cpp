@@ -35,7 +35,8 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpac
   {
     throw std::invalid_argument("PoleFigure::fromODF — empty ODFComponent");
   }
-  if(component.phi1_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi2_bins.size() != static_cast<Eigen::Index>(nTotal))
+  if(component.phi1_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi_bins.size() != static_cast<Eigen::Index>(nTotal) ||
+     component.phi2_bins.size() != static_cast<Eigen::Index>(nTotal))
   {
     throw std::invalid_argument("PoleFigure::fromODF — ODFComponent bin "
                                 "vectors have inconsistent sizes");

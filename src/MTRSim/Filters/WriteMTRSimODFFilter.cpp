@@ -151,8 +151,8 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     if(!onGeom)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
-                                                                                  "ImageGeom '{}'.",
-                                                                                  arrayPath.toString(), pInputImageGeomPath.toString()))};
+                                                                                   "ImageGeom '{}'.",
+                                                                                   arrayPath.toString(), pInputImageGeomPath.toString()))};
     }
 
     const auto* arrPtr = dataStructure.getDataAs<Float64ArrayType>(arrayPath);
@@ -164,8 +164,8 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     if(arrPtr->getNumberOfTuples() != expectedTuples)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
-                                                                                  "ImageGeom has {} cells.",
-                                                                                  arrayPath.toString(), arrPtr->getNumberOfTuples(), expectedTuples))};
+                                                                                   "ImageGeom has {} cells.",
+                                                                                   arrayPath.toString(), arrPtr->getNumberOfTuples(), expectedTuples))};
     }
   }
 

@@ -74,11 +74,11 @@ struct LIBMTRSIM_EXPORT MTRSimResult
   int nx = 0;
   int ny = 0;
   int nz = 0;
-  bool cancelled = false;        ///< true if the run was aborted via ISimulationObserver
+  bool cancelled = false;         ///< true if the run was aborted via ISimulationObserver
   std::vector<int32_t> mtr_index; ///< 1-based component id per voxel, length N
-  std::vector<double> phi1;      ///< Euler phi1 [rad] per voxel, length N
-  std::vector<double> phi;       ///< Euler PHI  [rad] per voxel, length N
-  std::vector<double> phi2;      ///< Euler phi2 [rad] per voxel, length N
+  std::vector<double> phi1;       ///< Euler phi1 [rad] per voxel, length N
+  std::vector<double> phi;        ///< Euler PHI  [rad] per voxel, length N
+  std::vector<double> phi2;       ///< Euler phi2 [rad] per voxel, length N
 };
 
 /**

@@ -86,10 +86,10 @@ Parameters ComputeODFFilter::parameters() const
                                                 "deposits 1.0 into its center bin only.",
                                                 true));
   params.insert(std::make_unique<Float32ParameterType>(k_BinSizeDeg_Key, "Bin Size [deg]",
-                                                   "Uniform bin size in degrees, used for all three Bunge-Euler axes (phi1, "
-                                                   "PHI, phi2). 360/binSize and 180/binSize "
-                                                   "must both yield a positive integer (e.g. 5.0 -> 72 x 36 x 72 bins).",
-                                                   5.0f));
+                                                       "Uniform bin size in degrees, used for all three Bunge-Euler axes (phi1, "
+                                                       "PHI, phi2). 360/binSize and 180/binSize "
+                                                       "must both yield a positive integer (e.g. 5.0 -> 72 x 36 x 72 bins).",
+                                                       5.0f));
   params.insert(std::make_unique<ChoicesParameter>(k_OutputUnits_Key, "Output Units",
                                                    "Count-Density emits the raw normalized histogram (sums to 1 over all "
                                                    "Bunge bins; bit-exact match to MATLAB calc_ODF.m). "
@@ -118,7 +118,8 @@ Parameters ComputeODFFilter::parameters() const
                                                           "Per-voxel boolean mask. Must be a 1-component Bool array on the same "
                                                           "AttributeMatrix as the Euler angles. Only "
                                                           "consulted when 'Use Mask Array' is enabled.",
-                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::boolean, DataType::uint8}, ArraySelectionParameter::AllowedComponentShapesType{{1}}));
+                                                          DataPath{}, ArraySelectionParameter::AllowedTypeSetType{DataType::boolean, DataType::uint8},
+                                                          ArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Required Input Ensemble Data"});
   params.insert(std::make_unique<DataPathSelectionParameter>(k_MaterialNames_Key, "Material Names", "StringArray with one material name per ensemble tuple, indexed by phase label.", DataPath{}));
@@ -243,7 +244,7 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= ensembleCount)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-12216, fmt::format("Phase Index ({}) must be positive and less than the ensemble tuple count ({}) in '{}' and '{}'.", selectedPhase,
-                                                                                ensembleCount, pCrystalStructuresPath.toString(), materialNamesPath.toString()))};
+                                                                                 ensembleCount, pCrystalStructuresPath.toString(), materialNamesPath.toString()))};
   }
   // Preflight placeholders expose tuple counts but do not provide crystal values.
   if(crystalStructures.getIDataStoreRef().getStoreType() != IDataStore::StoreType::Empty)
@@ -279,9 +280,9 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
        std::round(phiQuotient) <= 0.0)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12200, fmt::format("Bin size {} deg does not evenly divide 360 and 180. "
-                                                                                  "Pick a value such that 360/binSize and 180/binSize are "
-                                                                                  "both positive integers (e.g. 5.0, 2.0, 1.0).",
-                                                                                  pBinSizeDeg))};
+                                                                                   "Pick a value such that 360/binSize and 180/binSize are "
+                                                                                   "both positive integers (e.g. 5.0, 2.0, 1.0).",
+                                                                                   pBinSizeDeg))};
     }
     nphi1 = static_cast<int32_t>(std::round(360.0 / binSize));
     nPHI = static_cast<int32_t>(std::round(180.0 / binSize));
@@ -295,23 +296,23 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(existingGeomPtr == nullptr)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12206, fmt::format("Existing ODF Image Geometry '{}' must exist and "
-                                                                                  "be an ImageGeom.",
-                                                                                  pExistingOdfGeomPath.toString()))};
+                                                                                   "be an ImageGeom.",
+                                                                                   pExistingOdfGeomPath.toString()))};
     }
     const FloatVec3Type spacing = existingGeomPtr->getSpacing();
     constexpr float32 k_SpacingTolerance = 1.0e-6f;
     if(std::abs(spacing[0] - spacing[1]) > k_SpacingTolerance || std::abs(spacing[0] - spacing[2]) > k_SpacingTolerance)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has "
-                                                                                  "non-uniform spacing ({}, {}, {}) across axes; "
-                                                                                  "ODF requires uniform bins on all three axes.",
-                                                                                  pExistingOdfGeomPath.toString(), spacing[0], spacing[1], spacing[2]))};
+                                                                                   "non-uniform spacing ({}, {}, {}) across axes; "
+                                                                                   "ODF requires uniform bins on all three axes.",
+                                                                                   pExistingOdfGeomPath.toString(), spacing[0], spacing[1], spacing[2]))};
     }
     if(spacing[0] <= 0.0f)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12207, fmt::format("Existing ODF Image Geometry '{}' has zero or negative "
-                                                                                  "spacing ({}); cannot derive a valid bin size.",
-                                                                                  pExistingOdfGeomPath.toString(), spacing[0]))};
+                                                                                   "spacing ({}); cannot derive a valid bin size.",
+                                                                                   pExistingOdfGeomPath.toString(), spacing[0]))};
     }
     binSize = static_cast<double>(spacing[0]);
     binSizeIsDerived = true;
@@ -331,11 +332,11 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
        std::round(expected360) != static_cast<double>(nphi1) || std::round(expected180) != static_cast<double>(nPHI) || std::round(expected360) != static_cast<double>(nphi2))
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12212, fmt::format("Existing ODF geometry is inconsistent with a "
-                                                                                  "valid ODF grid: dims {}x{}x{} (phi1 x PHI x "
-                                                                                  "phi2) with derived bin size {:.4f} deg "
-                                                                                  "do not satisfy the 360/binSize (phi1/phi2) and "
-                                                                                  "180/binSize (PHI) integer-divisor constraints.",
-                                                                                  nphi1, nPHI, nphi2, binSize))};
+                                                                                   "valid ODF grid: dims {}x{}x{} (phi1 x PHI x "
+                                                                                   "phi2) with derived bin size {:.4f} deg "
+                                                                                   "do not satisfy the 360/binSize (phi1/phi2) and "
+                                                                                   "180/binSize (PHI) integer-divisor constraints.",
+                                                                                   nphi1, nPHI, nphi2, binSize))};
     }
   }
 
@@ -349,10 +350,10 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   if(totalBinCount > k_MaxBinCount)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-12211, fmt::format("Total bin count {} exceeds the safety limit of {}. Consider a "
-                                                                                "larger bin_size_deg (e.g. 5.0 deg -> 72x36x72 = 186624 bins is "
-                                                                                "typical; "
-                                                                                "1.0 deg -> 360x180x360 ~ 23M bins is already above the cap).",
-                                                                                totalBinCount, k_MaxBinCount))};
+                                                                                 "larger bin_size_deg (e.g. 5.0 deg -> 72x36x72 = 186624 bins is "
+                                                                                 "typical; "
+                                                                                 "1.0 deg -> 360x180x360 ~ 23M bins is already above the cap).",
+                                                                                 totalBinCount, k_MaxBinCount))};
   }
 
   // Ensure all "Cell" arrays have the same number of tuples
@@ -367,8 +368,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   if(!tupleValidityCheck)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-651, fmt::format("The following DataArrays all must have equal number "
-                                                                              "of tuples but this was not satisfied.\n{}",
-                                                                              tupleValidityCheck.error()))};
+                                                                               "of tuples but this was not satisfied.\n{}",
+                                                                               tupleValidityCheck.error()))};
   }
 
   // 3. Same parent (AttributeMatrix) for the cell-level inputs.
@@ -377,8 +378,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
   if(eulerParent != phasesParent)
   {
     return {.output_actions = MakeErrorResult<OutputActions>(-12205, fmt::format("Cell Euler Angles ('{}') and Cell Phases ('{}') must live "
-                                                                                "on the same AttributeMatrix.",
-                                                                                pEulerAnglesPath.toString(), pPhasesPath.toString()))};
+                                                                                 "on the same AttributeMatrix.",
+                                                                                 pEulerAnglesPath.toString(), pPhasesPath.toString()))};
   }
   if(pUseMask)
   {
@@ -386,8 +387,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(maskParent != eulerParent)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12205, fmt::format("Mask ('{}') must live on the same AttributeMatrix as "
-                                                                                  "the Cell Euler Angles ('{}').",
-                                                                                  pMaskPath.toString(), pEulerAnglesPath.toString()))};
+                                                                                   "the Cell Euler Angles ('{}').",
+                                                                                   pMaskPath.toString(), pEulerAnglesPath.toString()))};
     }
   }
 
@@ -410,8 +411,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(existingGeom.getCellData() == nullptr)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12208, fmt::format("Existing ODF Image Geometry '{}' has no cell "
-                                                                                  "AttributeMatrix; cannot append a component.",
-                                                                                  pExistingOdfGeomPath.toString()))};
+                                                                                   "AttributeMatrix; cannot append a component.",
+                                                                                   pExistingOdfGeomPath.toString()))};
     }
     cellAttrMatPath = existingGeom.getCellDataPath();
     targetImageGeomPath = pExistingOdfGeomPath;
@@ -422,8 +423,8 @@ IFilter::PreflightResult ComputeODFFilter::preflightImpl(const DataStructure& da
     if(dataStructure.getDataAs<IDataArray>(proposedComponentPath) != nullptr)
     {
       return {.output_actions = MakeErrorResult<OutputActions>(-12209, fmt::format("Component '{}' already exists on the target geometry's cell "
-                                                                                  "AttributeMatrix ('{}'); pick a different component name.",
-                                                                                  pComponentName, cellAttrMatPath.toString()))};
+                                                                                   "AttributeMatrix ('{}'); pick a different component name.",
+                                                                                   pComponentName, cellAttrMatPath.toString()))};
     }
   }
 
