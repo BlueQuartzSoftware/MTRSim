@@ -30,12 +30,13 @@ namespace mtrsim
 
 PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpacing)
 {
-  const int nTotal = static_cast<int>(component.odfVal.size());
+  const int nTotal = static_cast<int>(component.odf_val.size());
   if(nTotal < 1)
   {
     throw std::invalid_argument("PoleFigure::fromODF — empty ODFComponent");
   }
-  if(component.phi1Bins.size() != static_cast<Eigen::Index>(nTotal) || component.phiBins.size() != static_cast<Eigen::Index>(nTotal) || component.phi2Bins.size() != static_cast<Eigen::Index>(nTotal))
+  if(component.phi1_bins.size() != static_cast<Eigen::Index>(nTotal) || component.phi_bins.size() != static_cast<Eigen::Index>(nTotal) ||
+     component.phi2_bins.size() != static_cast<Eigen::Index>(nTotal))
   {
     throw std::invalid_argument("PoleFigure::fromODF — ODFComponent bin "
                                 "vectors have inconsistent sizes");
@@ -66,46 +67,46 @@ PoleFigureData PoleFigure::fromODF(const ODFComponent& component, double degSpac
 
   for(int m = 0; m < nTotal; ++m)
   {
-    const double v = component.odfVal[m];
+    const double v = component.odf_val[m];
     if(v <= 0.0)
     {
       continue;
     }
 
-    const double phi1_m = component.phi1Bins[m];
-    const double PHI_m = component.phiBins[m];
+    const double phi1M = component.phi1_bins[m];
+    const double phiM = component.phi_bins[m];
 
     // ── [0001] direction in sample frame: last row of G ──────────────────────
     // G[2,0] = sin(phi1)*sin(PHI), G[2,1] = −cos(phi1)*sin(PHI), G[2,2] =
     // cos(PHI)
-    const double sinPHI = std::sin(PHI_m);
-    const double cosPHI = std::cos(PHI_m);
-    const double h_x = std::sin(phi1_m) * sinPHI;
-    const double h_y = -std::cos(phi1_m) * sinPHI;
-    const double h_z = cosPHI;
+    const double sinPHI = std::sin(phiM);
+    const double cosPHI = std::cos(phiM);
+    const double hX = std::sin(phi1M) * sinPHI;
+    const double hY = -std::cos(phi1M) * sinPHI;
+    const double hZ = cosPHI;
 
     // ── Stereographic projection from south pole
     // ────────────────────────────── Singularity when h_z → −1 (PHI → π): skip
     // those bins.
-    const double denom = 1.0 + h_z;
+    const double denom = 1.0 + hZ;
     if(std::abs(denom) < 1.0e-8)
     {
       continue;
     }
-    const double X = h_x / denom;
-    const double Y = h_y / denom;
+    const double x = hX / denom;
+    const double y = hY / denom;
 
     // ── Jacobian weight (MATLAB convert_ODF_to_PF.m formula) ─────────────────
     // |cos(PHI − dPHI/2) − cos(PHI + dPHI/2)| = 2·|sin(PHI)|·sin(dPHI/2)
-    const double cosDiff = std::abs(std::cos(PHI_m - halfDPHI) - std::cos(PHI_m + halfDPHI));
+    const double cosDiff = std::abs(std::cos(phiM - halfDPHI) - std::cos(phiM + halfDPHI));
     if(cosDiff < 1.0e-12)
     {
       continue; // PHI ≈ 0 or π: vanishing angular area, skip
     }
     const double weight = v * prefactor / cosDiff;
 
-    xVec.push_back(X);
-    yVec.push_back(Y);
+    xVec.push_back(x);
+    yVec.push_back(y);
     wVec.push_back(weight);
     totalWeight += weight;
   }

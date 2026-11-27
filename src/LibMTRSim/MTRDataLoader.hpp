@@ -14,10 +14,10 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT EBSDData
 {
-  Eigen::MatrixXd spatialCoords; ///< [N x 2] (X, Y) positions [mm]
-  Eigen::MatrixXd eulerAngles;   ///< [N x 3] (phi1, PHI, phi2) [rad]
-  Eigen::VectorXi parentIds;     ///< MTR parent grain IDs, length N
-  Eigen::VectorX<bool> isMTR;    ///< Boolean MTR membership mask, length N
+  Eigen::MatrixXd spatial_coords; ///< [N x 2] (X, Y) positions [mm]
+  Eigen::MatrixXd euler_angles;   ///< [N x 3] (phi1, PHI, phi2) [rad]
+  Eigen::VectorXi parent_ids;     ///< MTR parent grain IDs, length N
+  Eigen::VectorX<bool> is_mtr;    ///< Boolean MTR membership mask, length N
 };
 
 /**

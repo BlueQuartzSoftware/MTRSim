@@ -15,10 +15,10 @@ namespace mtrsim
 struct LIBMTRSIM_EXPORT PGRFResult
 {
   // Component assignment for each voxel (1-based index), length N
-  Eigen::VectorXi mtrIndex;
+  Eigen::VectorXi mtr_index;
 
   // Latent Gaussian field values, shape [N x numGaussians]
-  Eigen::MatrixXd latentFields;
+  Eigen::MatrixXd latent_fields;
 };
 
 /**

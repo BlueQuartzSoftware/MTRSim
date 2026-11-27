@@ -40,76 +40,76 @@ public:
   ComputeODFFilter& operator=(ComputeODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static constexpr StringLiteral k_ApplySmoothing_Key = "apply_smoothing";
-  static constexpr StringLiteral k_BinSizeDeg_Key = "bin_size_deg";
-  static constexpr StringLiteral k_EulerAngles_Key = "euler_angles_path";
-  static constexpr StringLiteral k_Phases_Key = "phases_path";
-  static constexpr StringLiteral k_CrystalStructures_Key = "crystal_structures_path";
+  static constexpr StringLiteralType k_ApplySmoothing_Key = "apply_smoothing";
+  static constexpr StringLiteralType k_BinSizeDeg_Key = "bin_size_deg";
+  static constexpr StringLiteralType k_EulerAngles_Key = "euler_angles_path";
+  static constexpr StringLiteralType k_Phases_Key = "phases_path";
+  static constexpr StringLiteralType k_CrystalStructures_Key = "crystal_structures_path";
   /**
    * @brief Selects the ensemble StringArray with one material name per phase.
    */
-  static constexpr StringLiteral k_MaterialNames_Key = "material_names_path";
+  static constexpr StringLiteralType k_MaterialNames_Key = "material_names_path";
   /**
    * @brief Selects the positive ensemble index that contributes to the ODF.
    */
-  static constexpr StringLiteral k_PhaseIndex_Key = "phase_index";
-  static constexpr StringLiteral k_UseMask_Key = "use_mask";
-  static constexpr StringLiteral k_MaskArrayPath_Key = "mask_path";
-  static constexpr StringLiteral k_OutputMode_Key = "output_mode_index";
-  static constexpr StringLiteral k_OutputUnits_Key = "output_units_index";
-  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
-  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
-  static constexpr StringLiteral k_ExistingOdfGeometry_Key = "existing_odf_geometry_path";
-  static constexpr StringLiteral k_ComponentName_Key = "component_name";
+  static constexpr StringLiteralType k_PhaseIndex_Key = "phase_index";
+  static constexpr StringLiteralType k_UseMask_Key = "use_mask";
+  static constexpr StringLiteralType k_MaskArrayPath_Key = "mask_path";
+  static constexpr StringLiteralType k_OutputMode_Key = "output_mode_index";
+  static constexpr StringLiteralType k_OutputUnits_Key = "output_units_index";
+  static constexpr StringLiteralType k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteralType k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteralType k_ExistingOdfGeometry_Key = "existing_odf_geometry_path";
+  static constexpr StringLiteralType k_ComponentName_Key = "component_name";
 
   /**
    * @brief Defines the optional section presentation title.
    */
-  static constexpr StringLiteral k_ODF_Image_Title_Key = "odf_title";
+  static constexpr StringLiteralType k_OdfImageTitleKey = "odf_title";
   /**
    * @brief Selects the number of constant-phi2 panels.
    */
-  static constexpr StringLiteral k_NumSections_Key = "number_of_sections";
+  static constexpr StringLiteralType k_NumSections_Key = "number_of_sections";
   /**
    * @brief Selects the panel count in each row.
    */
-  static constexpr StringLiteral k_SectionsPerRow_Key = "sections_per_row";
+  static constexpr StringLiteralType k_SectionsPerRow_Key = "sections_per_row";
   /**
    * @brief Selects each panel width in pixels.
    */
-  static constexpr StringLiteral k_SectionWidth_Key = "section_width";
+  static constexpr StringLiteralType k_SectionWidth_Key = "section_width";
   /**
    * @brief Selects the RGB preset for the shared MUD scale.
    */
-  static constexpr StringLiteral k_ColorTablePreset_Key = "color_table_preset";
+  static constexpr StringLiteralType k_ColorTablePreset_Key = "color_table_preset";
   /**
    * @brief Selects automatic or manual MUD limits.
    */
-  static constexpr StringLiteral k_ScaleMode_Key = "scale_mode_index";
+  static constexpr StringLiteralType k_ScaleMode_Key = "scale_mode_index";
   /**
    * @brief Sets the lower manual MUD limit.
    */
-  static constexpr StringLiteral k_ManualMinimum_Key = "manual_minimum_mud";
+  static constexpr StringLiteralType k_ManualMinimum_Key = "manual_minimum_mud";
   /**
    * @brief Sets the upper manual MUD limit.
    */
-  static constexpr StringLiteral k_ManualMaximum_Key = "manual_maximum_mud";
+  static constexpr StringLiteralType k_ManualMaximum_Key = "manual_maximum_mud";
   /**
    * @brief Enables atomic PNG output.
    */
-  static constexpr StringLiteral k_WritePng_Key = "write_png";
+  static constexpr StringLiteralType k_WritePng_Key = "write_png";
   /**
    * @brief Selects the PNG destination.
    */
-  static constexpr StringLiteral k_OutputPngPath_Key = "output_png_file";
+  static constexpr StringLiteralType k_OutputPngPath_Key = "output_png_file";
   /**
    * @brief Enables RGB presentation geometry output.
    */
-  static constexpr StringLiteral k_SaveAsImageGeometry_Key = "save_as_image_geometry";
+  static constexpr StringLiteralType k_SaveAsImageGeometry_Key = "save_as_image_geometry";
   /**
    * @brief Selects the RGB presentation geometry path.
    */
-  static constexpr StringLiteral k_OutputPresentationGeometry_Key = "output_presentation_geometry_path";
+  static constexpr StringLiteralType k_OutputPresentationGeometry_Key = "output_presentation_geometry_path";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -164,7 +164,7 @@ public:
    * @brief Returns a copy of the filter.
    * @return
    */
-  UniquePointer clone() const override;
+  UniquePointerType clone() const override;
 
 protected:
   /**

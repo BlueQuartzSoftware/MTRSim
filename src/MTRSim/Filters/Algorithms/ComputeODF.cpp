@@ -41,7 +41,7 @@ namespace
 class AccumulateWorker
 {
 public:
-  AccumulateWorker(const Float32Array& eulers, const Int32Array& phases, const UInt32Array& crystalStructures, int32 selectedPhase, const MaskCompareUtilities::MaskCompare* mask,
+  AccumulateWorker(const Float32ArrayType& eulers, const Int32ArrayType& phases, const UInt32ArrayType& crystalStructures, int32 selectedPhase, const mask_compare_utilities::MaskCompare* mask,
                    const mtrsim::ODFBuildParams& params, std::vector<double>& masterValues, std::size_t& masterContributingCount, std::size_t& masterTotalDeposits, std::size_t& masterFailureCount,
                    std::mutex& mergeMutex, const std::atomic_bool& shouldCancel, ComputeODF* algorithm)
   : m_Eulers(eulers)
@@ -122,12 +122,12 @@ public:
         reportProgress();
         continue;
       }
-      const ebsdlib::LaueOps::Pointer laueOps = allOps[code];
+      const ebsdlib::LaueOps::Pointer& laueOps = allOps[code];
       const std::size_t numOps = laueOps->getNumSymOps();
 
       // Promote single-precision EBSD inputs to double immediately.
       const ebsdlib::EulerDType inputEu(static_cast<double>(m_Eulers[3 * i + 0]), static_cast<double>(m_Eulers[3 * i + 1]), static_cast<double>(m_Eulers[3 * i + 2]));
-      const ebsdlib::Matrix3X3D Gpassive = inputEu.toOrientationMatrix().toGMatrix();
+      const ebsdlib::Matrix3X3D gpassive = inputEu.toOrientationMatrix().toGMatrix();
 
       symEulers.resize(numOps);
 
@@ -138,12 +138,12 @@ public:
         {
           // EbsdLib stores the ACTIVE symmetry operator; transpose for passive.
           // Symmetric variant: R = O_passive * G_passive_input.
-          const ebsdlib::Matrix3X3D Op_active = laueOps->getMatSymOpD(k);
-          const ebsdlib::Matrix3X3D R = Op_active.transpose() * Gpassive;
+          const ebsdlib::Matrix3X3D opActive = laueOps->getMatSymOpD(k);
+          const ebsdlib::Matrix3X3D r = opActive.transpose() * gpassive;
 
           // Extract Euler back via canonical om2eu (handles degenerate-PHI
           // and the eps-snap correctly). Wrap into [0, 2π) / [0, π] / [0, 2π).
-          const ebsdlib::OrientationMatrixDType om(R[0], R[1], R[2], R[3], R[4], R[5], R[6], R[7], R[8]);
+          const ebsdlib::OrientationMatrixDType om(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]);
           const ebsdlib::EulerDType outEu = om.toEuler();
 
           // Pragmatic conversion: ODFBuilder::accumulate currently consumes a
@@ -153,7 +153,7 @@ public:
           symEulers[k] = {outEu[0], outEu[1], outEu[2]};
         }
 
-        mtrsim::accumulate(symEulers, m_Params, localValues);
+        mtrsim::Accumulate(symEulers, m_Params, localValues);
         deposits = numOps;
       } catch(const std::exception&)
       {
@@ -187,11 +187,11 @@ public:
   }
 
 private:
-  const Float32Array& m_Eulers;
-  const Int32Array& m_Phases;
-  const UInt32Array& m_CrystalStructures;
+  const Float32ArrayType& m_Eulers;
+  const Int32ArrayType& m_Phases;
+  const UInt32ArrayType& m_CrystalStructures;
   const int32 m_SelectedPhase;
-  const MaskCompareUtilities::MaskCompare* m_Mask;
+  const mask_compare_utilities::MaskCompare* m_Mask;
   const mtrsim::ODFBuildParams& m_Params;
   std::vector<double>& m_MasterValues;
   std::size_t& m_MasterContributingCount;
@@ -226,53 +226,53 @@ void ComputeODF::sendThreadSafeProgressMessage(usize completedVoxels)
 // -----------------------------------------------------------------------------
 Result<> ComputeODF::operator()()
 {
-  if(m_InputValues->contributingVoxelCount != nullptr)
+  if(m_InputValues->contributing_voxel_count != nullptr)
   {
-    *m_InputValues->contributingVoxelCount = 0;
+    *m_InputValues->contributing_voxel_count = 0;
   }
-  const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32Array>(m_InputValues->eulerAnglesPath);
-  const auto& phases = m_DataStructure.getDataRefAs<Int32Array>(m_InputValues->phasesPath);
-  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32Array>(m_InputValues->crystalStructuresPath);
-  const int32 selectedPhase = m_InputValues->selectedPhase;
+  const auto& eulerAngles = m_DataStructure.getDataRefAs<Float32ArrayType>(m_InputValues->euler_angles_path);
+  const auto& phases = m_DataStructure.getDataRefAs<Int32ArrayType>(m_InputValues->phases_path);
+  const auto& crystalStructures = m_DataStructure.getDataRefAs<UInt32ArrayType>(m_InputValues->crystal_structures_path);
+  const int32 selectedPhase = m_InputValues->selected_phase;
   if(selectedPhase <= 0 || static_cast<usize>(selectedPhase) >= crystalStructures.getNumberOfTuples())
   {
     return MakeErrorResult(-12216, fmt::format("Phase Index ({}) must be positive and less than the tuple count ({}) of Crystal Structures '{}'.", selectedPhase, crystalStructures.getNumberOfTuples(),
-                                               m_InputValues->crystalStructuresPath.toString()));
+                                               m_InputValues->crystal_structures_path.toString()));
   }
   if(crystalStructures.getIDataStoreRef().getStoreType() == IDataStore::StoreType::Empty)
   {
     return MakeErrorResult(-12217, fmt::format("Crystal Structures '{}' values are not available for phase {}. Execute the input filter before computing the ODF.",
-                                               m_InputValues->crystalStructuresPath.toString(), selectedPhase));
+                                               m_InputValues->crystal_structures_path.toString(), selectedPhase));
   }
   const uint32 crystalCode = crystalStructures[static_cast<usize>(selectedPhase)];
   const auto allOps = ebsdlib::LaueOps::GetAllOrientationOps();
   if(crystalCode >= allOps.size() || allOps[crystalCode] == nullptr)
   {
     return MakeErrorResult(-12217, fmt::format("Crystal Structures '{}' contains unsupported crystal-structure value {} at phase {}. Select a code from 0 through {}.",
-                                               m_InputValues->crystalStructuresPath.toString(), crystalCode, selectedPhase, allOps.size() - 1));
+                                               m_InputValues->crystal_structures_path.toString(), crystalCode, selectedPhase, allOps.size() - 1));
   }
   // Resolve the optional mask once because repeated lookups in the voxel loop are expensive.
-  std::unique_ptr<MaskCompareUtilities::MaskCompare> maskArray = nullptr;
-  if(m_InputValues->useMask)
+  std::unique_ptr<mask_compare_utilities::MaskCompare> maskArray = nullptr;
+  if(m_InputValues->use_mask)
   {
     try
     {
-      maskArray = MaskCompareUtilities::InstantiateMaskCompare(m_DataStructure, m_InputValues->maskPath);
+      maskArray = mask_compare_utilities::InstantiateMaskCompare(m_DataStructure, m_InputValues->mask_path);
     } catch(const std::out_of_range& exception)
     {
       // Direct algorithm callers can bypass the filter's parameter validation.
       std::string message = fmt::format("Mask Array DataPath does not exist or is not of the "
                                         "correct type (Bool | UInt8) {}",
-                                        m_InputValues->maskPath.toString());
+                                        m_InputValues->mask_path.toString());
       return MakeErrorResult(-506, message);
     }
   }
 
-  const DataPath outArrayPath = m_InputValues->outputImageGeometry.createChildPath(m_InputValues->cellAttrMatName).createChildPath(m_InputValues->componentName);
-  auto& outArray = m_DataStructure.getDataRefAs<Float64Array>(outArrayPath);
+  const DataPath outArrayPath = m_InputValues->output_image_geometry.createChildPath(m_InputValues->cell_attr_mat_name).createChildPath(m_InputValues->component_name);
+  auto& outArray = m_DataStructure.getDataRefAs<Float64ArrayType>(outArrayPath);
   auto& outStore = outArray.getDataStoreRef();
 
-  const std::size_t binCount = static_cast<std::size_t>(m_InputValues->nphi1) * static_cast<std::size_t>(m_InputValues->nPHI) * static_cast<std::size_t>(m_InputValues->nphi2);
+  const std::size_t binCount = static_cast<std::size_t>(m_InputValues->nphi1) * static_cast<std::size_t>(m_InputValues->n_phi) * static_cast<std::size_t>(m_InputValues->nphi2);
   if(outStore.getSize() != binCount)
   {
     return MakeErrorResult(-12210, fmt::format("Output ODF array size mismatch: have {} but "
@@ -284,8 +284,8 @@ Result<> ComputeODF::operator()()
 
   m_MessageHandler.sendInfoMessage(fmt::format("Computing ODF for phase {} over {} voxels into {} bins ({} x {} x {}); "
                                                "smoothing = {}.",
-                                               selectedPhase, numVoxels, binCount, m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2,
-                                               m_InputValues->applySmoothing ? "enabled" : "disabled"));
+                                               selectedPhase, numVoxels, binCount, m_InputValues->nphi1, m_InputValues->n_phi, m_InputValues->nphi2,
+                                               m_InputValues->apply_smoothing ? "enabled" : "disabled"));
 
   m_ProgressThrottle.reset(numVoxels, fmt::format("Compute ODF for phase {}", selectedPhase));
 
@@ -295,7 +295,8 @@ Result<> ComputeODF::operator()()
   std::size_t masterFailureCount = 0;
   std::mutex mergeMutex;
 
-  const mtrsim::ODFBuildParams params{m_InputValues->nphi1, m_InputValues->nPHI, m_InputValues->nphi2, m_InputValues->binSizeDeg, m_InputValues->applySmoothing};
+  const mtrsim::ODFBuildParams params{
+      .nphi1 = m_InputValues->nphi1, .n_phi = m_InputValues->n_phi, .nphi2 = m_InputValues->nphi2, .bin_size_deg = m_InputValues->bin_size_deg, .smoothing = m_InputValues->apply_smoothing};
 
   if(numVoxels == 0)
   {
@@ -314,9 +315,9 @@ Result<> ComputeODF::operator()()
     return {};
   }
 
-  if(m_InputValues->contributingVoxelCount != nullptr)
+  if(m_InputValues->contributing_voxel_count != nullptr)
   {
-    *m_InputValues->contributingVoxelCount = masterContributingCount;
+    *m_InputValues->contributing_voxel_count = masterContributingCount;
   }
 
   // Normalize by the total count of symmetric-equivalent orientation deposits
@@ -331,7 +332,7 @@ Result<> ComputeODF::operator()()
   }
   else
   {
-    mtrsim::normalize(masterValues, static_cast<double>(masterTotalDeposits));
+    mtrsim::Normalize(masterValues, static_cast<double>(masterTotalDeposits));
   }
 
   // Count-density sums to 1 over the Bunge bins. The SO(3) volume element is sin(PHI) dphi1 dPHI dphi2.
@@ -340,17 +341,17 @@ Result<> ComputeODF::operator()()
   // MUD divides count-density by the bin volume and the uniform SO(3) density, 1/(8*pi^2).
   //   MUD[i,j,k] = acc[i,j,k] * 8*pi^2 / (step^3 * sin(PHI_center(j)))
   // This matches MTEX's plot(odf) convention. Sub-uniform regions read below 1 MUD; texture peaks read above 1 MUD.
-  if(m_InputValues->outputUnits == 1ULL && masterContributingCount != 0)
+  if(m_InputValues->output_units == 1ULL && masterContributingCount != 0)
   {
-    const double stepRad = m_InputValues->binSizeDeg * std::numbers::pi / 180.0;
+    const double stepRad = m_InputValues->bin_size_deg * std::numbers::pi / 180.0;
     const double scale = 8.0 * std::numbers::pi * std::numbers::pi / (stepRad * stepRad * stepRad);
-    for(int32_t j = 0; j < m_InputValues->nPHI; ++j)
+    for(int32_t j = 0; j < m_InputValues->n_phi; ++j)
     {
       const double phiCenter = (static_cast<double>(j) + 0.5) * stepRad;
       const double rowMul = scale / std::sin(phiCenter);
       for(int32_t i = 0; i < m_InputValues->nphi1; ++i)
       {
-        const std::size_t baseIdx = (static_cast<std::size_t>(i) * static_cast<std::size_t>(m_InputValues->nPHI) + static_cast<std::size_t>(j)) * static_cast<std::size_t>(m_InputValues->nphi2);
+        const std::size_t baseIdx = (static_cast<std::size_t>(i) * static_cast<std::size_t>(m_InputValues->n_phi) + static_cast<std::size_t>(j)) * static_cast<std::size_t>(m_InputValues->nphi2);
         for(int32_t k = 0; k < m_InputValues->nphi2; ++k)
         {
           masterValues[baseIdx + static_cast<std::size_t>(k)] *= rowMul;

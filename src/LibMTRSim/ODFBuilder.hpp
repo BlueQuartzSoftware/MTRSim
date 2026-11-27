@@ -18,12 +18,12 @@ namespace mtrsim
  */
 struct LIBMTRSIM_EXPORT ODFBuildParams
 {
-  int32_t nphi1;     ///< Number of bins along phi1 (slowest-varying, Z in ImageGeom).
-  int32_t nPHI;      ///< Number of bins along PHI  (middle,           Y).
-  int32_t nphi2;     ///< Number of bins along phi2 (fastest-varying,  X).
-  double binSizeDeg; ///< Uniform bin size in degrees (all three axes).
-  bool smoothing;    ///< When true, distribute each tuple over 27 bins (tri-linear
-                     ///< smoothing).
+  int32_t nphi1;       ///< Number of bins along phi1 (slowest-varying, Z in ImageGeom).
+  int32_t n_phi;       ///< Number of bins along PHI  (middle,           Y).
+  int32_t nphi2;       ///< Number of bins along phi2 (fastest-varying,  X).
+  double bin_size_deg; ///< Uniform bin size in degrees (all three axes).
+  bool smoothing;      ///< When true, distribute each tuple over 27 bins (tri-linear
+                       ///< smoothing).
 };
 
 /**
@@ -42,7 +42,7 @@ struct LIBMTRSIM_EXPORT ODFBuildParams
  * @throws std::invalid_argument if @p values.size() does not match
  *         nphi1 * nPHI * nphi2.
  */
-LIBMTRSIM_EXPORT void accumulate(const std::vector<std::array<double, 3>>& eulersRad, const ODFBuildParams& params, std::vector<double>& values);
+LIBMTRSIM_EXPORT void Accumulate(const std::vector<std::array<double, 3>>& eulersRad, const ODFBuildParams& params, std::vector<double>& values);
 
 /**
  * @brief In-place division: values[i] /= normalizer.
@@ -50,6 +50,6 @@ LIBMTRSIM_EXPORT void accumulate(const std::vector<std::array<double, 3>>& euler
  * No-op when @p normalizer equals 0.0 (avoids divide-by-zero blow-ups from
  * empty accumulators).
  */
-LIBMTRSIM_EXPORT void normalize(std::vector<double>& values, double normalizer);
+LIBMTRSIM_EXPORT void Normalize(std::vector<double>& values, double normalizer);
 
 } // namespace mtrsim

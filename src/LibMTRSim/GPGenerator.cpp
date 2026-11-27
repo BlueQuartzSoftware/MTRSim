@@ -8,7 +8,7 @@
 namespace mtrsim
 {
 
-GPGenerator::GPGenerator(std::mt19937_64& rng, CorrelationFn corrFn)
+GPGenerator::GPGenerator(std::mt19937_64& rng, CorrelationFnType corrFn)
 : m_Rng(rng)
 , m_CorrFn(std::move(corrFn))
 {
@@ -68,16 +68,16 @@ Eigen::MatrixXd GPGenerator::buildCovarianceMatrix(int n, double spacing, double
 Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std::array<double, 3>& theta, int nx, int ny, int nz)
 {
   // ── Build per-direction covariance matrices ─────────────────────────────
-  const Eigen::MatrixXd Gamma_x = buildCovarianceMatrix(nx, hx, theta[0]);
-  const Eigen::MatrixXd Gamma_y = buildCovarianceMatrix(ny, hy, theta[1]);
-  const Eigen::MatrixXd Gamma_z = buildCovarianceMatrix(nz, hz, theta[2]);
+  const Eigen::MatrixXd gammaX = buildCovarianceMatrix(nx, hx, theta[0]);
+  const Eigen::MatrixXd gammaY = buildCovarianceMatrix(ny, hy, theta[1]);
+  const Eigen::MatrixXd gammaZ = buildCovarianceMatrix(nz, hz, theta[2]);
 
   // ── Cholesky factorisation: L * L' = Gamma  (L lower-triangular) ─────────
-  Eigen::LLT<Eigen::MatrixXd> llt_x(Gamma_x);
-  Eigen::LLT<Eigen::MatrixXd> llt_y(Gamma_y);
-  Eigen::LLT<Eigen::MatrixXd> llt_z(Gamma_z);
+  Eigen::LLT<Eigen::MatrixXd> lltX(gammaX);
+  Eigen::LLT<Eigen::MatrixXd> lltY(gammaY);
+  Eigen::LLT<Eigen::MatrixXd> lltZ(gammaZ);
 
-  if(llt_x.info() != Eigen::Success || llt_y.info() != Eigen::Success || llt_z.info() != Eigen::Success)
+  if(lltX.info() != Eigen::Success || lltY.info() != Eigen::Success || lltZ.info() != Eigen::Success)
   {
     throw std::runtime_error("GPGenerator::generate — Cholesky failed; "
                              "covariance matrix is not positive definite");
@@ -85,9 +85,9 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std
 
   // MATLAB upper-triangular Cholesky factors: Rx = llt_x.matrixU()  (= L_x')
   // Used below as: W1 * Rz  and  Ry' * W2k * Rx
-  const Eigen::MatrixXd Rx = llt_x.matrixU();       // nx × nx
-  const Eigen::MatrixXd Ry_lower = llt_y.matrixL(); // ny × ny  (= MATLAB Ry')
-  const Eigen::MatrixXd Rz = llt_z.matrixU();       // nz × nz
+  const Eigen::MatrixXd rx = lltX.matrixU();      // nx × nx
+  const Eigen::MatrixXd ryLower = lltY.matrixL(); // ny × ny  (= MATLAB Ry')
+  const Eigen::MatrixXd rz = lltZ.matrixU();      // nz × nz
 
   // ── Standard normal draw ─────────────────────────────────────────────────
   const int N = nx * ny * nz;
@@ -101,8 +101,8 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std
   // ── Apply z-direction Cholesky: u = W_1 * Rz ────────────────────────────
   // W_1 = reshape(z, nx*ny, nz)  — Map z as column-major (nx*ny) × nz
   // Each row w of W_1 is a 1×nz vector; w * Rz ~ N(0, Rz'Rz) = N(0, Gamma_z)
-  Eigen::Map<const Eigen::MatrixXd> W1(z.data(), nx * ny, nz);
-  const Eigen::MatrixXd u = W1 * Rz; // (nx*ny) × nz
+  Eigen::Map<const Eigen::MatrixXd> w1(z.data(), nx * ny, nz);
+  const Eigen::MatrixXd u = w1 * rz; // (nx*ny) × nz
 
   // ── Apply x and y Cholesky slice-by-slice ────────────────────────────────
   // W_2(:,:,k) = reshape(u.col(k), ny, nx)   — Map each column as ny × nx
@@ -112,14 +112,14 @@ Eigen::VectorXd GPGenerator::generate(double hx, double hy, double hz, const std
   for(int k = 0; k < nz; ++k)
   {
     // W2k: ny × nx view into column k of u (column-major, contiguous in memory)
-    Eigen::Map<const Eigen::MatrixXd> W2k(u.col(k).data(), ny, nx);
+    Eigen::Map<const Eigen::MatrixXd> w2k(u.col(k).data(), ny, nx);
 
     // x_k: ny × nx result for this z-slice
-    const Eigen::MatrixXd x_k = Ry_lower * W2k * Rx;
+    const Eigen::MatrixXd xK = ryLower * w2k * rx;
 
     // Store into output with MATLAB column-major ordering for a ny×nx×nz array:
     //   gp[k*(ny*nx) + ix*ny + iy]  =  x_k(iy, ix)
-    Eigen::Map<Eigen::MatrixXd>(gp.data() + static_cast<std::ptrdiff_t>(k) * (ny * nx), ny, nx) = x_k;
+    Eigen::Map<Eigen::MatrixXd>(gp.data() + static_cast<std::ptrdiff_t>(k) * (ny * nx), ny, nx) = xK;
   }
 
   return gp;

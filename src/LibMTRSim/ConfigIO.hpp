@@ -18,6 +18,6 @@ namespace mtrsim
  *
  * @throws std::runtime_error if the file cannot be opened or the JSON is invalid.
  */
-LIBMTRSIM_EXPORT SimulationParams parseConfigJson(const std::filesystem::path& path);
+LIBMTRSIM_EXPORT SimulationParams ParseConfigJson(const std::filesystem::path& path);
 
 } // namespace mtrsim

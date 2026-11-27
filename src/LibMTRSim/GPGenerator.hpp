@@ -25,14 +25,14 @@ namespace mtrsim
 class LIBMTRSIM_EXPORT GPGenerator
 {
 public:
-  using CorrelationFn = std::function<double(double lag, double theta)>;
+  using CorrelationFnType = std::function<double(double lag, double theta)>;
 
   /**
    * @param rng    Seeded Mersenne-Twister engine (passed by reference so the
    *               caller controls the global RNG state).
    * @param corrFn Correlation function: rho(|lag|, theta) → [0, 1]
    */
-  explicit GPGenerator(std::mt19937_64& rng, CorrelationFn corrFn);
+  explicit GPGenerator(std::mt19937_64& rng, CorrelationFnType corrFn);
 
   /**
    * @brief Draw one realization of the GP on an nx × ny × nz grid.
@@ -52,7 +52,7 @@ private:
   Eigen::MatrixXd buildCovarianceMatrix(int n, double spacing, double theta) const;
 
   std::mt19937_64& m_Rng;
-  CorrelationFn m_CorrFn;
+  CorrelationFnType m_CorrFn;
 };
 
 } // namespace mtrsim

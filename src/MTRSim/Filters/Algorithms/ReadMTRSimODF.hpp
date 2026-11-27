@@ -14,10 +14,10 @@ namespace nx::core
 
 struct MTRSIM_EXPORT ReadMTRSimODFInputValues
 {
-  std::filesystem::path inputFile;
-  std::string hdf5PathPrefix;
-  DataPath outputImageGeometryPath;
-  std::string cellAttrMatName;
+  std::filesystem::path input_file;
+  std::string hdf5_path_prefix;
+  DataPath output_image_geometry_path;
+  std::string cell_attr_mat_name;
 };
 
 /**
@@ -31,7 +31,7 @@ class MTRSIM_EXPORT ReadMTRSimODF
 {
 public:
   ReadMTRSimODF(DataStructure& dataStructure, const IFilter::MessageHandler& mesgHandler, const std::atomic_bool& shouldCancel, ReadMTRSimODFInputValues* inputValues);
-  ~ReadMTRSimODF() noexcept;
+  ~ReadMTRSimODF() noexcept = default;
 
   ReadMTRSimODF(const ReadMTRSimODF&) = delete;
   ReadMTRSimODF(ReadMTRSimODF&&) noexcept = delete;

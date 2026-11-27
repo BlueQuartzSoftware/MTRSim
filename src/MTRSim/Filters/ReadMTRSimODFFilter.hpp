@@ -26,10 +26,10 @@ public:
   ReadMTRSimODFFilter& operator=(ReadMTRSimODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static constexpr StringLiteral k_InputFile_Key = "input_file";
-  static constexpr StringLiteral k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
-  static constexpr StringLiteral k_OutputImageGeometry_Key = "output_image_geometry_path";
-  static constexpr StringLiteral k_CellAttrMatName_Key = "cell_attribute_matrix_name";
+  static constexpr StringLiteralType k_InputFile_Key = "input_file";
+  static constexpr StringLiteralType k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
+  static constexpr StringLiteralType k_OutputImageGeometry_Key = "output_image_geometry_path";
+  static constexpr StringLiteralType k_CellAttrMatName_Key = "cell_attribute_matrix_name";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -86,7 +86,7 @@ public:
    * @brief Returns a copy of the filter.
    * @return
    */
-  UniquePointer clone() const override;
+  UniquePointerType clone() const override;
 
 protected:
   /**

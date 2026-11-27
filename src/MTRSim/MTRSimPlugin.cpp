@@ -13,7 +13,7 @@ constexpr AbstractPlugin::IdType k_ID = *Uuid::FromString("f6bacee6-310a-4853-80
 MTRSimPlugin::MTRSimPlugin()
 : AbstractPlugin(k_ID, "MTRSim", "Plugin to hold highly experimental filters", "BlueQuartz Software, LLC")
 {
-  std::vector<::FilterCreationFunc> filterFuncs = ::GetPluginFilterList();
+  std::vector<::FilterCreationFuncType> filterFuncs = ::GetPluginFilterList();
   for(const auto& filterFunc : filterFuncs)
   {
     addFilter(filterFunc);

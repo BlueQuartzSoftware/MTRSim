@@ -74,13 +74,13 @@ Parameters WriteMTRSimODFFilter::parameters() const
   params.insert(std::make_unique<GeometrySelectionParameter>(k_InputImageGeometry_Key, "Input Image Geometry",
                                                              "ImageGeom whose (X,Y,Z) dimensions map to (phi2, PHI, phi1) on disk. "
                                                              "The written axis ordering reverses this convention.",
-                                                             DataPath{}, GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
+                                                             DataPath{}, GeometrySelectionParameter::AllowedTypeSetType{IGeometry::Type::Image}));
 
   params.insert(std::make_unique<MultiArraySelectionParameter>(k_ODFComponents_Key, "ODF Component Arrays",
                                                                "Float64 single-component cell-data arrays on the input ImageGeom. Each "
                                                                "array becomes one ODF component in the output file.",
-                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypes{IArray::ArrayType::DataArray},
-                                                               MultiArraySelectionParameter::AllowedDataTypes{DataType::float64}, MultiArraySelectionParameter::AllowedComponentShapes{{1}}));
+                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypeSetType{IArray::ArrayType::DataArray},
+                                                               MultiArraySelectionParameter::AllowedDataTypesType{DataType::float64}, MultiArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   return params;
 }
@@ -92,14 +92,14 @@ IFilter::VersionType WriteMTRSimODFFilter::parametersVersion() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::UniquePointer WriteMTRSimODFFilter::clone() const
+IFilter::UniquePointerType WriteMTRSimODFFilter::clone() const
 {
   return std::make_unique<WriteMTRSimODFFilter>();
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler,
-                                                             const std::atomic_bool& shouldCancel, const ExecutionContext& executionContext) const
+IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                             const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pOutputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
   auto pHdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
@@ -111,21 +111,21 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
 
   if(pODFComponents.empty())
   {
-    return {MakeErrorResult<OutputActions>(-12100, "Select at least one ODF component array.")};
+    return {.output_actions = MakeErrorResult<OutputActions>(-12100, "Select at least one ODF component array.")};
   }
 
-  const auto* geom = dataStructure.getDataAs<ImageGeom>(pInputImageGeomPath);
-  if(geom == nullptr)
+  const auto* geomPtr = dataStructure.getDataAs<ImageGeom>(pInputImageGeomPath);
+  if(geomPtr == nullptr)
   {
-    return {MakeErrorResult<OutputActions>(-12101, "Input geometry must be an ImageGeom.")};
+    return {.output_actions = MakeErrorResult<OutputActions>(-12101, "Input geometry must be an ImageGeom.")};
   }
 
-  const usize numX = geom->getNumXCells();
-  const usize numY = geom->getNumYCells();
-  const usize numZ = geom->getNumZCells();
+  const usize numX = geomPtr->getNumXCells();
+  const usize numY = geomPtr->getNumYCells();
+  const usize numZ = geomPtr->getNumZCells();
   if(numX < 2 || numY < 2 || numZ < 2)
   {
-    return {MakeErrorResult<OutputActions>(-12105, "Degenerate geometry rejected (< 2 bins on some axis).")};
+    return {.output_actions = MakeErrorResult<OutputActions>(-12105, "Degenerate geometry rejected (< 2 bins on some axis).")};
   }
 
   const usize expectedTuples = numX * numY * numZ;
@@ -150,29 +150,29 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
     }
     if(!onGeom)
     {
-      return {MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
-                                                                 "ImageGeom '{}'.",
-                                                                 arrayPath.toString(), pInputImageGeomPath.toString()))};
+      return {.output_actions = MakeErrorResult<OutputActions>(-12102, fmt::format("Selected array '{}' does not belong to the input "
+                                                                                   "ImageGeom '{}'.",
+                                                                                   arrayPath.toString(), pInputImageGeomPath.toString()))};
     }
 
-    const auto* arr = dataStructure.getDataAs<Float64Array>(arrayPath);
-    if(arr == nullptr)
+    const auto* arrPtr = dataStructure.getDataAs<Float64ArrayType>(arrayPath);
+    if(arrPtr == nullptr)
     {
-      return {MakeErrorResult<OutputActions>(-12103, fmt::format("Selected array '{}' must be a Float64 DataArray.", arrayPath.toString()))};
+      return {.output_actions = MakeErrorResult<OutputActions>(-12103, fmt::format("Selected array '{}' must be a Float64 DataArray.", arrayPath.toString()))};
     }
 
-    if(arr->getNumberOfTuples() != expectedTuples)
+    if(arrPtr->getNumberOfTuples() != expectedTuples)
     {
-      return {MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
-                                                                 "ImageGeom has {} cells.",
-                                                                 arrayPath.toString(), arr->getNumberOfTuples(), expectedTuples))};
+      return {.output_actions = MakeErrorResult<OutputActions>(-12104, fmt::format("Selected array '{}' has {} tuples but the "
+                                                                                   "ImageGeom has {} cells.",
+                                                                                   arrayPath.toString(), arrPtr->getNumberOfTuples(), expectedTuples))};
     }
   }
 
   // Populate a preview of what execute() will write. We can't probe a file that
   // doesn't exist yet, so every field is derived from the selected geometry and
   // the array list.
-  const auto spacing = geom->getSpacing();
+  const auto spacing = geomPtr->getSpacing();
   preflightUpdatedValues.push_back({"HDF5 Path Prefix", pHdf5PathPrefix});
   preflightUpdatedValues.push_back({"Components to Write", std::to_string(pODFComponents.size())});
   preflightUpdatedValues.push_back({"Tuples per Component", std::to_string(expectedTuples)});
@@ -185,25 +185,25 @@ IFilter::PreflightResult WriteMTRSimODFFilter::preflightImpl(const DataStructure
       static_cast<std::size_t>(pODFComponents.size()) * static_cast<std::size_t>(expectedTuples) * sizeof(double) + static_cast<std::size_t>(numX + numY + numZ + 3) * sizeof(double);
   preflightUpdatedValues.push_back({"Estimated File Size [bytes]", std::to_string(estBytes)});
 
-  return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  return {.output_actions = std::move(resultOutputActions), .output_values = std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------
-Result<> WriteMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler,
-                                           const std::atomic_bool& shouldCancel, const ExecutionContext& executionContext) const
+Result<> WriteMTRSimODFFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                           const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   WriteMTRSimODFInputValues inputValues;
 
-  inputValues.outputFile = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
-  inputValues.hdf5PathPrefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
-  inputValues.inputImageGeometry = filterArgs.value<DataPath>(k_InputImageGeometry_Key);
-  inputValues.odfComponents = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_ODFComponents_Key);
+  inputValues.output_file = filterArgs.value<FileSystemPathParameter::ValueType>(k_OutputFile_Key);
+  inputValues.hdf5_path_prefix = filterArgs.value<StringParameter::ValueType>(k_Hdf5PathPrefix_Key);
+  inputValues.input_image_geometry = filterArgs.value<DataPath>(k_InputImageGeometry_Key);
+  inputValues.odf_components = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_ODFComponents_Key);
 
   return WriteMTRSimODF(dataStructure, messageHandler, shouldCancel, &inputValues)();
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> WriteMTRSimODFFilter::FromSIMPLJson(const nlohmann::json& json)
+Result<Arguments> WriteMTRSimODFFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = WriteMTRSimODFFilter().getDefaultArguments();
 

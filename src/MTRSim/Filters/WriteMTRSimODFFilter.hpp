@@ -29,10 +29,10 @@ public:
   WriteMTRSimODFFilter& operator=(WriteMTRSimODFFilter&&) noexcept = delete;
 
   // Parameter Keys
-  static constexpr StringLiteral k_OutputFile_Key = "output_file";
-  static constexpr StringLiteral k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
-  static constexpr StringLiteral k_InputImageGeometry_Key = "input_image_geometry_path";
-  static constexpr StringLiteral k_ODFComponents_Key = "odf_components";
+  static constexpr StringLiteralType k_OutputFile_Key = "output_file";
+  static constexpr StringLiteralType k_Hdf5PathPrefix_Key = "hdf5_path_prefix";
+  static constexpr StringLiteralType k_InputImageGeometry_Key = "input_image_geometry_path";
+  static constexpr StringLiteralType k_ODFComponents_Key = "odf_components";
 
   /**
    * @brief Reads SIMPL json and converts it simplnx Arguments.
@@ -89,7 +89,7 @@ public:
    * @brief Returns a copy of the filter.
    * @return
    */
-  UniquePointer clone() const override;
+  UniquePointerType clone() const override;
 
 protected:
   /**

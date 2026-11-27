@@ -18,11 +18,11 @@ namespace nx::core::mtrsim::odf_metadata
 /**
  * @brief Names the metadata group directly under the ODF geometry.
  */
-inline constexpr StringLiteral k_GroupName = "ODF Metadata";
+inline constexpr StringLiteralType k_GroupName = "ODF Metadata";
 /**
  * @brief Identifies a component's units array.
  */
-inline constexpr StringLiteral k_UnitsSuffix = " Units";
+inline constexpr StringLiteralType k_UnitsSuffix = " Units";
 
 /**
  * @brief Locates the one-tuple units StringArray for an ODF component.

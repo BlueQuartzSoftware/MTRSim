@@ -55,11 +55,11 @@
 namespace fs = std::filesystem;
 
 using namespace nx::core;
-using namespace nx::core::UnitTest;
+using namespace nx::core::unit_test;
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-compat)", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/simulation_ODF.h5", unit_test::k_DataDir.view()));
   REQUIRE(fs::exists(inputFile));
@@ -86,15 +86,15 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     readArgs.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
     auto readPreflight = readFilter.preflight(dataStructure, readArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.output_actions);
     auto readExecute = readFilter.execute(dataStructure, readArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
 
   // Determine the component paths that were created so we can pass them to the
   // writer.
-  const auto origComponents = mtrsim::readODFComponents(inputFile);
-  REQUIRE(origComponents.size() >= 1);
+  const auto origComponents = mtrsim::ReadOdfComponents(inputFile);
+  REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
   std::vector<DataPath> componentPaths;
@@ -114,10 +114,10 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(componentPaths));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
 
     // Assert the prefix-preview updated value surfaced.
-    const bool foundPrefixLabel = std::any_of(writePreflight.outputValues.begin(), writePreflight.outputValues.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
+    const bool foundPrefixLabel = std::any_of(writePreflight.output_values.begin(), writePreflight.output_values.end(), [](const IFilter::PreflightValue& v) { return v.name == "HDF5 Path Prefix"; });
     REQUIRE(foundPrefixLabel);
 
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
@@ -127,7 +127,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
   REQUIRE(fs::exists(outputFile));
 
   // Byte-exact comparison via libmtrsim.
-  auto roundComponents = mtrsim::readODFComponents(outputFile);
+  auto roundComponents = mtrsim::ReadOdfComponents(outputFile);
   REQUIRE(origComponents.size() == roundComponents.size());
   for(std::size_t c = 0; c < origComponents.size(); ++c)
   {
@@ -139,7 +139,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip through /ODF_best (back-comp
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 layout", "[MTRSim][WriteMTRSimODFFilter][AxisMapping]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   // Asymmetric dimensions so an axis permutation cannot accidentally produce
   // the correct answer.
@@ -178,17 +178,17 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
 
   // Initialize to zero, then place a single sentinel at a known (iPhi1, iPHI,
   // iPhi2).
-  constexpr std::size_t k_iPhi1 = 3;
-  constexpr std::size_t k_iPHI = 5;
-  constexpr std::size_t k_iPhi2 = 7;
+  constexpr std::size_t k_IPhi1 = 3;
+  constexpr std::size_t k_IPhi = 5;
+  constexpr std::size_t k_IPhi2 = 7;
   // Row-major flat index with phi1 slowest, phi2 fastest: 3*18*72 + 5*72 + 7 =
   // 4255.
-  constexpr std::size_t k_SentinelIndex = k_iPhi1 * (k_NumPHI * k_NumPhi2) + k_iPHI * k_NumPhi2 + k_iPhi2;
+  constexpr std::size_t k_SentinelIndex = k_IPhi1 * (k_NumPHI * k_NumPhi2) + k_IPhi * k_NumPhi2 + k_IPhi2;
   static_assert(k_SentinelIndex == 4255, "Recompute sentinel flat index before asserting on it.");
   constexpr double k_SentinelValue = 42.0;
 
   {
-    auto& componentArray = dataStructure.getDataRefAs<Float64Array>(componentPath);
+    auto& componentArray = dataStructure.getDataRefAs<Float64ArrayType>(componentPath);
     auto& store = componentArray.getDataStoreRef();
     for(std::size_t i = 0; i < store.getSize(); ++i)
     {
@@ -214,7 +214,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(std::vector<DataPath>{componentPath}));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(writeExecute.result);
   }
@@ -222,23 +222,23 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
   REQUIRE(fs::exists(outputFile));
 
   // Read back the metadata and verify axis mapping was reversed correctly.
-  auto meta = mtrsim::readODFMetadata(outputFile);
-  REQUIRE(meta.numComponents == 1);
-  REQUIRE(meta.dimsPhi1PHIPhi2 == std::array<int64_t, 3>{static_cast<int64_t>(k_NumPhi1), static_cast<int64_t>(k_NumPHI), static_cast<int64_t>(k_NumPhi2)});
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[0] - static_cast<double>(k_SpacingPhi1Deg)) < 1e-9);
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[1] - static_cast<double>(k_SpacingPHIDeg)) < 1e-9);
-  REQUIRE(std::abs(meta.spacingDegPhi1PHIPhi2[2] - static_cast<double>(k_SpacingPhi2Deg)) < 1e-9);
+  auto meta = mtrsim::ReadOdfMetadata(outputFile);
+  REQUIRE(meta.num_components == 1);
+  REQUIRE(meta.dims_phi1_phi_phi2 == std::array<int64_t, 3>{static_cast<int64_t>(k_NumPhi1), static_cast<int64_t>(k_NumPHI), static_cast<int64_t>(k_NumPhi2)});
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[0] - static_cast<double>(k_SpacingPhi1Deg)) < 1e-9);
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[1] - static_cast<double>(k_SpacingPHIDeg)) < 1e-9);
+  REQUIRE(std::abs(meta.spacing_deg_phi1_phi_phi2[2] - static_cast<double>(k_SpacingPhi2Deg)) < 1e-9);
 
-  auto comps = mtrsim::readODFComponents(outputFile);
+  auto comps = mtrsim::ReadOdfComponents(outputFile);
   REQUIRE(comps.size() == 1);
   const auto& vals = comps[0].values;
   REQUIRE(vals.size() == k_NumPhi1 * k_NumPHI * k_NumPhi2);
   REQUIRE(vals[k_SentinelIndex] == k_SentinelValue);
 
   std::size_t nonzeroCount = 0;
-  for(std::size_t i = 0; i < vals.size(); ++i)
+  for(double val : vals)
   {
-    if(vals[i] != 0.0)
+    if(val != 0.0)
     {
       ++nonzeroCount;
     }
@@ -250,7 +250,7 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: axis mapping preserves phi1-PHI-phi2 la
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: zero components rejects at preflight", "[MTRSim][WriteMTRSimODFFilter][ErrorPath]")
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   DataStructure dataStructure;
 
@@ -262,16 +262,16 @@ TEST_CASE("MTRSim::WriteMTRSimODFFilter: zero components rejects at preflight", 
   args.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(std::vector<DataPath>{}));
 
   auto preflightResult = filter.preflight(dataStructure, args);
-  REQUIRE(preflightResult.outputActions.invalid());
+  REQUIRE(preflightResult.output_actions.invalid());
 }
 
 namespace
 {
 // Helper: read fixture with a given prefix, write it out with a distinct
 // prefix, read back and verify byte-exact equality of the component values.
-void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
+void RunDistinctPrefixRoundTrip(const std::string& fixtureName, const std::string& readPrefix, const std::string& writePrefix, const std::string& tempStem)
 {
-  UnitTest::LoadPlugins();
+  unit_test::LoadPlugins();
 
   const fs::path inputFile = fs::path(fmt::format("{}/{}", unit_test::k_DataDir.view(), fixtureName));
   REQUIRE(fs::exists(inputFile));
@@ -297,13 +297,13 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
     readArgs.insertOrAssign(ReadMTRSimODFFilter::k_CellAttrMatName_Key, std::make_any<DataObjectNameParameter::ValueType>(cellAttrMatName));
 
     auto readPreflight = readFilter.preflight(dataStructure, readArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(readPreflight.output_actions);
     auto readExecute = readFilter.execute(dataStructure, readArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(readExecute.result);
   }
 
-  const auto origComponents = mtrsim::readODFComponents(inputFile, readPrefix);
-  REQUIRE(origComponents.size() >= 1);
+  const auto origComponents = mtrsim::ReadOdfComponents(inputFile, readPrefix);
+  REQUIRE(!origComponents.empty());
 
   const DataPath cellAttrMatPath = imageGeomPath.createChildPath(cellAttrMatName);
   std::vector<DataPath> componentPaths;
@@ -322,7 +322,7 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
     writeArgs.insertOrAssign(WriteMTRSimODFFilter::k_ODFComponents_Key, std::make_any<MultiArraySelectionParameter::ValueType>(componentPaths));
 
     auto writePreflight = writeFilter.preflight(dataStructure, writeArgs);
-    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.outputActions);
+    SIMPLNX_RESULT_REQUIRE_VALID(writePreflight.output_actions);
     auto writeExecute = writeFilter.execute(dataStructure, writeArgs);
     SIMPLNX_RESULT_REQUIRE_VALID(writeExecute.result);
   }
@@ -334,10 +334,10 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
   // (Only meaningful when writePrefix != "/ODF_best".)
   if(writePrefix != "/ODF_best")
   {
-    REQUIRE_THROWS(mtrsim::readODFMetadata(outputFile));
+    REQUIRE_THROWS(mtrsim::ReadOdfMetadata(outputFile));
   }
 
-  auto roundComponents = mtrsim::readODFComponents(outputFile, writePrefix);
+  auto roundComponents = mtrsim::ReadOdfComponents(outputFile, writePrefix);
   REQUIRE(origComponents.size() == roundComponents.size());
   for(std::size_t c = 0; c < origComponents.size(); ++c)
   {
@@ -350,10 +350,10 @@ void runDistinctPrefixRoundTrip(const std::string& fixtureName, const std::strin
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip blank_ODF with distinct prefix", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  runDistinctPrefixRoundTrip("blank_ODF.h5", "/blank_ODF", "/blank_ODF_exported", "mtrsim_blank_rt");
+  RunDistinctPrefixRoundTrip("blank_ODF.h5", "/blank_ODF", "/blank_ODF_exported", "mtrsim_blank_rt");
 }
 
 TEST_CASE("MTRSim::WriteMTRSimODFFilter: Round-trip uniform_ODF with distinct prefix", "[MTRSim][WriteMTRSimODFFilter]")
 {
-  runDistinctPrefixRoundTrip("uniform_ODF.h5", "/uniform_ODF", "/uniform_ODF_exported", "mtrsim_uniform_rt");
+  RunDistinctPrefixRoundTrip("uniform_ODF.h5", "/uniform_ODF", "/uniform_ODF_exported", "mtrsim_uniform_rt");
 }

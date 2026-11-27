@@ -100,21 +100,21 @@ Parameters MTRSimFilter::parameters() const
                                                           "Size/Spacing.",
                                                           thetaInfo));
   }
-  params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSize_Key, "Physical Size (microns)",
-                                                         "Domain extent X, Y, Z in microns. Set Z = 0 to generate a single-layer "
-                                                         "(2D) microstructure.",
-                                                         std::vector<float32>{38.1f, 12.7f, 0.0f}, std::vector<std::string>{"X", "Y", "Z"}));
-  params.insert(std::make_unique<VectorFloat32Parameter>(k_PhysicalSpacing_Key, "Physical Spacing (microns)", "Voxel spacing X,Y,Z.", std::vector<float32>{0.02f, 0.02f, 0.02f},
-                                                         std::vector<std::string>{"X", "Y", "Z"}));
+  params.insert(std::make_unique<VectorFloat32ParameterType>(k_PhysicalSize_Key, "Physical Size (microns)",
+                                                             "Domain extent X, Y, Z in microns. Set Z = 0 to generate a single-layer "
+                                                             "(2D) microstructure.",
+                                                             std::vector<float32>{38.1f, 12.7f, 0.0f}, std::vector<std::string>{"X", "Y", "Z"}));
+  params.insert(std::make_unique<VectorFloat32ParameterType>(k_PhysicalSpacing_Key, "Physical Spacing (microns)", "Voxel spacing X,Y,Z.", std::vector<float32>{0.02f, 0.02f, 0.02f},
+                                                             std::vector<std::string>{"X", "Y", "Z"}));
 
   params.insertSeparator(Parameters::Separator{"Input ODF"});
   params.insert(std::make_unique<GeometrySelectionParameter>(k_InputOdfGeometry_Key, "Input ODF Geometry", "Image Geometry holding the ODF (from the Read/Compute ODF filters).", DataPath{},
-                                                             GeometrySelectionParameter::AllowedTypes{IGeometry::Type::Image}));
+                                                             GeometrySelectionParameter::AllowedTypeSetType{IGeometry::Type::Image}));
   params.insert(std::make_unique<MultiArraySelectionParameter>(k_OdfComponentArrays_Key, "ODF Component Arrays",
                                                                "Ordered list of per-component ODF cell arrays. Order maps to Volume "
                                                                "Fraction columns.",
-                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypes{IArray::ArrayType::DataArray},
-                                                               GetAllNumericTypes(), MultiArraySelectionParameter::AllowedComponentShapes{{1}}));
+                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypeSetType{IArray::ArrayType::DataArray},
+                                                               GetAllNumericTypes(), MultiArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   params.insertSeparator(Parameters::Separator{"Random Number Seed Parameters"});
   params.insertLinkableParameter(std::make_unique<BoolParameter>(k_UseSeed_Key, "Use Seed for Random Generation", "When true the user can supply a fixed seed.", false));
@@ -164,14 +164,14 @@ IFilter::VersionType MTRSimFilter::parametersVersion() const
 }
 
 //------------------------------------------------------------------------------
-IFilter::UniquePointer MTRSimFilter::clone() const
+IFilter::UniquePointerType MTRSimFilter::clone() const
 {
   return std::make_unique<MTRSimFilter>();
 }
 
 //------------------------------------------------------------------------------
-IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataStructure, const Arguments& filterArgs, const MessageHandler& messageHandler, const std::atomic_bool& shouldCancel,
-                                                     const ExecutionContext& executionContext) const
+IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& /*dataStructure*/, const Arguments& filterArgs, const MessageHandler& /*messageHandler*/,
+                                                     const std::atomic_bool& /*shouldCancel*/, const ExecutionContext& /*executionContext*/) const
 {
   auto pOdfArrays = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
   const bool useConfig = filterArgs.value<bool>(k_UseConfigFile_Key);
@@ -196,14 +196,14 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
     mtrsim::SimulationParams cfg;
     try
     {
-      cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
+      cfg = mtrsim::ParseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
     } catch(const std::exception& e)
     {
-      return {MakeErrorResult<OutputActions>(-13520, fmt::format("MTRSim config file error: {}", e.what()))};
+      return {.output_actions = MakeErrorResult<OutputActions>(-13520, fmt::format("MTRSim config file error: {}", e.what()))};
     }
-    pVolumeFractions = {cfg.volumeFractions};
-    pThetaList = cfg.thetaList;
-    pSize = {static_cast<float32>(cfg.xLen), static_cast<float32>(cfg.yLen), static_cast<float32>(cfg.zLen)};
+    pVolumeFractions = {cfg.volume_fractions};
+    pThetaList = cfg.theta_list;
+    pSize = {static_cast<float32>(cfg.x_len), static_cast<float32>(cfg.y_len), static_cast<float32>(cfg.z_len)};
     pSpacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
   }
   else
@@ -217,21 +217,21 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   const usize numComponents = pOdfArrays.size();
   if(numComponents < 2)
   {
-    return {MakeErrorResult<OutputActions>(-13501, "MTRSim requires at least 2 ODF component arrays.")};
+    return {.output_actions = MakeErrorResult<OutputActions>(-13501, "MTRSim requires at least 2 ODF component arrays.")};
   }
   if(pVolumeFractions.size() != 1 || pVolumeFractions[0].size() != numComponents)
   {
-    return {MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one "
-                                                               "per ODF component).",
-                                                               numComponents))};
+    return {.output_actions = MakeErrorResult<OutputActions>(-13502, fmt::format("Volume Fraction must be 1 row x {} columns (one "
+                                                                                 "per ODF component).",
+                                                                                 numComponents))};
   }
   for(double v : pVolumeFractions[0])
   {
     if(v < 0.0 || v > 1.0)
     {
-      return {MakeErrorResult<OutputActions>(-13507, fmt::format("Each Volume Fraction value must be in the range "
-                                                                 "[0, 1] (got {:.4f}).",
-                                                                 v))};
+      return {.output_actions = MakeErrorResult<OutputActions>(-13507, fmt::format("Each Volume Fraction value must be in the range "
+                                                                                   "[0, 1] (got {:.4f}).",
+                                                                                   v))};
     }
   }
   double vfSum = 0.0;
@@ -241,23 +241,23 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   }
   if(std::abs(vfSum - 1.0) > 1.0e-3)
   {
-    return {MakeErrorResult<OutputActions>(-13503, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
+    return {.output_actions = MakeErrorResult<OutputActions>(-13503, fmt::format("Volume Fraction values must sum to 1.0 (got {:.4f}).", vfSum))};
   }
   if(pThetaList.size() < numComponents - 1)
   {
-    return {MakeErrorResult<OutputActions>(-13504, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
+    return {.output_actions = MakeErrorResult<OutputActions>(-13504, fmt::format("Theta List needs at least {} rows (components - 1).", numComponents - 1))};
   }
   for(const auto& row : pThetaList)
   {
     if(row.size() != 3)
     {
-      return {MakeErrorResult<OutputActions>(-13505, "Each Theta List row must have exactly 3 columns.")};
+      return {.output_actions = MakeErrorResult<OutputActions>(-13505, "Each Theta List row must have exactly 3 columns.")};
     }
   }
 
   if(pSpacing[0] <= 0.0f || pSpacing[1] <= 0.0f)
   {
-    return {MakeErrorResult<OutputActions>(-13506, "Physical Spacing X and Y must be greater than 0.")};
+    return {.output_actions = MakeErrorResult<OutputActions>(-13506, "Physical Spacing X and Y must be greater than 0.")};
   }
 
   const auto dim = [](float len, float sp) { return static_cast<usize>(std::max(std::lround(len / sp), 1L)); };
@@ -288,42 +288,42 @@ IFilter::PreflightResult MTRSimFilter::preflightImpl(const DataStructure& dataSt
   preflightUpdatedValues.push_back({"Output Grid (X, Y, Z)", fmt::format("{} x {} x {}", nx, ny, nz)});
   preflightUpdatedValues.push_back({"Number of ODF Components", std::to_string(numComponents)});
 
-  return {std::move(resultOutputActions), std::move(preflightUpdatedValues)};
+  return {.output_actions = std::move(resultOutputActions), .output_values = std::move(preflightUpdatedValues)};
 }
 
 //------------------------------------------------------------------------------
-Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* pipelineNode, const MessageHandler& messageHandler,
-                                   const std::atomic_bool& shouldCancel, const ExecutionContext& executionContext) const
+Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments& filterArgs, const PipelineFilter* /*pipelineNode*/, const MessageHandler& messageHandler,
+                                   const std::atomic_bool& shouldCancel, const ExecutionContext& /*executionContext*/) const
 {
   MTRSimInputValues inputValues;
-  inputValues.inputOdfGeometryPath = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
-  inputValues.odfComponentPaths = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
-  inputValues.generatePolarColoring = filterArgs.value<bool>(k_GeneratePolarColoring_Key);
-  inputValues.outputGeometryPath = filterArgs.value<DataPath>(k_OutputGeometry_Key);
-  inputValues.cellAttrMatName = filterArgs.value<std::string>(k_CellAttrMatName_Key);
-  inputValues.mtrIdsArrayName = filterArgs.value<std::string>(k_MtrIdsArrayName_Key);
-  inputValues.eulersArrayName = filterArgs.value<std::string>(k_EulersArrayName_Key);
-  inputValues.polarColorsArrayName = filterArgs.value<std::string>(k_PolarColorsArrayName_Key);
+  inputValues.input_odf_geometry_path = filterArgs.value<DataPath>(k_InputOdfGeometry_Key);
+  inputValues.odf_component_paths = filterArgs.value<MultiArraySelectionParameter::ValueType>(k_OdfComponentArrays_Key);
+  inputValues.generate_polar_coloring = filterArgs.value<bool>(k_GeneratePolarColoring_Key);
+  inputValues.output_geometry_path = filterArgs.value<DataPath>(k_OutputGeometry_Key);
+  inputValues.cell_attr_mat_name = filterArgs.value<std::string>(k_CellAttrMatName_Key);
+  inputValues.mtr_ids_array_name = filterArgs.value<std::string>(k_MtrIdsArrayName_Key);
+  inputValues.eulers_array_name = filterArgs.value<std::string>(k_EulersArrayName_Key);
+  inputValues.polar_colors_array_name = filterArgs.value<std::string>(k_PolarColorsArrayName_Key);
 
   // Resolve ALL simulation parameters (volume fractions, theta, size, spacing, seed)
   // from whichever source the user has selected — config file or manual fields.
   // The config file is parsed at most ONCE here; the algorithm is config-agnostic.
   const bool useConfig = filterArgs.value<bool>(k_UseConfigFile_Key);
-  uint64 seed;
+  uint64 seed = 0;
   if(useConfig)
   {
     mtrsim::SimulationParams cfg;
     try
     {
-      cfg = mtrsim::parseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
+      cfg = mtrsim::ParseConfigJson(filterArgs.value<FileSystemPathParameter::ValueType>(k_ConfigFilePath_Key));
     } catch(const std::exception& e)
     {
       return MakeErrorResult(-13521, fmt::format("MTRSim config file error: {}", e.what()));
     }
-    inputValues.volumeFractions = {cfg.volumeFractions};
-    inputValues.thetaList = cfg.thetaList;
-    inputValues.physicalSize = {static_cast<float32>(cfg.xLen), static_cast<float32>(cfg.yLen), static_cast<float32>(cfg.zLen)};
-    inputValues.physicalSpacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
+    inputValues.volume_fractions = {cfg.volume_fractions};
+    inputValues.theta_list = cfg.theta_list;
+    inputValues.physical_size = {static_cast<float32>(cfg.x_len), static_cast<float32>(cfg.y_len), static_cast<float32>(cfg.z_len)};
+    inputValues.physical_spacing = {static_cast<float32>(cfg.dx), static_cast<float32>(cfg.dy), static_cast<float32>(cfg.dz)};
     seed = cfg.seed;
     if(seed == 0) // seed:0 (or absent) means "generate one"
     {
@@ -332,24 +332,24 @@ Result<> MTRSimFilter::executeImpl(DataStructure& dataStructure, const Arguments
   }
   else
   {
-    inputValues.volumeFractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
-    inputValues.thetaList = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
-    inputValues.physicalSize = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
-    inputValues.physicalSpacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
+    inputValues.volume_fractions = filterArgs.value<DynamicTableParameter::ValueType>(k_VolumeFractions_Key);
+    inputValues.theta_list = filterArgs.value<DynamicTableParameter::ValueType>(k_ThetaList_Key);
+    inputValues.physical_size = filterArgs.value<std::vector<float32>>(k_PhysicalSize_Key);
+    inputValues.physical_spacing = filterArgs.value<std::vector<float32>>(k_PhysicalSpacing_Key);
     seed = filterArgs.value<uint64>(k_SeedValue_Key);
     if(!filterArgs.value<bool>(k_UseSeed_Key))
     {
       seed = static_cast<uint64>(std::chrono::steady_clock::now().time_since_epoch().count());
     }
   }
-  dataStructure.getDataRefAs<UInt64Array>(DataPath({filterArgs.value<std::string>(k_SeedArrayName_Key)}))[0] = seed;
+  dataStructure.getDataRefAs<UInt64ArrayType>(DataPath({filterArgs.value<std::string>(k_SeedArrayName_Key)}))[0] = seed;
   inputValues.seed = seed;
 
   return MTRSim(dataStructure, messageHandler, shouldCancel, &inputValues)();
 }
 
 //------------------------------------------------------------------------------
-Result<Arguments> MTRSimFilter::FromSIMPLJson(const nlohmann::json& json)
+Result<Arguments> MTRSimFilter::FromSIMPLJson(const nlohmann::json& /*json*/)
 {
   Arguments args = MTRSimFilter().getDefaultArguments();
 

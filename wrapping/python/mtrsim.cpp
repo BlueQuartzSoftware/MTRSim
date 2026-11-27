@@ -19,6 +19,7 @@
 
 #include <random>
 #include <string>
+#include <utility>
 
 namespace py = pybind11;
 using namespace pybind11::literals;
@@ -74,17 +75,17 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<SimulationParams>(m, "SimulationParams", "All parameters that drive a single MTR simulation run.")
       .def(py::init<>())
-      .def_readwrite("x_len", &SimulationParams::xLen, "Volume extent in X [mm]")
-      .def_readwrite("y_len", &SimulationParams::yLen, "Volume extent in Y [mm]")
-      .def_readwrite("z_len", &SimulationParams::zLen, "Volume extent in Z [mm] (0 = 2-D slice)")
+      .def_readwrite("x_len", &SimulationParams::x_len, "Volume extent in X [mm]")
+      .def_readwrite("y_len", &SimulationParams::y_len, "Volume extent in Y [mm]")
+      .def_readwrite("z_len", &SimulationParams::z_len, "Volume extent in Z [mm] (0 = 2-D slice)")
       .def_readwrite("dx", &SimulationParams::dx, "Voxel spacing in X [mm]")
       .def_readwrite("dy", &SimulationParams::dy, "Voxel spacing in Y [mm]")
       .def_readwrite("dz", &SimulationParams::dz, "Voxel spacing in Z [mm]")
-      .def_readwrite("volume_fractions", &SimulationParams::volumeFractions, "Target volume fraction per MTR component (must sum to 1)")
-      .def_readwrite("theta_list", &SimulationParams::thetaList, "Correlation lengths [num_gaussians x 3] (x,y,z)")
-      .def_readwrite("nugget_variance", &SimulationParams::nuggetVariance, "Nugget variance per component")
-      .def_readwrite("odf_input_path", &SimulationParams::odfInputPath, "Path to simulation_ODF.h5")
-      .def_readwrite("output_dir", &SimulationParams::outputDir, "Directory for output files")
+      .def_readwrite("volume_fractions", &SimulationParams::volume_fractions, "Target volume fraction per MTR component (must sum to 1)")
+      .def_readwrite("theta_list", &SimulationParams::theta_list, "Correlation lengths [num_gaussians x 3] (x,y,z)")
+      .def_readwrite("nugget_variance", &SimulationParams::nugget_variance, "Nugget variance per component")
+      .def_readwrite("odf_input_path", &SimulationParams::odf_input_path, "Path to simulation_ODF.h5")
+      .def_readwrite("output_dir", &SimulationParams::output_dir, "Directory for output files")
       .def_readwrite("seed", &SimulationParams::seed, "Random seed (0 = use std::random_device)");
 
   // -------------------------------------------------------------------------
@@ -92,27 +93,27 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<PGRFResult>(m, "PGRFResult", "Output of the PGRF simulation.")
       .def(py::init<>())
-      .def_readwrite("mtr_index", &PGRFResult::mtrIndex, "1-based component assignment per voxel, length N (VectorXi)")
-      .def_readwrite("latent_fields", &PGRFResult::latentFields, "Latent GP values, shape [N x numGaussians] (MatrixXd)");
+      .def_readwrite("mtr_index", &PGRFResult::mtr_index, "1-based component assignment per voxel, length N (VectorXi)")
+      .def_readwrite("latent_fields", &PGRFResult::latent_fields, "Latent GP values, shape [N x numGaussians] (MatrixXd)");
 
   // -------------------------------------------------------------------------
   // AssignmentRuleThresholds
   // -------------------------------------------------------------------------
   py::class_<AssignmentRuleThresholds>(m, "AssignmentRuleThresholds", "Threshold matrices produced by AssignmentRule.select_thresholds().")
       .def(py::init<>())
-      .def_readwrite("num_gaussians", &AssignmentRuleThresholds::numGaussians)
-      .def_readwrite("min_thresholds", &AssignmentRuleThresholds::minThresholds, "Shape [numComponents x numGaussians]")
-      .def_readwrite("max_thresholds", &AssignmentRuleThresholds::maxThresholds, "Shape [numComponents x numGaussians]");
+      .def_readwrite("num_gaussians", &AssignmentRuleThresholds::num_gaussians)
+      .def_readwrite("min_thresholds", &AssignmentRuleThresholds::min_thresholds, "Shape [numComponents x numGaussians]")
+      .def_readwrite("max_thresholds", &AssignmentRuleThresholds::max_thresholds, "Shape [numComponents x numGaussians]");
 
   // -------------------------------------------------------------------------
   // ODFComponent
   // -------------------------------------------------------------------------
   py::class_<ODFComponent>(m, "ODFComponent", "Discrete ODF histogram for one MTR component.")
       .def(py::init<>())
-      .def_readwrite("odf_val", &ODFComponent::odfVal, "Probability mass per bin (N_bins,)")
-      .def_readwrite("phi1_bins", &ODFComponent::phi1Bins, "phi1 bin centres [rad]")
-      .def_readwrite("phi_bins", &ODFComponent::phiBins, "PHI bin centres [rad]")
-      .def_readwrite("phi2_bins", &ODFComponent::phi2Bins, "phi2 bin centres [rad]");
+      .def_readwrite("odf_val", &ODFComponent::odf_val, "Probability mass per bin (N_bins,)")
+      .def_readwrite("phi1_bins", &ODFComponent::phi1_bins, "phi1 bin centres [rad]")
+      .def_readwrite("phi_bins", &ODFComponent::phi_bins, "PHI bin centres [rad]")
+      .def_readwrite("phi2_bins", &ODFComponent::phi2_bins, "phi2 bin centres [rad]");
 
   // -------------------------------------------------------------------------
   // EulerAngles
@@ -150,29 +151,29 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<EBSDData>(m, "EBSDData", "EBSD scan data loaded from CSV files.")
       .def(py::init<>())
-      .def_readwrite("spatial_coords", &EBSDData::spatialCoords, "[N x 2] (X,Y) positions [mm]")
-      .def_readwrite("euler_angles", &EBSDData::eulerAngles, "[N x 3] (phi1,PHI,phi2) [rad]")
-      .def_readwrite("parent_ids", &EBSDData::parentIds, "MTR parent grain IDs, length N")
+      .def_readwrite("spatial_coords", &EBSDData::spatial_coords, "[N x 2] (X,Y) positions [mm]")
+      .def_readwrite("euler_angles", &EBSDData::euler_angles, "[N x 3] (phi1,PHI,phi2) [rad]")
+      .def_readwrite("parent_ids", &EBSDData::parent_ids, "MTR parent grain IDs, length N")
       .def_property(
           "is_mtr",
           // getter: Eigen::VectorX<bool> → numpy uint8
           [](const EBSDData& self) -> py::array_t<uint8_t> {
-            const auto n = self.isMTR.size();
+            const auto n = self.is_mtr.size();
             py::array_t<uint8_t> result(n);
             auto buf = result.mutable_unchecked<1>();
             for(Eigen::Index i = 0; i < n; ++i)
             {
-              buf(i) = self.isMTR(i) ? uint8_t{1} : uint8_t{0};
+              buf(i) = self.is_mtr(i) ? uint8_t{1} : uint8_t{0};
             }
             return result;
           },
           // setter: numpy uint8 → Eigen::VectorX<bool>
           [](EBSDData& self, py::array_t<uint8_t> arr) {
             auto buf = arr.unchecked<1>();
-            self.isMTR.resize(buf.shape(0));
+            self.is_mtr.resize(buf.shape(0));
             for(py::ssize_t i = 0; i < buf.shape(0); ++i)
             {
-              self.isMTR(i) = (buf(i) != 0);
+              self.is_mtr(i) = (buf(i) != 0);
             }
           },
           "Boolean MTR membership mask as numpy uint8 array");
@@ -182,14 +183,13 @@ PYBIND11_MODULE(mtrsim, m)
   // -------------------------------------------------------------------------
   py::class_<PGRFSimulation>(m, "PGRFSimulation", "Orchestrates GPGenerator + AssignmentRule to produce a PGRF simulation.")
       .def(py::init([](Rng& rng) { return new PGRFSimulation(rng.engine()); }), "rng"_a, py::keep_alive<1, 2>())
-      .def(
-          "run", [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); }, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
+      .def("run", [](PGRFSimulation& self, const SimulationParams& params) { return self.run(params, nullptr); }, "params"_a, "Run the PGRF simulation and return a PGRFResult.");
 
   // -------------------------------------------------------------------------
   // GPGenerator
   // -------------------------------------------------------------------------
   py::class_<GPGenerator>(m, "GPGenerator", "Generates a separable GP field via the Kronecker-Cholesky method.")
-      .def(py::init([](Rng& rng, GPGenerator::CorrelationFn corrFn) { return new GPGenerator(rng.engine(), corrFn); }), "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
+      .def(py::init([](Rng& rng, GPGenerator::CorrelationFnType corrFn) { return new GPGenerator(rng.engine(), std::move(corrFn)); }), "rng"_a, "corr_fn"_a, py::keep_alive<1, 2>(),
            "corr_fn(lag, theta) -> float: user-supplied correlation function")
       .def("generate", &GPGenerator::generate, "hx"_a, "hy"_a, "hz"_a, "theta"_a, "nx"_a, "ny"_a, "nz"_a,
            "Draw one GP realisation on an nx*ny*nz grid. Returns flattened "

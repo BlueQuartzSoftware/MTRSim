@@ -24,14 +24,13 @@ WriteMTRSimODF::WriteMTRSimODF(DataStructure& dataStructure, const IFilter::Mess
 }
 
 // -----------------------------------------------------------------------------
-WriteMTRSimODF::~WriteMTRSimODF() noexcept = default;
 
 // -----------------------------------------------------------------------------
 Result<> WriteMTRSimODF::operator()()
 {
-  m_MessageHandler.sendInfoMessage(fmt::format("Writing MTRSim ODF file: {}", m_InputValues->outputFile.string()));
+  m_MessageHandler.sendInfoMessage(fmt::format("Writing MTRSim ODF file: {}", m_InputValues->output_file.string()));
 
-  const auto& geom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->inputImageGeometry);
+  const auto& geom = m_DataStructure.getDataRefAs<ImageGeom>(m_InputValues->input_image_geometry);
 
   // Reverse the (phi2=X, PHI=Y, phi1=Z) ImageGeom convention back to phi1-first
   // on-disk order.
@@ -44,19 +43,19 @@ Result<> WriteMTRSimODF::operator()()
   // writeODFFile re-validates values.size() == dims[0]*dims[1]*dims[2] as a
   // final defence in the library layer.
   std::vector<mtrsim::ODFFileComponent> components;
-  components.reserve(m_InputValues->odfComponents.size());
+  components.reserve(m_InputValues->odf_components.size());
 
-  for(std::size_t c = 0; c < m_InputValues->odfComponents.size(); ++c)
+  for(std::size_t c = 0; c < m_InputValues->odf_components.size(); ++c)
   {
     if(m_ShouldCancel)
     {
       return {};
     }
 
-    const auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(m_InputValues->odfComponents[c]);
+    const auto& componentArray = m_DataStructure.getDataRefAs<Float64ArrayType>(m_InputValues->odf_components[c]);
     const auto& store = componentArray.getDataStoreRef();
 
-    m_MessageHandler.sendInfoMessage(fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odfComponents[c].toString()));
+    m_MessageHandler.sendInfoMessage(fmt::format("Packing component_{} ({} values) from '{}'", c, store.getSize(), m_InputValues->odf_components[c].toString()));
 
     mtrsim::ODFFileComponent comp;
     comp.values.assign(store.begin(), store.end());
@@ -65,7 +64,7 @@ Result<> WriteMTRSimODF::operator()()
 
   try
   {
-    mtrsim::writeODFFile(m_InputValues->outputFile, dimsPhi1PHIPhi2, spacingDegPhi1PHIPhi2, components, m_InputValues->hdf5PathPrefix);
+    mtrsim::WriteOdfFile(m_InputValues->output_file, dimsPhi1PHIPhi2, spacingDegPhi1PHIPhi2, components, m_InputValues->hdf5_path_prefix);
   } catch(const std::exception& e)
   {
     return MakeErrorResult(-12110, fmt::format("ODF write failed: {}", e.what()));

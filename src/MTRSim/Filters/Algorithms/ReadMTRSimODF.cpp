@@ -22,17 +22,16 @@ ReadMTRSimODF::ReadMTRSimODF(DataStructure& dataStructure, const IFilter::Messag
 }
 
 // -----------------------------------------------------------------------------
-ReadMTRSimODF::~ReadMTRSimODF() noexcept = default;
 
 // -----------------------------------------------------------------------------
 Result<> ReadMTRSimODF::operator()()
 {
-  m_MessageHandler.sendInfoMessage(fmt::format("Reading MTRSim ODF file: {}", m_InputValues->inputFile.string()));
+  m_MessageHandler.sendInfoMessage(fmt::format("Reading MTRSim ODF file: {}", m_InputValues->input_file.string()));
 
   std::vector<mtrsim::ODFFileComponent> components;
   try
   {
-    components = mtrsim::readODFComponents(m_InputValues->inputFile, m_InputValues->hdf5PathPrefix);
+    components = mtrsim::ReadOdfComponents(m_InputValues->input_file, m_InputValues->hdf5_path_prefix);
   } catch(const std::exception& e)
   {
     return MakeErrorResult(-12010, fmt::format("ODF file read failed: {}", e.what()));
@@ -41,7 +40,7 @@ Result<> ReadMTRSimODF::operator()()
   // The preflight/execute contract guarantees the DataStructure has one
   // Float64 array per component (created via CreateArrayAction in preflight).
   // Per-array size consistency is still verified below against store.getSize().
-  const DataPath cellAttrMatPath = m_InputValues->outputImageGeometryPath.createChildPath(m_InputValues->cellAttrMatName);
+  const DataPath cellAttrMatPath = m_InputValues->output_image_geometry_path.createChildPath(m_InputValues->cell_attr_mat_name);
 
   for(size_t c = 0; c < components.size(); ++c)
   {
@@ -51,7 +50,7 @@ Result<> ReadMTRSimODF::operator()()
     }
 
     const DataPath componentPath = cellAttrMatPath.createChildPath(fmt::format("component_{}", c));
-    auto& componentArray = m_DataStructure.getDataRefAs<Float64Array>(componentPath);
+    auto& componentArray = m_DataStructure.getDataRefAs<Float64ArrayType>(componentPath);
     auto& store = componentArray.getDataStoreRef();
 
     const auto& srcValues = components[c].values;

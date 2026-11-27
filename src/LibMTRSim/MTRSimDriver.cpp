@@ -12,7 +12,7 @@
 namespace mtrsim
 {
 
-ODFComponent buildUniformODF(int n1, int nPHI, int n2)
+ODFComponent BuildUniformOdf(int n1, int nPHI, int n2)
 {
   const int nTotal = n1 * nPHI * n2;
   const double twoPiOverN1 = 2.0 * std::numbers::pi / static_cast<double>(n1);
@@ -34,14 +34,14 @@ ODFComponent buildUniformODF(int n1, int nPHI, int n2)
   }
 
   ODFComponent uni;
-  uni.odfVal = Eigen::VectorXd::Constant(nTotal, 1.0 / static_cast<double>(nTotal));
-  uni.phi1Bins = std::move(phi1Bins);
-  uni.phiBins = std::move(phiBins);
-  uni.phi2Bins = std::move(phi2Bins);
+  uni.odf_val = Eigen::VectorXd::Constant(nTotal, 1.0 / static_cast<double>(nTotal));
+  uni.phi1_bins = std::move(phi1Bins);
+  uni.phi_bins = std::move(phiBins);
+  uni.phi2_bins = std::move(phi2Bins);
   return uni;
 }
 
-ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2)
+ODFComponent GridToOdfComponent(const std::vector<double>& values, int n1, int nPHI, int n2, double stepDeg1, double stepDegPHI, double stepDeg2)
 {
   const int nTotal = n1 * nPHI * n2;
   const double deg2rad = std::numbers::pi / 180.0;
@@ -63,26 +63,26 @@ ODFComponent gridToODFComponent(const std::vector<double>& values, int n1, int n
   }
 
   ODFComponent c;
-  c.odfVal = Eigen::Map<const Eigen::VectorXd>(values.data(), nTotal);
-  const double total = c.odfVal.sum();
+  c.odf_val = Eigen::Map<const Eigen::VectorXd>(values.data(), nTotal);
+  const double total = c.odf_val.sum();
   if(total > 0.0)
   {
-    c.odfVal /= total;
+    c.odf_val /= total;
   }
-  c.phi1Bins = std::move(phi1Bins);
-  c.phiBins = std::move(phiBins);
-  c.phi2Bins = std::move(phi2Bins);
+  c.phi1_bins = std::move(phi1Bins);
+  c.phi_bins = std::move(phiBins);
+  c.phi2_bins = std::move(phi2Bins);
   return c;
 }
 
-MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2, ISimulationObserver* observer)
+MTRSimResult SimulateMtr(const SimulationParams& params, const std::vector<ODFComponent>& odfComponents, std::mt19937_64& rng, int n1, int nPHI, int n2, ISimulationObserver* observer)
 {
-  const int nx = static_cast<int>(std::round(params.xLen / params.dx));
-  const int ny = static_cast<int>(std::round(params.yLen / params.dy));
-  const int nz = std::max(static_cast<int>(std::round(params.zLen / params.dz)), 1);
-  const int N = nx * ny * nz;
+  const int nx = static_cast<int>(std::round(params.x_len / params.dx));
+  const int ny = static_cast<int>(std::round(params.y_len / params.dy));
+  const int nz = std::max(static_cast<int>(std::round(params.z_len / params.dz)), 1);
+  const int n = nx * ny * nz;
 
-  if(static_cast<int>(odfComponents.size()) != static_cast<int>(params.volumeFractions.size()))
+  if(static_cast<int>(odfComponents.size()) != static_cast<int>(params.volume_fractions.size()))
   {
     throw std::invalid_argument("simulateMTR: odfComponents count must equal volumeFractions count");
   }
@@ -98,7 +98,7 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   // 1. PGRF assignment (sim-ordered, 1-based component ids).
   report(0, 100, "Running plurigaussian field simulation");
   PGRFSimulation pgrf{rng};
-  const PGRFResult pgrf_result = pgrf.run(params, observer); // throws on bad dims
+  const PGRFResult pgrfResult = pgrf.run(params, observer); // throws on bad dims
   if(cancelled())
   {
     MTRSimResult out;
@@ -106,20 +106,20 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
     return out;
   }
 
-  if(static_cast<int>(pgrf_result.mtrIndex.size()) != N)
+  if(static_cast<int>(pgrfResult.mtr_index.size()) != n)
   {
     throw std::runtime_error("simulateMTR: PGRF result size does not match grid dimensions");
   }
 
   // 2. Sample N orientations per component against the uniform reference.
-  const ODFComponent uniformOdf = buildUniformODF(n1, nPHI, n2);
+  const ODFComponent uniformOdf = BuildUniformOdf(n1, nPHI, n2);
   const int numComponents = static_cast<int>(odfComponents.size());
   std::vector<Eigen::MatrixXd> orientSamples(static_cast<std::size_t>(numComponents));
   ODFSampler sampler{rng};
   for(int j = 0; j < numComponents; ++j)
   {
     report(j, numComponents, fmt::format("Sampling orientations (component {}/{})", j + 1, numComponents));
-    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(N, odfComponents[static_cast<std::size_t>(j)], uniformOdf, observer);
+    orientSamples[static_cast<std::size_t>(j)] = sampler.sampleN(n, odfComponents[static_cast<std::size_t>(j)], uniformOdf, observer);
     if(cancelled())
     {
       MTRSimResult out;
@@ -129,14 +129,14 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   }
 
   // 3. Assign per-voxel orientation by component (sim order).
-  std::vector<int32_t> mtrSim(static_cast<std::size_t>(N));
-  std::vector<double> phi1Sim(static_cast<std::size_t>(N));
-  std::vector<double> phiSim(static_cast<std::size_t>(N));
-  std::vector<double> phi2Sim(static_cast<std::size_t>(N));
-  for(int i = 0; i < N; ++i)
+  std::vector<int32_t> mtrSim(static_cast<std::size_t>(n));
+  std::vector<double> phi1Sim(static_cast<std::size_t>(n));
+  std::vector<double> phiSim(static_cast<std::size_t>(n));
+  std::vector<double> phi2Sim(static_cast<std::size_t>(n));
+  for(int i = 0; i < n; ++i)
   {
-    const int comp = pgrf_result.mtrIndex[i] - 1;
-    mtrSim[static_cast<std::size_t>(i)] = pgrf_result.mtrIndex[i];
+    const int comp = pgrfResult.mtr_index[i] - 1;
+    mtrSim[static_cast<std::size_t>(i)] = pgrfResult.mtr_index[i];
     phi1Sim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 0);
     phiSim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 1);
     phi2Sim[static_cast<std::size_t>(i)] = orientSamples[static_cast<std::size_t>(comp)](i, 2);
@@ -148,10 +148,10 @@ MTRSimResult simulateMTR(const SimulationParams& params, const std::vector<ODFCo
   out.nx = nx;
   out.ny = ny;
   out.nz = nz;
-  out.mtrIndex = remapSimToZYX(mtrSim, nx, ny, nz);
-  out.phi1 = remapSimToZYX(phi1Sim, nx, ny, nz);
-  out.phi = remapSimToZYX(phiSim, nx, ny, nz);
-  out.phi2 = remapSimToZYX(phi2Sim, nx, ny, nz);
+  out.mtr_index = RemapSimToZyx(mtrSim, nx, ny, nz);
+  out.phi1 = RemapSimToZyx(phi1Sim, nx, ny, nz);
+  out.phi = RemapSimToZyx(phiSim, nx, ny, nz);
+  out.phi2 = RemapSimToZyx(phi2Sim, nx, ny, nz);
   return out;
 }
 
