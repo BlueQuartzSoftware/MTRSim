@@ -79,7 +79,7 @@ Parameters WriteMTRSimODFFilter::parameters() const
   params.insert(std::make_unique<MultiArraySelectionParameter>(k_ODFComponents_Key, "ODF Component Arrays",
                                                                "Float64 single-component cell-data arrays on the input ImageGeom. Each "
                                                                "array becomes one ODF component in the output file.",
-                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedTypeSetType{IArray::ArrayType::DataArray},
+                                                               MultiArraySelectionParameter::ValueType{}, MultiArraySelectionParameter::AllowedArrayTypes{IArray::ArrayType::DataArray},
                                                                MultiArraySelectionParameter::AllowedDataTypesType{DataType::float64}, MultiArraySelectionParameter::AllowedComponentShapesType{{1}}));
 
   return params;
